@@ -1,0 +1,165 @@
+configuration:
+  schedule_time:
+    name: Daily collection time
+  run_missed_scan:
+    name: Run a missed daily scan after startup
+  import_legacy_hads2:
+    name: Import the latest HADS 2 report on first startup
+  watchdog_enabled:
+    name: Enable continuous watchdog
+  watchdog_interval_minutes:
+    name: Quick scan interval (minutes)
+  quick_log_lines:
+    name: Log lines used by a quick scan
+  quick_include_addon_logs:
+    name: Include app/add-on logs in quick scans
+  log_lines:
+    name: Lines retained from each log source
+  include_host_logs:
+    name: Include host logs
+  include_addon_logs:
+    name: Include all app/add-on logs
+  include_service_logs:
+    name: Include DNS, audio and multicast logs
+  keep_raw_days:
+    name: Raw import retention (days)
+  keep_exports_days:
+    name: Export retention (days)
+  metrics_retention_days:
+    name: Detailed metrics retention (days)
+  collector_history_days:
+    name: Collection history retention (days)
+  max_upload_mb:
+    name: Maximum uploaded file size (MB)
+  yaml_audit_enabled:
+    name: Enable deep YAML audit
+  yaml_entity_reference_check:
+    name: Check static entity references
+  yaml_max_file_kb:
+    name: Maximum YAML file size (KB)
+  correlation_window_minutes:
+    name: Correlation time window (minutes)
+  fix_observation_hours:
+    name: Default post-fix observation period (hours)
+  notify_p1_p2:
+    name: Create HA notifications for new P1/P2 cases
+  redact_local_ips_in_exports:
+    name: Redact local IP addresses in exports
+  onedrive_enabled:
+    name: Enable OneDrive export
+  onedrive_config_entry_id:
+    name: OneDrive config entry ID
+  onedrive_destination_folder:
+    name: Destination folder in the Home Assistant OneDrive area
+  hads2_compat_folder:
+    name: Compatibility OneDrive folder for ChatGPT report
+  daily_chatgpt_report:
+    name: Create daily full ChatGPT report
+  upload_markdown:
+    name: Upload Markdown report
+  upload_chatgpt_txt:
+    name: Upload TXT report for ChatGPT
+  advisor_use_ha_conversation:
+    name: Use a Home Assistant conversation agent for case chat
+  advisor_agent_id:
+    name: Conversation agent ID (blank = default)
+  smart_triage_enabled:
+    name: Enable smart priority triage
+  auto_resolve_transient_hours:
+    name: Auto-resolve mild issue after quiet period (hours)
+  persistent_p2_days:
+    name: Persistence days for long-term P2
+  persistent_p1_days:
+    name: Persistence days for long-term P1
+  onedrive_retry_count:
+    name: OneDrive upload retry count
+  onedrive_single_file_fallback:
+    name: Retry files individually after batch upload failure
+  onedrive_deferred_retry_minutes:
+    name: Deferred OneDrive retry interval (minutes)
+  onedrive_deferred_retry_max:
+    name: Maximum deferred OneDrive retry attempts
+  captain_mode:
+    name: Captain / first officer mode
+  repairs_enabled:
+    name: Enable controlled repairs after explicit approval
+  backup_before_repairs:
+    name: Backup before repair (mandatory since 4.3)
+  allow_repair_without_backup:
+    name: Deprecated — bypassing backup is not permitted
+  recorder_maintenance_enabled:
+    name: Enable local SQLite history maintenance plans
+  recorder_sqlite_path:
+    name: Verified active SQLite DB relative to configuration
+  ai_background_research:
+    name: Enable paid background AI research
+  ai_max_output_tokens:
+    name: Maximum output tokens including reasoning
+  ai_daily_call_limit:
+    name: Maximum AI requests per 24 hours
+  ai_case_daily_call_limit:
+    name: Maximum AI requests per source case per 24 hours
+  allow_core_restart:
+    name: Allow a planned Home Assistant Core restart
+  repair_watch_hours:
+    name: Automatic repair verification window (hours)
+  auto_scan_after_repair:
+    name: Run a quick scan automatically after repair
+  openai_enabled:
+    name: Enable the OpenAI second analysis layer
+  openai_api_key:
+    name: OpenAI API key
+  openai_model:
+    name: OpenAI model used for analysis
+  openai_web_search_enabled:
+    name: Use current web search during analysis
+  openai_allowed_domains:
+    name: Comma-separated allowed web domains
+  ha_dashboard_enabled:
+    name: Publish HADS 4 sensors to Home Assistant
+  ha_dashboard_publish_seconds:
+    name: Dashboard sensor refresh interval (seconds)
+  observer_enabled:
+    name: Enable live Home Assistant WebSocket Observer
+  observer_reconnect_seconds:
+    name: Observer reconnect interval (seconds)
+  dependency_graph_enabled:
+    name: Build dependency graph and blast radius
+  knowledge_base_enabled:
+    name: Store local memory of causes, fixes and outcomes
+  current_health_window_hours:
+    name: Current Health time window (hours)
+  ai_mode:
+    name: AI mode (observe / officer / autopilot)
+  ai_tool_max_rounds:
+    name: Maximum AI Officer tool rounds
+  first_officer_enabled:
+    name: Enable the First Officer captain queue
+  first_officer_grace_minutes:
+    name: Restart grace period (minutes)
+  automatic_repair_planner:
+    name: Automatically prepare evidence-backed repair plans
+  automatic_planner_limit:
+    name: Maximum root cases processed per audit
+  rescue_onedrive_folder:
+    name: OneDrive folder for repair rescue packages
+  rescue_remote_verify_service:
+    name: Service used to verify the remote OneDrive file
+  ha_mcp_url:
+    name: Direct HA-MCP endpoint (blank disables the connector)
+  ha_mcp_token:
+    name: HA-MCP token when required
+  hamster_mcp_url:
+    name: Hamster MCP endpoint (blank disables the connector)
+  hamster_mcp_token:
+    name: Hamster MCP token when required
+  hadocs_api_url:
+    name: HADocs read-only JSON API
+  hadocs_token:
+    name: HADocs read-only API token
+  automation_inspector_api_url:
+    name: Automation Inspector read-only API
+  automation_inspector_token:
+    name: Automation Inspector read-only API token
+  external_connector_timeout_seconds:
+    name: External diagnostics timeout (seconds)
