@@ -258,7 +258,8 @@ class FirstOfficer:
                 # a captain question. Captain attention is reserved for a prepared
                 # decision, genuinely user-only information or a manual intervention.
                 age_hours = max(0.0, (now_dt - dt.datetime.fromisoformat(max(str(item["last_seen"]) for item in group))).total_seconds() / 3600.0)
-                background_state = "watching" if age_hours > float(self.options().get("current_health_window_hours", 24)) else "investigating"
+                # Age is not a completed diagnosis or an observation contract.
+                background_state = "investigating"
                 decision = "verifying" if lifecycle == "VERIFY" else ("approved" if plan_status == "approved" else ("awaiting_decision" if repair_plan_id else background_state))
                 if plan_status in {"failed", "interrupted"}:
                     decision = "repair_failed"
@@ -572,7 +573,10 @@ class FirstOfficer:
                         isinstance(item, dict) and item.get("status") == "needs_choice"
                         for item in choices
                     )
-                    if user_choice_needed:
+                    if research_result.get("ai_deferred_reason"):
+                        planner_state = "waiting_budget"
+                        next_decision_state = "investigating"
+                    elif user_choice_needed:
                         planner_state = "needs_information"
                         next_decision_state = "needs_information"
                         needs_info += 1
@@ -600,7 +604,7 @@ class FirstOfficer:
                     )
                     conn.execute(
                         "UPDATE planner_runs SET status=?,adapter_ids_json=?,research_json=?,actions_json=?,repair_plan_id=?,finished_at=? WHERE id=?",
-                        ("planned" if plan else "investigating", json.dumps(adapter_result.get("used") or []), json.dumps(research_result, ensure_ascii=False, default=str), json.dumps(actions, ensure_ascii=False), plan.get("id") if plan else None, self.now(), run_id),
+                        ("planned" if plan else planner_state, json.dumps(adapter_result.get("used") or []), json.dumps(research_result, ensure_ascii=False, default=str), json.dumps(actions, ensure_ascii=False), plan.get("id") if plan else None, self.now(), run_id),
                     )
                 results.append({"root_case_id": root["id"], "case_id": case_id, "status": planner_state, "plan_id": plan.get("id") if plan else None, "adapters": adapter_result.get("used"), "ai_deferred_reason": research_result.get("ai_deferred_reason")})
             except Exception as exc:
@@ -616,7 +620,7 @@ class FirstOfficer:
                 results.append({"root_case_id": root["id"], "status": "failed", "error": str(exc)})
         return {"created": created, "needs_information": needs_info, "failed": failed, "processed": len(results),
                 "ai_deferred": sum(bool(item.get("ai_deferred_reason")) for item in results),
-                "eligible": eligible_count, "remaining": max(0, eligible_count - len(results)), "results": results}
+                "eligible": eligible_count, "remaining": max(0, eligible_count - created - needs_info - sum(item.get("status") == "review_ready" for item in results)), "results": results}
 
     def _root_current_penalty(self, row: Any, now_dt: dt.datetime) -> int:
         """Penalty from current demonstrated impact; stale history belongs to Reliability."""

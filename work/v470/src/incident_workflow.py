@@ -15,6 +15,8 @@ class AIBudgetExhausted(ValueError):
 
 
 def remaining_calls(db, now, cfg, case_id: int) -> int:
+    if cfg.get("ai_call_limits_enabled") is False:
+        return 8  # Per-investigation bound remains; no daily monetary/call cap.
     cutoff = (dt.datetime.fromisoformat(now()) - dt.timedelta(hours=24)).isoformat(timespec="seconds")
     with db() as conn:
         total = conn.execute("SELECT count(*) FROM ai_calls WHERE created_at>=?", (cutoff,)).fetchone()[0]
@@ -102,7 +104,7 @@ def metered_call(db, now, cfg: dict[str, Any], case_id: int, key: str, body: dic
         # db() serializes writers; reserve before leaving the transaction.
         total = conn.execute("SELECT count(*) FROM ai_calls WHERE created_at>=?", (cutoff,)).fetchone()[0]
         count = conn.execute("SELECT count(*) FROM ai_calls WHERE created_at>=? AND case_id=?", (cutoff, case_id)).fetchone()[0]
-        if total >= max(1, min(int(cfg.get("ai_daily_call_limit", 20)), 200)) or count >= max(1, min(int(cfg.get("ai_case_daily_call_limit", 6)), 30)):
+        if cfg.get("ai_call_limits_enabled", True) and (total >= max(1, min(int(cfg.get("ai_daily_call_limit", 20)), 200)) or count >= max(1, min(int(cfg.get("ai_case_daily_call_limit", 6)), 30))):
             raise AIBudgetExhausted("Dosažen limit AI požadavků za 24 hodin. Diagnostika bez AI pokračuje.")
         call_id = int(conn.execute("INSERT INTO ai_calls(case_id,model,status,created_at,input_bytes) VALUES(?,?,'running',?,?)", (case_id, str(body.get("model")), now(), size)).lastrowid)
     try:

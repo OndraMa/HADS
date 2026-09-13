@@ -381,7 +381,7 @@ class ToolAdapterBus:
             for name in required:
                 prop = properties.get(name) if isinstance(properties.get(name), dict) else {}
                 if prop.get("type") == "string" and name.lower() in {"query", "text", "keyword", "search", "command", "name"}:
-                    arguments[name] = query[:1000]
+                    arguments[name] = "hass/get_states" if adapter_id == "hamster_mcp" else query[:1000]
                 elif prop.get("type") == "string" and name.lower() == "path" and re.fullmatch(r"[a-z0-9_./-]{3,200}", query.strip().lower()):
                     arguments[name] = query.strip().lower()
                 elif prop.get("default") is not None:
@@ -976,8 +976,20 @@ class ToolAdapterBus:
             severity = str(issue.get("severity") or "warning").lower()
             priority = "P2" if severity in {"critical", "error"} else "P3"
             source_title = SPECS.get(adapter_id, {}).get("title", domain)
-            cause = f"Home Assistant Repairs potvrzuje neplatný nebo zastaralý odkaz nahlášený zdrojem {source_title}."
-            solution = "Otevřete uvedenou automatizaci, skript nebo scénu a nahraďte neplatný odkaz existující entitou/službou, případně jej odstraňte. HADS nevymyslí náhradu bez jednoznačného kandidáta."
+            cause = f"{source_title} nahlásil problém typu {issue_id}. Konkrétní příčina zatím není určena."
+            solution = "Načíst podrobnosti tohoto Repairs nálezu a ověřit aktuální stav jeho vlastníka. Bez důkazů nepřipravovat změny odkazů ani mazání."
+            if "drive_almost_full" in kind:
+                cause = "Repairs hlásí nedostatek místa na lokálním úložišti; nejde automaticky o kvótu OneDrive."
+                solution = "Ověřit konkrétní filesystem, volné místo a velikosti dat. Před úklidem připravit přesný seznam a zálohu."
+            elif "server_start_failed" in kind:
+                cause = "Repairs hlásí selhání startu serveru. Fáze a příčina vyžadují úplný startovací log."
+                solution = "Zjistit službu, verzi, port a poslední výjimku. Nezaměňovat import, obsazený port a autentizaci."
+            elif "automatic_backup_failed" in kind:
+                cause = "Automatická záloha selhala; příčinu určuje konkrétní úloha a cílové úložiště."
+                solution = "Ověřit ID zálohovací úlohy, lokální místo, cloudovou kvótu a oprávnění odděleně."
+            elif "unknown_entity" in kind or "unknown_service" in kind:
+                cause = f"{source_title} hlásí neznámý odkaz; jeho aktivní použití a identitu je třeba ověřit."
+                solution = "Ověřit aktivní konfiguraci a registry; navrhnout náhradu pouze s jednoznačně doloženou identitou."
             if "orphan" in kind and ("statistic" in kind or "recorder" in kind):
                 cause = "Recorder uchovává dlouhodobé statistiky pro identifikátor, ke kterému už Home Assistant nemá odpovídající entitu. Neznamená to samo o sobě poškozenou databázi."
                 solution = "Nejdříve ověřit, že entita nebyla pouze přejmenována nebo dočasně nedostupná. Teprve potom připravit cílené odstranění konkrétní osiřelé statistiky přes podporované nástroje Statistik, nikdy plošné mazání databáze."
@@ -993,10 +1005,10 @@ class ToolAdapterBus:
                 "message": message,
                 "level": "ERROR" if priority == "P2" else "WARNING",
                 "priority": priority,
-                "confidence": 99,
+                "confidence": 50,
                 "cause": cause,
                 "solution": solution,
-                "verification": "Nález zmizí z Home Assistant Repairs a následující Deep Analysis jej označí jako vyřešený.",
+                "verification": "Nové čtení Repairs a pozitivní funkční test postižené komponenty; samotné zmizení issue nestačí.",
                 "evidence": {"provider": source_title, "api": "repairs/list_issues", "identifiers": identifiers, "issue": issue},
             })
         return findings

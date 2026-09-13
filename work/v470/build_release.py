@@ -12,7 +12,7 @@ import zipfile
 from run_checks import run_checks
 
 
-VERSION = "4.7.0-rc1"
+VERSION = "4.7.0-rc2"
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCE = HERE / "src"
 OUTPUT = HERE.parents[1] / "outputs"

@@ -119,16 +119,15 @@ class RC8RegressionTests(unittest.TestCase):
             self.assertEqual("pending_approval", row["status"])
             self.assertIsNone(row["approved_at"])
 
-    def test_upload_ack_opens_gate_when_onedrive_has_no_metadata_service(self):
+    def test_upload_ack_cannot_open_gate_without_independent_verifier(self):
         archive = self.test_root / "rescue.zip"
         archive.write_bytes(b"unique rescue")
         with mock.patch.object(hads4, "upload_onedrive_to", return_value={"ok": True, "response": []}), \
              mock.patch.object(hads4, "_onedrive_verifier_services", return_value=[]), \
              mock.patch.object(hads4, "options", return_value={"rescue_accept_upload_ack": True}):
             result = hads4.upload_and_verify_rescue(str(archive), "HADS/Repairs")
-        self.assertTrue(result["verified"])
-        self.assertEqual("home_assistant_upload_acknowledgement", result["method"])
-        self.assertEqual(64, len(result["sha256"]))
+        self.assertFalse(result["verified"])
+        self.assertEqual("none", result["method"])
 
     def test_empty_captain_queue_does_not_count_investigating_p2_as_action(self):
         occurred = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
