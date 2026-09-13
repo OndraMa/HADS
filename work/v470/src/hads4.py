@@ -42,7 +42,7 @@ except ImportError:  # The add-on image installs PyYAML; tests can still expose 
     yaml = None
 
 
-VERSION = "4.7.0-rc1"
+VERSION = "4.7.0-rc2"
 PORT = 8099
 SUPERVISOR = "http://supervisor"
 TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
@@ -102,7 +102,7 @@ def now_utc() -> str:
 
 
 def log(message: str) -> None:
-    print(f"[HADS4] {message}", flush=True)
+    print(f"[HADS4] {now_utc()} version={VERSION} {message}", flush=True)
 
 
 DEFAULT_OPTIONS = {
@@ -177,9 +177,10 @@ DEFAULT_OPTIONS = {
     "periodic_investigation": True,
     "rescue_onedrive_folder": "HADS/Repairs",
     "rescue_remote_verify_service": "",
-    "rescue_accept_upload_ack": True,
+    "rescue_accept_upload_ack": False,
     "ai_background_research": False,
     "ai_max_output_tokens": 4000,
+    "ai_call_limits_enabled": False,
     "ai_daily_call_limit": 20,
     "ai_case_daily_call_limit": 6,
     "recorder_maintenance_enabled": False,
@@ -1594,7 +1595,10 @@ def parse_raw(text: str, source_name: str) -> list[dict[str, Any]]:
             flush()
             message = journal.group("message").strip()
             level_match = re.search(r'\blevel=(?:["\']?)(debug|info|warning|warn|error|critical|fatal)\b', message, re.I)
-            if level_match:
+            explicit = re.search(r"<(debug|info|warn|warning|error|critical)>", message, re.I)
+            if explicit:
+                level = explicit.group(1).upper().replace("WARN", "WARNING") if explicit.group(1).upper() == "WARN" else explicit.group(1).upper()
+            elif level_match:
                 level = ("WARNING" if level_match.group(1).upper() == "WARN" else level_match.group(1).upper())
             elif re.search(r"\b(fatal|critical)\b", message, re.I):
                 level = "CRITICAL"
@@ -3236,6 +3240,12 @@ def verify_recoveries() -> dict[str, int]:
         ).fetchall()
         for row in rows:
             entity_id = str(row["entity_id"])
+            try:
+                fresh = supervisor_request(f"/core/api/states/{entity_id}", timeout=10)
+            except Exception:
+                continue
+            if not isinstance(fresh, dict) or fresh.get("entity_id") != entity_id or fresh.get("state") in {None, "unknown", "unavailable"}:
+                continue
             cases = conn.execute(
                 "SELECT id FROM cases WHERE logger='hads4.observer.entity' AND source_ref=? AND status='monitoring'",
                 (entity_id,),
@@ -3532,26 +3542,14 @@ def update_recurrence_and_fixes() -> dict[str, int]:
                     (observed.isoformat(timespec="seconds"), observed.isoformat(timespec="seconds"), "Stejný diagnostický otisk se po opravě vrátil; rollback je připravený.", fix["case_id"]),
                 )
                 continue
-            note = "V celém nastaveném pozorovacím okně nebyl zaznamenán nový výskyt."
-            conn.execute(
-                "UPDATE fix_attempts SET outcome='successful',closed_at=?,result_note=? WHERE id=?",
-                (observed.isoformat(timespec="seconds"), note, fix["id"]),
-            )
-            case = conn.execute("SELECT status FROM cases WHERE id=?", (fix["case_id"],)).fetchone()
-            if case and case["status"] == "monitoring":
-                conn.execute(
-                    "UPDATE cases SET status='resolved',resolved_at=?,updated_at=? WHERE id=?",
-                    (observed.isoformat(timespec="seconds"), observed.isoformat(timespec="seconds"), fix["case_id"]),
-                )
-            conn.execute(
-                "INSERT INTO messages(case_id,author,body,created_at) VALUES(?,?,?,?)",
-                (fix["case_id"], "HADS rádce", f"Oprava #{fix['id']} byla ověřena: {note} Pokud se chyba později vrátí, HADS případ automaticky znovu otevře.", observed.isoformat(timespec="seconds")),
-            )
-            conn.execute(
-                "UPDATE repair_plans SET status='succeeded',finished_at=?,updated_at=? WHERE case_id=? AND status='monitoring'",
-                (observed.isoformat(timespec="seconds"), observed.isoformat(timespec="seconds"), fix["case_id"]),
-            )
-            successful_fixes += 1
+            # No positive functional verifier exists for these legacy attempts.
+            # Silence is inconclusive even when collection appears healthy.
+            note = "Ověření blokováno: bez pozitivního funkčního testu nelze potvrdit úspěch opravy."
+            conn.execute("UPDATE fix_attempts SET outcome='verification_blocked',result_note=? WHERE id=?", (note, fix["id"]))
+            conn.execute("UPDATE repair_plans SET status='verification_blocked',last_error=?,updated_at=? WHERE case_id=? AND status='monitoring'",
+                         (note, now_utc(), fix["case_id"]))
+            conn.execute("INSERT INTO messages(case_id,author,body,created_at) VALUES(?,?,?,?)",
+                         (fix["case_id"], "HADS ověření", note, now_utc()))
     return {"cases_updated": updated, "fixes_verified": successful_fixes}
 
 
@@ -3658,7 +3656,13 @@ def recalculate_smart_priorities() -> dict[str, int]:
                 is_host_healthcheck = "healthcheck" in hay and "only one connection allowed" in hay
                 is_confirmed_critical = impact >= 90 and str(case.get("evidence_state") or "") == "confirmed"
 
-                if is_oom and quiet_hours <= 24 and span >= p1_days and distinct >= 7:
+                if is_host_healthcheck and not is_confirmed_critical:
+                    auto_priority = "P4"
+                    reason = "Souběh healthcheck spojení bez doloženého funkčního dopadu; četnost sama neznamená P1."
+                elif is_oom and count24 >= 2:
+                    auto_priority = "P2"
+                    reason = f"Opakovaný OOM signál během 24 hodin ({count24}×). Nutno ověřit oběť, paměťový tlak a zotavení Core."
+                elif is_oom and quiet_hours <= 24 and span >= p1_days and distinct >= 7:
                     auto_priority = "P1"
                     reason = f"Potvrzený OOM je dlouhodobý: rozpětí {span} dní a {distinct} aktivních dnů."
                 elif is_oom and count7 >= 2 and distinct >= 2 and quiet_hours <= 24:
@@ -3666,7 +3670,7 @@ def recalculate_smart_priorities() -> dict[str, int]:
                     reason = "Potvrzený OOM se vrací ve více dnech. Je závažný, ale P1 vznikne až při dlouhodobém pokračování nebo širším kritickém dopadu."
                 elif is_oom and quiet_hours <= 24:
                     auto_priority = "P3"
-                    reason = "Jednorázový potvrzený OOM je důležitý, ale systém se po něm zotavil a zatím není doloženo opakování; HADS jej sleduje jako P3."
+                    reason = "OOM signál bez doloženého opakování. Zotavení a původ paměťového tlaku zatím nejsou ověřeny."
                 elif is_confirmed_critical and count24 >= 2:
                     auto_priority = "P1"
                     reason = "Potvrzený kritický systémový problém se opakuje a je stále aktuální."
@@ -3979,12 +3983,20 @@ def publish_ha_dashboard(force: bool = False) -> dict[str, Any]:
                     break
                 except Exception as exc:
                     last_error = exc
-                    transient = any(token in str(exc).lower() for token in ("http 502", "http 503", "timeout", "connection"))
+                    transient = any(token in str(exc).lower() for token in ("http 502", "http 503", "http 504", "timeout", "timed out", "connection"))
                     if not transient or attempt == 2:
                         break
                     time.sleep(attempt + 1)
             if last_error is not None:
                 errors.append(f"{entity_id}: {last_error}")
+                if transient:
+                    # Common Core outage: do not repeat the failing batch for
+                    # every entity. Retain the previous successful snapshot.
+                    with runtime_lock:
+                        runtime["last_dashboard_error"] = str(last_error)[:2000]
+                    return {"ok": False, "published": list(payloads).index(entity_id),
+                            "deferred": len(payloads) - list(payloads).index(entity_id),
+                            "errors": errors, "core_unavailable": True}
         card_path = export_dashboard_card()
         if errors:
             with runtime_lock:
@@ -4002,14 +4014,16 @@ def publish_ha_dashboard(force: bool = False) -> dict[str, Any]:
 
 def dashboard_publisher() -> None:
     time.sleep(20)
+    failures = 0
     while True:
         try:
             result = publish_ha_dashboard()
+            failures = min(failures + 1, 5) if result.get("core_unavailable") else 0
             if not result.get("ok"):
                 log(f"Publikace HA dashboardu: {result.get('errors')}")
         except Exception as exc:
             log(f"Publikace HA dashboardu selhala: {exc}")
-        time.sleep(max(15, int(options().get("ha_dashboard_publish_seconds", 60))))
+        time.sleep(min(900, max(15, int(options().get("ha_dashboard_publish_seconds", 60))) * (2 ** failures)))
 
 
 def refresh_new_occurrence_contexts(created_since: str) -> int:
@@ -6474,19 +6488,10 @@ def upload_onedrive_to(paths: Iterable[str], destination: str) -> dict[str, Any]
         _cleanup_onedrive_stage(stage_dir)
 
 def _response_confirms_remote_file(value: Any, filename: str) -> bool:
-    """Require remote evidence, not merely HTTP/service success."""
-    needle = filename.casefold()
-    if isinstance(value, str):
-        return needle in value.casefold()
-    if isinstance(value, list):
-        return any(_response_confirms_remote_file(item, filename) for item in value)
-    if isinstance(value, dict):
-        exists = value.get("exists")
-        if exists is True:
-            remote_name = str(value.get("name") or value.get("filename") or value.get("path") or "")
-            return not remote_name or needle in remote_name.casefold()
-        return any(_response_confirms_remote_file(item, filename) for item in value.values())
-    return False
+    """Exact object evidence only; never search strings or error messages."""
+    return (isinstance(value, dict) and value.get("exists") is True
+            and not value.get("error") and value.get("ok") is not False
+            and value.get("filename") == filename)
 
 
 def _onedrive_verifier_services() -> list[str]:
@@ -6515,10 +6520,7 @@ def upload_and_verify_rescue(path: str, destination: str) -> dict[str, Any]:
     if not upload.get("ok"):
         result["message"] = str(upload.get("message") or "Rescue upload selhal.")
         return result
-    for response in (upload.get("response"), upload.get("parts")):
-        if _response_confirms_remote_file(response, archive.name):
-            result.update(verified=True, method="upload_service_response", message="OneDrive v odpovědi potvrdil konkrétní rescue soubor.")
-            return result
+    # Upload acknowledgement alone never verifies remote storage.
     resolved = resolve_onedrive_config_entry()
     body = {
         "config_entry_id": str(resolved.get("entry_id") or ""),
@@ -6530,29 +6532,18 @@ def upload_and_verify_rescue(path: str, destination: str) -> dict[str, Any]:
         domain, name = service.split(".", 1)
         try:
             response = supervisor_request(f"/core/api/services/{domain}/{name}?return_response", method="POST", body=body, timeout=90)
-            if _response_confirms_remote_file(response, archive.name):
+            if (_response_confirms_remote_file(response, archive.name)
+                    and response.get("config_entry_id") == body["config_entry_id"]
+                    and response.get("destination_folder") == destination
+                    and response.get("size") == archive.stat().st_size
+                    and response.get("sha256") == hashlib.sha256(archive.read_bytes()).hexdigest()
+                    and response.get("verification_version") == 1):
                 result.update(verified=True, method=service, verification_response=mask_secrets(response), message=f"Vzdálená existence ověřena službou {service}.")
                 return result
             errors.append(f"{service}: odpověď nepotvrdila soubor")
         except Exception as exc:
             errors.append(f"{service}: {compact_error(exc)}")
-    # The official OneDrive integration exposes upload on some HA versions but
-    # no list/stat/metadata service. RC7 therefore built a gate that could never
-    # open. A successful synchronous HA service call for a unique checksummed
-    # filename is an authoritative upload acknowledgement. Strict deployments
-    # can disable this fallback and configure a verifier service.
-    if options().get("rescue_accept_upload_ack", True):
-        result.update(
-            verified=True,
-            method="home_assistant_upload_acknowledgement",
-            sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
-            message=(
-                "OneDrive upload služby Home Assistantu byl potvrzen pro jedinečný rescue ZIP. "
-                "Integrace neposkytuje samostatnou metadata/list službu; kontrolní SHA-256 je uložen v auditu."
-            ),
-            verification_errors=errors,
-        )
-        return result
+    # Mandatory independent verification; legacy upload-ack option is ignored.
     result.update(
         message="Upload proběhl, ale vzdálenou existenci konkrétního rescue ZIPu se nepodařilo nezávisle ověřit. Repair batch zůstává zablokovaný.",
         verification_errors=errors,
@@ -7666,8 +7657,13 @@ def main() -> None:
     threading.Thread(target=migrate_legacy_history, daemon=True).start()
     threading.Thread(target=dashboard_publisher, daemon=True).start()
     threading.Thread(target=observer_worker, daemon=True).start()
-    log(f"HADS 4 v{VERSION} spuštěn na portu {PORT}; režim kapitán / první důstojník aktivní")
-    ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    try:
+        server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    except OSError:
+        log(f"HTTP bind selhal na portu {PORT}; HADS není připraven")
+        raise
+    log(f"HADS 4 v{VERSION} HTTP naslouchá na portu {PORT}; Core dostupnost je samostatná")
+    server.serve_forever()
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError):
     Language = Parser = None
 
 
-VERSION = "4.7.0-rc1"
+VERSION = "4.7.0-rc2"
 here = Path(__file__).resolve().parent
 source = here / "src"
 outputs = here.parents[1] / "outputs"

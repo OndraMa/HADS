@@ -163,3 +163,6 @@ configuration:
     name: Automation Inspector read-only API token
   external_connector_timeout_seconds:
     name: External diagnostics timeout (seconds)
+  ai_call_limits_enabled:
+    name: Limit daily AI requests
+    description: When disabled HADS applies no daily call cap; available API credit can be consumed.

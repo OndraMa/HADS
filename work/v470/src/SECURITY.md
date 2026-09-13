@@ -1,3 +1,7 @@
+# Aktuální kandidát 4.7.0-rc2
+
+Aktuální změny a otevřené bezpečnostní/provozní brány: [RELEASE_4.7.0-rc2.md](RELEASE_4.7.0-rc2.md). Upload ACK nestačí. Bez pozitivního funkčního testu není oprava potvrzena. Níže zachovaný starší obsah nesmí rozšiřovat tuto smlouvu.
+
 # Bezpečnost HADS 4.5.0
 
 HADS má silnou Supervisor roli a zapisovatelný mount konfigurace. Write gate je
@@ -13,8 +17,8 @@ doplňku může tato oprávnění zneužít; add-on nevystavujte veřejnému int
   a novou plnou zálohu. Staré volby umožňující vynechat backup nemají účinek.
 - Metadata zálohy se čtou nezávislým čerstvým GET: slug/název/full/HA/DB/velikost
   a dotčené addony. Není to kryptografické ověření archivu ani test obnovy.
-- Rescue OneDrive s `rescue_accept_upload_ack=true` přijímá potvrzení uploadu;
-  nezávislé vzdálené ověření vyžaduje false a nakonfigurovanou ověřovací službu.
+- Rescue OneDrive vždy vyžaduje nezávislé vzdálené ověření přesného objektu.
+  Volba `rescue_accept_upload_ack` je neúčinná a neodemkne zápis.
 - Před zápisem se znovu kontroluje očekávaný obsah. Změnil-li se, nic se nepřepisuje.
 - Rollback nepřepíše novější cizí změnu. Celý HA ani živou DB automaticky neobnovuje.
 - Po timeoutu mutace není bezpečné automatické opakování. Stav zůstává k ručnímu

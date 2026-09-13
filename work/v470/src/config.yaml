@@ -1,5 +1,5 @@
 name: "HADS 4 - Kapitánské diagnostické centrum"
-version: "4.7.0-rc1"
+version: "4.7.0-rc2"
 slug: "hads4"
 description: "První důstojník pro Home Assistant: nepřetržitá diagnostika, chytré priority, historie, výzkum a řízené opravy výhradně po schválení kapitánem."
 url: "https://www.home-assistant.io/"
@@ -96,7 +96,7 @@ options:
   periodic_investigation: true
   rescue_onedrive_folder: "HADS/Repairs"
   rescue_remote_verify_service: ""
-  rescue_accept_upload_ack: true
+  rescue_accept_upload_ack: false
   ha_mcp_url: ""
   ha_mcp_token: ""
   hamster_mcp_url: ""
@@ -108,6 +108,7 @@ options:
   external_connector_timeout_seconds: 30
   ai_background_research: false
   ai_max_output_tokens: 4000
+  ai_call_limits_enabled: false
   ai_daily_call_limit: 20
   ai_case_daily_call_limit: 6
   recorder_maintenance_enabled: false
@@ -193,6 +194,7 @@ schema:
   external_connector_timeout_seconds: "int(5,120)"
   ai_background_research: bool
   ai_max_output_tokens: "int(512,12000)"
+  ai_call_limits_enabled: bool
   ai_daily_call_limit: "int(1,200)"
   ai_case_daily_call_limit: "int(1,30)"
   recorder_maintenance_enabled: bool
