@@ -21,7 +21,7 @@ class WebMCP440Tests(unittest.TestCase):
         hads4.runtime["site_tool_task"] = None
 
     def test_version_and_database_contract(self):
-        self.assertEqual("4.7.0-rc2", hads4.VERSION)
+        self.assertEqual("4.7.0-rc3", hads4.VERSION)
         with hads4.db() as conn:
             self.assertIsNotNone(conn.execute("SELECT name FROM sqlite_master WHERE name='site_tool_runs'").fetchone())
 
@@ -76,7 +76,7 @@ class WebMCP440Tests(unittest.TestCase):
         self.assertEqual(9, snapshot["contract"]["tool_count"])
         self.assertEqual(set(hads4.SITE_TOOL_NAMES), set(snapshot["contract"]["tools"]))
         self.assertTrue(snapshot["incidents"])
-        self.assertEqual("4.7.0-rc2", snapshot["hads_version"])
+        self.assertEqual("4.7.0-rc3", snapshot["hads_version"])
 
     def test_diagnostic_requires_exact_visible_confirmation_marker(self):
         for payload in ({}, {"source": "webmcp"}, {"source": "other", "confirmation": "CAPTAIN_CONFIRMED_IN_HADS_UI"}):
@@ -133,7 +133,7 @@ class WebMCP440Tests(unittest.TestCase):
         self.assertIn("data-hads-public-id", app)
         self.assertIn("data-hads-state", app)
         self.assertIn("webmcp.js", page)
-        self.assertIn("4.7.0-rc2", page)
+        self.assertIn("4.7.0-rc3", page)
 
 
 if __name__ == "__main__":

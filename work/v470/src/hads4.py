@@ -33,6 +33,7 @@ from first_officer import FirstOfficer
 from tool_adapters import ToolAdapterBus
 import incident_workflow
 import analysis_contract
+import investigation
 import site_tools
 from repair_engine import executable_actions
 
@@ -42,7 +43,7 @@ except ImportError:  # The add-on image installs PyYAML; tests can still expose 
     yaml = None
 
 
-VERSION = "4.7.0-rc2"
+VERSION = "4.7.0-rc3"
 PORT = 8099
 SUPERVISOR = "http://supervisor"
 TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
@@ -64,6 +65,7 @@ DASHBOARD_CARD_EXPORT = OUT_DIR / "HADS4_dashboard_card.yaml"
 scan_lock = threading.Lock()
 runtime_lock = threading.Lock()
 repair_execution_lock = threading.Lock()
+approval_launch_lock = threading.Lock()
 first_officer_lock = threading.Lock()
 ha_publish_lock = threading.Lock()
 observer_status_lock = threading.Lock()
@@ -497,6 +499,15 @@ CREATE TABLE IF NOT EXISTS research_runs (
     created_at TEXT NOT NULL,
     finished_at TEXT
 );
+CREATE TABLE IF NOT EXISTS research_observations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL REFERENCES research_runs(id) ON DELETE CASCADE,
+    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    tool_name TEXT NOT NULL,
+    captured_at TEXT NOT NULL,
+    result_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_research_observations_case ON research_observations(case_id,id DESC);
 CREATE TABLE IF NOT EXISTS observer_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_type TEXT NOT NULL,
@@ -4479,11 +4490,8 @@ def derive_verified_repair_actions(case_id: int, adapter_result: dict[str, Any])
                         if score >= 0.55:
                             scored.append({"entity_id": candidate, "similarity": round(score, 3)})
                     scored.sort(key=lambda item: -item["similarity"])
-                    # A unique very close rename (for example a renamed mobile
-                    # notify service) is deterministic enough to prepare, but
-                    # still requires captain approval before execution.
-                    if scored and scored[0]["similarity"] >= 0.84 and (len(scored) == 1 or scored[0]["similarity"] - scored[1]["similarity"] >= 0.12):
-                        replacement = str(scored[0]["entity_id"])
+                    # Similar spelling is a search hint, not device identity.
+                    # Keep candidates for investigation or an explicit choice.
                 after_candidate, count, mode = _safe_reference_edit(after, old, replacement)
                 if count:
                     after = after_candidate
@@ -4613,7 +4621,20 @@ def planner_research(case_id: int, question: str, adapter_result: dict[str, Any]
     if owners:
         adapter_result = copy.deepcopy(adapter_result)
         adapter_result.setdefault("evidence", []).append({"adapter": "native_ha", "payload": {"automation_context": [automation_trace_context(owner) for owner in owners]}})
+    with db() as conn:
+        previous_failures = [row_dict(row) for row in conn.execute(
+            "SELECT id,status,last_error,executed_at,result_json FROM repair_plans WHERE case_id=? AND status IN ('failed','interrupted') ORDER BY id DESC LIMIT 3", (case_id,)
+        ).fetchall()]
+    if previous_failures:
+        adapter_result = copy.deepcopy(adapter_result)
+        adapter_result.setdefault("evidence", []).append({"adapter": "hads_repair_history", "payload": previous_failures})
+        question += "\nPředchozí oprava selhala nebo byla přerušena. Neopakuj ji naslepo: zjisti aktuální stav dotčených objektů, vysvětli selhání a připrav pouze nový návrh ke schválení."
     verified = derive_verified_repair_actions(case_id, adapter_result)
+    if previous_failures:
+        # A still-invalid reference alone does not explain the failed write.
+        # Require fresh follow-up reasoning/compilation, not the same local recipe.
+        verified = {**verified, "repair_actions": [], "status": "reinvestigating_failure",
+                    "missing_evidence": [*verified.get("missing_evidence", []), "Vysvětlení předchozího selhání a aktuální stav po částečném zásahu."]}
     safe_adapter_evidence = mask_secrets(adapter_result.get("evidence") or [])
     evidence_text = redact(json.dumps(safe_adapter_evidence, ensure_ascii=False, default=str), True)[:30_000]
     augmented_question = (
@@ -4627,7 +4648,7 @@ def planner_research(case_id: int, question: str, adapter_result: dict[str, Any]
     root_context = incident_workflow.context(db, int(member[0])) if member else {}
     # Deterministic plans don't need paid research. Background AI is a separate
     # explicit opt-in, not a side effect of enabling interactive chat.
-    if verified.get("repair_actions") or not (interactive or options().get("ai_background_research", False)):
+    if (verified.get("repair_actions") and not previous_failures) or not (interactive or options().get("ai_background_research", False)):
         result = {"response_text": "Konkrétní změna doložena živou konfigurací." if verified.get("repair_actions") else "Automatické lokální vyšetření zatím nemá přesnou bezpečnou opravu.", "mode": "deterministic"}
     else:
         try:
@@ -4647,6 +4668,7 @@ def planner_research(case_id: int, question: str, adapter_result: dict[str, Any]
         "adapter_evidence": safe_adapter_evidence,
         "ai_deferred_reason": result.get("ai_deferred_reason"),
         "analysis": analysis,
+        "review_disposition": investigation.disposition(analysis),
     }
     # Deterministic live evidence is authoritative. AI output may propose an
     # action only when the deterministic layer found none; RepairEngine still
@@ -4855,6 +4877,11 @@ def first_officer_root_detail(root_id: int) -> dict[str, Any] | None:
     detail["repair_plan"] = repair_plan_detail(int(plan_id)) if plan_id else None
     detail["conversation"] = incident_workflow.context(db, root_id)
     detail["chat_mode"] = "openai" if options().get("openai_enabled") and options().get("openai_api_key") else "local"
+    with db() as conn:
+        observations = conn.execute("""SELECT o.* FROM research_observations o
+            JOIN root_case_members m ON m.case_id=o.case_id WHERE m.root_case_id=? ORDER BY o.id DESC LIMIT 20""", (root_id,)).fetchall()
+    detail["research_observations"] = [{**{k: row[k] for k in ("id", "run_id", "case_id", "tool_name", "captured_at")},
+                                        "result": json.loads(row["result_json"])} for row in observations]
     return detail
 
 
@@ -5062,7 +5089,19 @@ def _approved_plans_raw() -> list[dict[str, Any]]:
     return plans
 
 
-def execute_approved_batch_sync() -> dict[str, Any]:
+def _select_approved_plans(plan_ids: list[int] | None = None) -> list[dict[str, Any]]:
+    plans = _approved_plans_raw()
+    if plan_ids is None:
+        return plans
+    if not isinstance(plan_ids, list) or not plan_ids or len(plan_ids) > 100 or any(type(i) is not int or i <= 0 for i in plan_ids) or len(set(plan_ids)) != len(plan_ids):
+        raise RepairError("Neplatný přesný seznam schválených plánů.")
+    selected = [p for p in plans if p["id"] in plan_ids]
+    if {p["id"] for p in selected} != set(plan_ids):
+        raise RepairError("Některý vybraný plán již není schválený a vykonatelný; nic se nespustilo.")
+    return selected
+
+
+def execute_approved_batch_sync(plan_ids: list[int] | None = None) -> dict[str, Any]:
     """Conflict plan -> rescue -> remote verify -> unlock -> transactions -> Deep Analysis."""
     if not first_officer_lock.acquire(blocking=False):
         raise RepairError("Jiný repair batch právě probíhá.")
@@ -5071,7 +5110,7 @@ def execute_approved_batch_sync() -> dict[str, Any]:
     try:
         if not options().get("repairs_enabled", True):
             raise RepairError("Opravný motor je vypnutý.")
-        plans = _approved_plans_raw()
+        plans = _select_approved_plans(plan_ids)
         if not plans:
             raise RepairError("Nejsou schválené žádné opravy.")
         before = first_officer_command_center()
@@ -5215,12 +5254,12 @@ def publish_repair_batch_outcome(batch: dict[str, Any]) -> None:
         log(f"Výsledek dávky B-{batch_id:04d} je uložený v HADS, ale oznámení HA selhalo: {exc}")
 
 
-def execute_approved_batch_worker() -> None:
+def execute_approved_batch_worker(plan_ids: list[int] | None = None) -> None:
     with db() as conn:
         row = conn.execute("SELECT max(id) latest FROM repair_batches").fetchone()
         previous_batch_id = int(row["latest"] or 0)
     try:
-        outcome = execute_approved_batch_sync()
+        outcome = execute_approved_batch_sync(plan_ids)
         publish_repair_batch_outcome(outcome)
     except Exception as exc:
         log(f"Repair batch zastaven: {exc}")
@@ -5236,18 +5275,40 @@ def execute_approved_batch_worker() -> None:
             runtime["repair_batch_starting"] = False
 
 
-def launch_approved_batch() -> dict[str, Any]:
+def launch_approved_batch(plan_ids: list[int] | None = None) -> dict[str, Any]:
     with runtime_lock:
         if first_officer_lock.locked() or runtime.get("repair_batch_starting"):
             raise RepairError("Jiný repair batch právě probíhá.")
         runtime["repair_batch_starting"] = True
-    approved = len(_approved_plans_raw())
-    if not approved:
+    try:
+        selected = _select_approved_plans(plan_ids)
+        if not selected:
+            raise RepairError("Nejsou schválené žádné opravy.")
+        selected_ids = [int(p["id"]) for p in selected]
+        # Freeze consent scope now. Plans approved later must not join this job.
+        threading.Thread(target=execute_approved_batch_worker, args=(selected_ids,), daemon=True).start()
+    except Exception:
         with runtime_lock:
             runtime["repair_batch_starting"] = False
-        raise RepairError("Nejsou schválené žádné opravy.")
-    threading.Thread(target=execute_approved_batch_worker, daemon=True).start()
-    return {"ok": True, "status": "starting", "approved_plans": approved, "message": "Batch Planner kontroluje konflikty; před ověřeným potvrzením uploadu rescue ZIPu se nic nezmění."}
+        raise
+    return {"ok": True, "status": "starting", "approved_plans": len(selected_ids), "plan_ids": selected_ids, "message": "HADS připravuje pouze vybrané schválené opravy. Zápis začne až po nezávislém ověření OneDrive rescue a nové HA zálohy."}
+
+
+def approve_and_launch_repair(plan_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("execution_confirmation") != f"EXECUTE HADS4-{plan_id:04d}":
+        raise RepairError("Chybí výslovný souhlas se spuštěním této konkrétní opravy.")
+    with approval_launch_lock:
+        plan = repair_plan_detail(plan_id)
+        if not plan or plan.get("status") != "pending_approval":
+            raise RepairError("Tento plán již nečeká na schválení. Obnovte detail; požadavek se automaticky neopakuje.")
+        if not approve_repair_plan(plan_id, payload):
+            raise RepairError("Plán nebyl nalezen.")
+        try:
+            return launch_approved_batch([plan_id])
+        except Exception as exc:
+            # Approval is durable, but execution was not started. Do not hide it
+            # or auto-retry after a transport/worker launch failure.
+            raise RepairError(f"Plán #{plan_id} byl schválen, ale spuštění nezačalo: {exc}. Zůstává ve frontě schválených oprav.") from exc
 
 
 def repair_audit(plan_id: int, event_type: str, actor: str, details: Any = None) -> None:
@@ -5536,7 +5597,11 @@ def _officer_tools(web_enabled: bool, domains: list[str]) -> list[dict[str, Any]
         tools.append(web_tool)
     definitions = (
         ("hads_get_case", "Načti redigovaný diagnostický případ včetně důkazů a historie.", {"case_id": {"type": "integer"}}, ["case_id"]),
-        ("hads_get_live_state", "Načti živý stav jedné entity z lokálního modelu Observeru.", {"entity_id": {"type": "string"}}, ["entity_id"]),
+        ("hads_get_live_state", "Načti aktuální stav jedné entity přímo z HA. Selhání není zdravý stav ani důkaz poruchy fyzického zařízení.", {"entity_id": {"type": "string"}}, ["entity_id"]),
+        ("hads_investigate_device", "Čti aktuální stav, Recorder historii a baterii/signál přiřazené přes device registry; nikdy podle podobnosti názvu. Časy ISO8601 s pásmem, nejvýše 48 hodin.", {"entity_id": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"}}, ["entity_id", "start", "end"]),
+        ("hads_investigate_resources", "Čti RAM/CPU Core a doplňků, uložené metriky a události instalací/restartů. Pro úplné pokrytí pokračuj next_page; kontejner není proces, jeho limit není kapacita hostitele.", {"start": {"type": "string"}, "end": {"type": "string"}, "page": {"type": "integer", "minimum": 0, "maximum": 100}}, ["start", "end", "page"]),
+        ("hads_read_source_log", "Čti dostupný konec oficiálního logu Core/Supervisor/host. Nejde o zaručený kompletní log historického dne.", {"source": {"type": "string", "enum": ["core", "supervisor", "host"]}}, ["source"]),
+        ("hads_read_addon_log", "Čti log doplňku (např. Zigbee2MQTT) po ověření skutečné instalace v Supervisoru. Slug musí pocházet z inventáře, ne odhadu.", {"slug": {"type": "string"}}, ["slug"]),
         ("hads_get_dependencies", "Načti sousedy a vztahy grafu závislostí pro případ.", {"case_id": {"type": "integer"}}, ["case_id"]),
         ("hads_get_recent_changes", "Najdi změny před posledním výskytem problému.", {"case_id": {"type": "integer"}, "minutes": {"type": "integer", "minimum": 15, "maximum": 1440}}, ["case_id", "minutes"]),
         ("hads_search_memory", "Vyhledej podobné lokální případy a výsledky oprav.", {"query": {"type": "string"}}, ["query"]),
@@ -5555,6 +5620,15 @@ def _officer_tools(web_enabled: bool, domains: list[str]) -> list[dict[str, Any]
 
 
 def _execute_officer_tool(name: str, arguments: dict[str, Any]) -> Any:
+    reader = investigation.Investigator(supervisor_request, ha_ws_read, db, now_utc)
+    if name == "hads_investigate_device":
+        return mask_secrets(reader.device(arguments["entity_id"], arguments["start"], arguments["end"]))
+    if name == "hads_investigate_resources":
+        return mask_secrets(reader.resources(arguments["start"], arguments["end"], arguments["page"]))
+    if name == "hads_read_source_log":
+        return mask_secrets(reader.source_log(arguments["source"]))
+    if name == "hads_read_addon_log":
+        return mask_secrets(reader.addon_log(arguments["slug"]))
     if name == "hads_get_automation_configuration":
         return mask_secrets(read_automation_configuration(str(arguments["entity_id"])))
     if name == "hads_get_case":
@@ -5569,14 +5643,7 @@ def _execute_officer_tool(name: str, arguments: dict[str, Any]) -> Any:
             )
         })
     if name == "hads_get_live_state":
-        entity_id = str(arguments["entity_id"])[:255]
-        with db() as conn:
-            row = conn.execute("SELECT * FROM entity_runtime WHERE entity_id=?", (entity_id,)).fetchone()
-        if not row:
-            return {"entity_id": entity_id, "known": False}
-        value = row_dict(row)
-        value["attributes"] = parse_json_object(value.pop("attributes_json", "{}"), {})
-        return mask_secrets(value)
+        return mask_secrets(reader.live_state(arguments["entity_id"]))
     if name == "hads_get_dependencies":
         return mask_secrets(dependency_context(int(arguments["case_id"])))
     if name == "hads_get_recent_changes":
@@ -5610,6 +5677,33 @@ def _execute_officer_tool(name: str, arguments: dict[str, Any]) -> Any:
     return {"error": "unknown_tool", "name": name}
 
 
+def _officer_tool_output(value: Any) -> str:
+    """Keep valid JSON and explicitly expose omissions instead of cutting mid-field."""
+    encoded = redact(json.dumps(mask_secrets(value), ensure_ascii=False, default=str), True)
+    if len(encoded) <= 10000:
+        return encoded
+    return json.dumps({"status": "truncated", "total_characters": len(encoded),
+                       "coverage_warning": "Incomplete evidence; narrow the requested entity/time window or paginate. Do not treat as complete.",
+                       "preview": encoded[:8500]}, ensure_ascii=False)
+
+
+def _fit_officer_context(body: dict[str, Any], items: list[Any]) -> list[Any]:
+    """Bound old readback text without dropping function pairs or reasoning items."""
+    reduced = copy.deepcopy(items)
+    def size():
+        return len(json.dumps({**body, "input": reduced}, ensure_ascii=False).encode("utf-8"))
+    if size() <= 58000:
+        return reduced
+    outputs = [item for item in reduced if isinstance(item, dict) and item.get("type") == "function_call_output"]
+    for item in outputs:
+        previous = str(item.get("output") or "")
+        if len(previous) > 1000:
+            item["output"] = json.dumps({"status": "context_compacted", "coverage_warning": "Earlier evidence shortened to fit context; original readback retained in HADS. Do not infer success from omissions.", "preview": previous[:650]}, ensure_ascii=False)
+        if size() <= 58000:
+            break
+    return reduced
+
+
 def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     cfg = options()
     case = case_detail(case_id)
@@ -5639,11 +5733,27 @@ def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         "logger": case.get("logger"), "source_ref": case.get("source_ref"), "sample": redact(str(case.get("sample") or ""), True)[:12_000],
         "recurrence": case.get("recurrence"), "probable_cause": case.get("probable_cause"), "solution": case.get("solution"),
         "adapter_evidence": str(payload.get("adapter_evidence") or "")[:14000],
+        "incident_first_seen": case.get("first_seen"), "incident_last_seen": case.get("last_seen"),
         "captain_messages_unverified": [{"role": m.get("role"), "body": str(m.get("body") or "")[:1500]} for m in (payload.get("root_context") or {}).get("messages", [])[-6:]],
     }
+    # Baseline evidence is supplied even when the model fails to ask for a tool.
+    # This is local read-only work and is scoped to this incident's known time.
+    try:
+        start, end = investigation.case_window(case)
+        context["incident_log_evidence"] = json.loads(_officer_tool_output(investigation.Investigator(supervisor_request, ha_ws_read, db, now_utc).logs(case, start, end)))
+    except Exception as exc:
+        context["incident_log_evidence"] = {"status": "unavailable", "error": str(exc)[:500]}
     prompt = (
         "Jsi HADS AI Officer, druhá analytická vrstva diagnostiky Home Assistantu. Používej interní nástroje k získání "
         "živého stavu, grafu závislostí, změn, paměti a zdraví; web použij jen pro aktuální externí znalosti. "
+        "U selhání zařízení načti hads_investigate_device pro skutečný čas incidentu, ne pouze dnešní stav. "
+        "U selhání automatizace navíc načti trace a konfiguraci a vyšetři přesně postižené entity. "
+        "U Zigbee čti odpovídající log Zigbee2MQTT z ověřeného inventáře, nebo Core pro ZHA; "
+        "nespouštěj párování ani žádné diagnostické služby, které mění stav. "
+        "U RAM použij hads_investigate_resources a související host/Core log. Jedna špička ani procento limitu "
+        "kontejneru nedokazují nedostatečný hardware. Upgrade HW je doporučení, ne vykonatelná softwarová oprava. "
+        "Pokud nástroj ukáže chybějící důkazy, získej je dalším povoleným čtením a znovu vyhodnoť. "
+        "Prázdná historie, vypnutý senzor a chybějící trace nejsou důkaz správné funkce. "
         "Rozliš příčinu a následek, zohledni opakování a funkční dopad. Uveď 1–3 hypotézy s procentní pravděpodobností, "
         "důkazy pro/proti, chybějící důkaz a nejmenší nedestruktivní test. Když důkaz nestačí, výslovně napiš NEVÍM. "
         "Teprve potom navrhni opravu, ověření a rollback. Nevymýšlej entity, cesty ani hodnoty. Výsledek je pouze návrh "
@@ -5669,7 +5779,10 @@ def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                 "properties": {
                     "summary": {"type": "string"},
                     "functional_impact": {"type": "string"},
-                    "decision_kind": {"type": "string", "enum": ["investigate", "conclusion", "repair_candidate"]},
+                    "decision_kind": {"type": "string", "enum": ["investigate", "conclusion", "repair_candidate", "advisory", "needs_user_input"]},
+                    "user_question": {"type": "object", "additionalProperties": False,
+                        "properties": {"question": {"type": "string"}, "why_readonly_cannot_answer": {"type": "string"}},
+                        "required": ["question", "why_readonly_cannot_answer"]},
                     "hypotheses": {"type": "array", "items": {"type": "object", "additionalProperties": False, "properties": {
                         "cause": {"type": "string"}, "probability_percent": {"type": "integer", "minimum": 0, "maximum": 100},
                         "evidence_for": {"type": "array", "items": {"type": "string"}},
@@ -5685,7 +5798,7 @@ def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                         "verification": {"type": "string"}, "rollback": {"type": "string"},
                     }, "required": ["description", "target", "risk", "verification", "rollback"]}},
                 },
-                "required": ["summary", "functional_impact", "decision_kind", "hypotheses", "missing_evidence", "next_test", "proposed_actions", "configuration_changes"],
+                "required": ["summary", "functional_impact", "decision_kind", "hypotheses", "missing_evidence", "next_test", "proposed_actions", "configuration_changes", "user_question"],
             },
         }},
     }
@@ -5706,7 +5819,7 @@ def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         if not rounds:
             raise incident_workflow.AIBudgetExhausted("Dosažen limit AI požadavků za 24 hodin. Diagnostika bez AI pokračuje.")
         for round_index in range(rounds):
-            body["input"] = input_items
+            body["input"] = _fit_officer_context(body, input_items)
             # Reserve the final paid step for a synthesis, not more tools that
             # the loop can no longer send back. Existing spending caps apply.
             body["tool_choice"] = "none" if round_index == rounds - 1 else "auto"
@@ -5732,9 +5845,16 @@ def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                     output_value = _execute_officer_tool(str(call.get("name") or ""), arguments)
                 except Exception as exc:
                     output_value = {"error": str(exc)}
+                tool_output = _officer_tool_output(output_value)
+                with db() as conn:
+                    conn.execute("INSERT INTO research_observations(run_id,case_id,tool_name,captured_at,result_json) VALUES(?,?,?,?,?)",
+                                 (run_id, case_id, str(call.get("name") or "")[:200], now_utc(), tool_output))
+                    # Keep a bounded evidence trail; research summaries and repair
+                    # histories remain independently preserved.
+                    conn.execute("DELETE FROM research_observations WHERE case_id=? AND id NOT IN (SELECT id FROM research_observations WHERE case_id=? ORDER BY id DESC LIMIT 200)", (case_id, case_id))
                 input_items.append({
                     "type": "function_call_output", "call_id": str(call.get("call_id") or ""),
-                    "output": redact(json.dumps(mask_secrets(output_value), ensure_ascii=False, default=str), True)[:6000],
+                    "output": tool_output,
                 })
                 tool_calls += 1
         else:
@@ -5761,6 +5881,10 @@ def research_case(case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                 readable.append("Pro: " + ("; ".join(str(x) for x in hypothesis.get("evidence_for") or []) or "—"))
                 readable.append("Proti: " + ("; ".join(str(x) for x in hypothesis.get("evidence_against") or []) or "—"))
         missing = structured_analysis.get("missing_evidence") or []
+        user_question = structured_analysis.get("user_question") or {}
+        if isinstance(user_question, dict) and user_question.get("question"):
+            readable.append("Otázka pro kapitána: " + str(user_question["question"]))
+            readable.append("Proč ji HADS nezjistí čtením: " + str(user_question.get("why_readonly_cannot_answer") or "neuvedeno"))
         readable.append("Chybějící důkaz: " + ("; ".join(str(x) for x in missing) or "žádný uvedený"))
         readable.append("Další test: " + str(structured_analysis.get("next_test") or "—"))
         actions = structured_analysis.get("proposed_actions") or []
@@ -6503,12 +6627,11 @@ def _onedrive_verifier_services() -> list[str]:
         services = []
     if isinstance(services, list):
         for domain in services:
-            if not isinstance(domain, dict) or str(domain.get("domain") or "").lower() != "onedrive":
-                continue
-            for name in (domain.get("services") or {}):
-                candidate = f"onedrive.{name}".lower()
-                if any(token in candidate for token in ("exists", "verify", "stat", "list", "metadata")) and candidate not in result:
-                    result.append(candidate)
+            # Known readback contract, not a guessed service name containing
+            # 'stat' or 'verify'. Native onedrive has no independent read service.
+            if isinstance(domain, dict) and domain.get("domain") == "hads_rescue" and "verify" in (domain.get("services") or {}):
+                if "hads_rescue.verify" not in result:
+                    result.append("hads_rescue.verify")
     return result
 
 
@@ -6531,7 +6654,9 @@ def upload_and_verify_rescue(path: str, destination: str) -> dict[str, Any]:
     for service in _onedrive_verifier_services():
         domain, name = service.split(".", 1)
         try:
-            response = supervisor_request(f"/core/api/services/{domain}/{name}?return_response", method="POST", body=body, timeout=90)
+            response = supervisor_request(f"/core/api/services/{domain}/{name}?return_response", method="POST", body=body, timeout=130)
+            if isinstance(response, dict) and "service_response" in response:
+                response = response["service_response"]
             if (_response_confirms_remote_file(response, archive.name)
                     and response.get("config_entry_id") == body["config_entry_id"]
                     and response.get("destination_folder") == destination
@@ -7582,6 +7707,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.read_json()
                 detail = reset_case(case_id)
                 return self.send_json(200 if detail else 404, detail or {"error": "Případ nebyl nalezen."})
+            repair_id = self.route_repair_id("/approve-and-run")
+            if repair_id is not None:
+                return self.send_json(202, approve_and_launch_repair(repair_id, self.read_json()))
             repair_id = self.route_repair_id("/approve")
             if repair_id is not None:
                 detail = approve_repair_plan(repair_id, self.read_json())

@@ -1,6 +1,6 @@
-# Aktuální kandidát 4.7.0-rc2
+# Aktuální kandidát 4.7.0-rc3
 
-Aktuální změny a otevřené bezpečnostní/provozní brány: [RELEASE_4.7.0-rc2.md](RELEASE_4.7.0-rc2.md). Upload ACK nestačí. Bez pozitivního funkčního testu není oprava potvrzena. Níže zachovaný starší obsah nesmí rozšiřovat tuto smlouvu.
+Aktuální změny a otevřené bezpečnostní/provozní brány: [RELEASE_4.7.0-rc3.md](RELEASE_4.7.0-rc3.md). Upload ACK nestačí. Bez pozitivního funkčního testu není oprava potvrzena. Níže zachovaný starší obsah nesmí rozšiřovat tuto smlouvu.
 
 # HADS: provozní poslání
 
