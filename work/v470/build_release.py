@@ -12,7 +12,7 @@ import zipfile
 from run_checks import run_checks
 
 
-VERSION = "4.7.0-rc2"
+VERSION = "4.7.0-rc3"
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCE = HERE / "src"
 OUTPUT = HERE.parents[1] / "outputs"
@@ -88,6 +88,14 @@ def main() -> None:
     verification_path = OUTPUT / f"HADS4_{VERSION}-verification.json"
     installer(payload, install_path)
     source_zip(files, zip_path)
+    companion_path = OUTPUT / "HADS_Rescue_Readback_0.1.0.zip"
+    with zipfile.ZipFile(companion_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for path in files:
+            if path.is_relative_to(SOURCE / "companion"):
+                info = zipfile.ZipInfo(path.relative_to(SOURCE / "companion").as_posix(), (2026, 9, 14, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16
+                archive.writestr(info, path.read_bytes())
 
     text = install_path.read_text(encoding="utf-8")
     match = re.search(r"HADS4_PAYLOAD'\n(?P<data>[A-Za-z0-9+/=\n]+)\nHADS4_PAYLOAD\n", text)
@@ -114,6 +122,7 @@ def main() -> None:
     hashes = (
         f"{sha256(install_path)}  {install_path.name}\n"
         f"{sha256(zip_path)}  {zip_path.name}\n"
+        f"{sha256(companion_path)}  {companion_path.name}\n"
         f"{hashlib.sha256(payload).hexdigest()}  HADS4_{VERSION}-payload.tar.gz\n"
     )
     hash_path.write_text(hashes, encoding="utf-8", newline="\n")

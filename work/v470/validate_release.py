@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError):
     Language = Parser = None
 
 
-VERSION = "4.7.0-rc2"
+VERSION = "4.7.0-rc3"
 here = Path(__file__).resolve().parent
 source = here / "src"
 outputs = here.parents[1] / "outputs"
@@ -70,6 +70,14 @@ with zipfile.ZipFile(outputs / f"HADS4_{VERSION}-source.zip") as archive:
     for name in zipped:
         assert archive.read(name) == (source / name).read_bytes(), name
 assert {member.name for member in files} == set(zipped)
+with zipfile.ZipFile(outputs / "HADS_Rescue_Readback_0.1.0.zip") as archive:
+    for name in archive.namelist():
+        assert not name.startswith("/") and ".." not in Path(name).parts
+        assert archive.read(name) == (source / "companion" / name).read_bytes()
+    assert "custom_components/hads_rescue/manifest.json" in archive.namelist()
+manifest = json.loads((source / "companion/custom_components/hads_rescue/manifest.json").read_text(encoding="utf-8"))
+assert manifest["domain"] == "hads_rescue" and manifest["version"] == "0.1.0"
+yaml.load((source / "companion/custom_components/hads_rescue/services.yaml").read_text(encoding="utf-8"), Loader=UniqueLoader)
 
 verification_path = outputs / f"HADS4_{VERSION}-verification.json"
 previous = json.loads(verification_path.read_text(encoding="utf-8"))
@@ -91,6 +99,8 @@ result = {
     "real_haos_install": "not_tested",
     "real_browser_ingress": "not_tested",
     "restore_test": "not_tested",
+    "companion_package_source_match": "passed",
+    "companion_core_setup_and_cloud_readback": "not_tested",
 }
 (outputs / f"HADS4_{VERSION}-verification.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 print(json.dumps(result, indent=2))

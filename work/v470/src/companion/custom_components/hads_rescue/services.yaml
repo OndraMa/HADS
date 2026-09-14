@@ -1,0 +1,17 @@
+verify:
+  name: Verify rescue archive
+  description: Independently downloads a HADS rescue ZIP and returns its SHA-256. Does not restore or modify files.
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: onedrive
+    destination_folder:
+      required: true
+      selector:
+        text:
+    filename:
+      required: true
+      selector:
+        text:

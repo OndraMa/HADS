@@ -1,5 +1,5 @@
 name: "HADS 4 - Kapitánské diagnostické centrum"
-version: "4.7.0-rc2"
+version: "4.7.0-rc3"
 slug: "hads4"
 description: "První důstojník pro Home Assistant: nepřetržitá diagnostika, chytré priority, historie, výzkum a řízené opravy výhradně po schválení kapitánem."
 url: "https://www.home-assistant.io/"

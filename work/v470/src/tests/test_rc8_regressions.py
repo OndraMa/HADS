@@ -231,7 +231,7 @@ class RC8RegressionTests(unittest.TestCase):
         self.assertIn("sensor.old_temperature", findings[0]["title"])
         self.assertEqual("stale_entities", findings[0]["evidence"]["problem_kind"])
 
-    def test_renamed_mobile_notify_service_creates_exact_automation_update(self):
+    def test_similar_mobile_notify_name_requires_identity_or_choice(self):
         occurred = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
         with hads4.db() as conn:
             hads4.ingest_event(conn, {
@@ -257,9 +257,10 @@ class RC8RegressionTests(unittest.TestCase):
         }]}}]}
         with mock.patch.object(hads4, "supervisor_request", side_effect=supervisor), mock.patch.object(hads4, "ha_ws_read", return_value=[]):
             result = hads4.derive_verified_repair_actions(case_id, adapter_result)
-        self.assertEqual("executable", result["status"])
-        self.assertEqual("automation_update", result["repair_actions"][0]["type"])
-        self.assertEqual("notify.mobile_app_ondrej", result["repair_actions"][0]["after"]["action"][0]["service"])
+        self.assertEqual("needs_information", result["status"])
+        self.assertEqual([], result["repair_actions"])
+        choice = next(d for d in result["decisions"] if d.get("status") == "needs_choice")
+        self.assertEqual("notify.mobile_app_ondrej", choice["candidates"][0]["entity_id"])
 
     def test_batch_launch_control_remains_visible_without_approved_plan(self):
         html = (Path(__file__).resolve().parents[1] / "web" / "index.html").read_text(encoding="utf-8")
@@ -347,7 +348,7 @@ class RC8RegressionTests(unittest.TestCase):
         result = officer.automatic_repair_planner(
             lambda actions: self.fail("preview must not run without actions"),
             lambda case_id, payload: self.fail("plan must not be created without actions"),
-            lambda case_id, question, adapter: {"conclusion_verified": True, "summary": "Příčina ověřena, bezpečný automatický zápis neexistuje.", "deterministic_planner": {"repair_actions": [], "decisions": [], "missing_evidence": []}},
+            lambda case_id, question, adapter: {"review_disposition": "review_ready", "summary": "Závěr k posouzení, bezpečný automatický zápis neexistuje.", "deterministic_planner": {"repair_actions": [], "decisions": [], "missing_evidence": []}},
             NativeOnlyBus(),
         )
         self.assertEqual("review_ready", result["results"][0]["status"])

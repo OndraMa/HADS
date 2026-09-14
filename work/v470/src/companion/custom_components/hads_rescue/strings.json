@@ -1,0 +1,11 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HADS Rescue Readback",
+        "description": "Enable read-only verification of rescue ZIPs under HADS/Repairs using your already configured OneDrive integration. This downloads cloud files to compute SHA-256; it does not upload, delete or restore anything."
+      }
+    },
+    "abort": {"already_configured": "Already configured"}
+  }
+}

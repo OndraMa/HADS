@@ -9,7 +9,7 @@ import shutil
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Iterable
-from repair_engine import executable_actions
+from repair_engine import RepairEngine, executable_actions
 
 
 FIRST_OFFICER_SCHEMA = """
@@ -498,7 +498,7 @@ class FirstOfficer:
         evidence is insufficient, First Officer keeps investigating in the
         background; it does not create a captain task merely because no patch exists.
         """
-        roots = [item for item in self.list_roots() if not item.get("repair_plan_id")
+        roots = [item for item in self.list_roots() if (not item.get("repair_plan_id") or item.get("decision_state") == "repair_failed")
                  and item.get("decision_state") not in {"known_expected", "deferred", "manual_monitoring", "resolved", "rejected", "ignored", "review_ready"}
                  and not (item.get("decision_state") == "watching" and item.get("state_origin") == "captain")]
         if root_ids is not None:
@@ -576,20 +576,24 @@ class FirstOfficer:
                     if research_result.get("ai_deferred_reason"):
                         planner_state = "waiting_budget"
                         next_decision_state = "investigating"
-                    elif user_choice_needed:
+                    elif user_choice_needed or research_result.get("review_disposition") == "needs_information":
                         planner_state = "needs_information"
                         next_decision_state = "needs_information"
                         needs_info += 1
-                    elif research_result.get("conclusion_verified") is True and research_result.get("summary"):
-                        # Investigation is complete enough for a captain review,
-                        # but there is no safe automatic write. This is a prepared
-                        # decision, not an executable repair and not endless work.
+                    elif research_result.get("review_disposition") == "review_ready" and research_result.get("summary"):
+                        # Reviewable advice is not an independently verified
+                        # diagnosis. Never accept a model's 'verified' boolean.
                         planner_state = "review_ready"
                         next_decision_state = "review_ready"
                     else:
                         planner_state = "investigating"
                         next_decision_state = "investigating"
                 research_payload = {"adapters": adapter_result.get("used") or [], "research": research_result, "planner_kind": planner_kind}
+                failed_plan_followup = root.get("decision_state") == "repair_failed" and root.get("repair_plan_id")
+                # Keep the failure visible and linked until a new concrete plan
+                # is ready. Diagnosis is allowed; retry execution is not.
+                next_plan_id = plan.get("id") if plan else (root.get("repair_plan_id") if failed_plan_followup else None)
+                decision_after = "awaiting_decision" if plan else ("repair_failed" if failed_plan_followup else next_decision_state)
                 with self.db() as conn:
                     # A captain can reject/ignore while network research runs.
                     current = conn.execute("SELECT decision_state,decision_reason FROM root_cases WHERE id=?", (root["id"],)).fetchone()
@@ -600,7 +604,7 @@ class FirstOfficer:
                         continue
                     conn.execute(
                         "UPDATE root_cases SET planner_state=?,planner_kind=?,research_json=?,decision_state=?,repair_plan_id=?,updated_at=? WHERE id=?",
-                        (planner_state, planner_kind, json.dumps(research_payload, ensure_ascii=False, default=str), "awaiting_decision" if plan else next_decision_state, plan.get("id") if plan else None, self.now(), root["id"]),
+                        (planner_state, planner_kind, json.dumps(research_payload, ensure_ascii=False, default=str), decision_after, next_plan_id, self.now(), root["id"]),
                     )
                     conn.execute(
                         "UPDATE planner_runs SET status=?,adapter_ids_json=?,research_json=?,actions_json=?,repair_plan_id=?,finished_at=? WHERE id=?",
@@ -922,6 +926,7 @@ class FirstOfficer:
         cfg_root = self.config_root()
         approvals = []
         manifests = []
+        recorder_snapshot = None
         for plan in plans:
             approvals.append({"plan_id": plan["id"], "approved_at": plan.get("approved_at"), "title": plan["title"]})
             for index, action in enumerate(plan.get("actions") or [], start=1):
@@ -955,8 +960,12 @@ class FirstOfficer:
                     if options is None:
                         raise ValueError(f"Nelze načíst původní volby doplňku {slug}.")
                     (root / "addon_options" / f"{_slug(slug)}.json").write_text(json.dumps(options, ensure_ascii=False, indent=2), encoding="utf-8")
+                elif kind == "recorder_purge":
+                    if recorder_snapshot is None:
+                        engine = RepairEngine(self.supervisor_request, self.config_root, self.private_root, self.options)
+                        recorder_snapshot = engine._snapshot_recorder(root / "originals")
                 manifests.append({"plan_id": plan["id"], "action": kind, "target": action.get("path") or action.get("addon") or "Home Assistant Core"})
-        manifest = {"batch_id": batch_id, "created_at": self.now(), "hads_mode": "READ_ONLY", "plans": manifests}
+        manifest = {"batch_id": batch_id, "created_at": self.now(), "hads_mode": "READ_ONLY", "plans": manifests, "recorder_snapshot": recorder_snapshot}
         (root / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
         (root / "captain_approvals.json").write_text(json.dumps(approvals, ensure_ascii=False, indent=2), encoding="utf-8")
         (root / "health_before.json").write_text(json.dumps(before, ensure_ascii=False, indent=2), encoding="utf-8")

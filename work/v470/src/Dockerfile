@@ -9,6 +9,7 @@ COPY first_officer.py /app/first_officer.py
 COPY tool_adapters.py /app/tool_adapters.py
 COPY incident_workflow.py /app/incident_workflow.py
 COPY analysis_contract.py /app/analysis_contract.py
+COPY investigation.py /app/investigation.py
 COPY site_tools.py /app/site_tools.py
 COPY web /app/web
 COPY dashboard /app/dashboard
