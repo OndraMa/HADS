@@ -12,6 +12,10 @@ class WireError(Exception):
 
 
 class TransportTests(unittest.TestCase):
+    def test_broker_wait_covers_upstream_but_stays_inside_worker_budget(self):
+        self.assertGreater(transport.BROKER_TIMEOUT, 180)
+        self.assertLess(transport.BROKER_TIMEOUT, 220)
+
     def fake_httpx(self):
         return types.SimpleNamespace(BaseTransport=object, ConnectError=WireError,
                 WriteError=WireError, ReadError=WireError,
@@ -72,3 +76,4 @@ class TransportTests(unittest.TestCase):
             with self.assertRaises(WireError):
                 client.transport.handle_request(self.request(read=lambda: b'x' * (128 * 1024 + 1)))
             connection.assert_not_called()
+

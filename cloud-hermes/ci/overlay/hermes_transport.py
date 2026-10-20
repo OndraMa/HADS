@@ -8,6 +8,10 @@ import os
 import socket
 import threading
 
+# The trusted upstream request has a 180s timeout. Do not abandon its socket
+# at HTTPX's shorter default while a metered request is still running.
+BROKER_TIMEOUT = 200
+
 
 def client_factory(port):
     import httpx
@@ -34,10 +38,10 @@ def client_factory(port):
                 used = True
             headers = {key.decode('ascii'): value.decode('latin-1') for key, value in request.headers.raw
                        if key.lower() not in {b'host', b'content-length', b'transfer-encoding', b'connection'}}
-            connection = http.client.HTTPConnection('127.0.0.1', int(port), timeout=60)
+            connection = http.client.HTTPConnection('127.0.0.1', int(port), timeout=BROKER_TIMEOUT)
             # Wrap the inherited, parent-connected endpoint. No socket() syscall.
             connection.sock = socket.socket(fileno=descriptor)
-            connection.sock.settimeout(60)
+            connection.sock.settimeout(BROKER_TIMEOUT)
             try:
                 connection.request('POST', '/v1/chat/completions', body=data, headers=headers)
                 reply = connection.getresponse()
@@ -56,5 +60,6 @@ def client_factory(port):
             pass
 
     def make_client(*args, **kwargs):
-        return httpx.Client(transport=BrokerTransport(), timeout=60, trust_env=False)
+        return httpx.Client(transport=BrokerTransport(), timeout=BROKER_TIMEOUT, trust_env=False)
     return make_client
+
