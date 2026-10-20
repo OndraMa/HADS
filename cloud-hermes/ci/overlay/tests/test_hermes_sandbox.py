@@ -31,12 +31,9 @@ class SandboxTests(unittest.TestCase):
         self.assertIn('os.setresuid(UID, UID, UID)', source)
         self.assertIn('resource.RLIMIT_AS', source)
 
-    def test_adapter_only_accepts_original_connected_broker_once(self):
-        with mock.patch.dict(os.environ, {'HADS_BROKER_FD': '42'}), mock.patch.object(sandbox.socket, 'create_connection'), mock.patch.object(sandbox.os, 'dup', return_value=43), mock.patch.object(sandbox.socket, 'socket') as sock:
-            sandbox.install_broker_socket_adapter(12345)
-            with self.assertRaises(PermissionError):
-                sandbox.socket.create_connection(('example.org', 443))
-            sandbox.socket.create_connection(('127.0.0.1', 12345), timeout=3)
-            sock.assert_called_once_with(fileno=42)
-            with self.assertRaises(PermissionError):
-                sandbox.socket.create_connection(('127.0.0.1', 12345))
+    def test_inference_seal_is_thread_synchronized_and_memory_is_bounded(self):
+        source = Path(sandbox.__file__).read_text(encoding='utf-8')
+        self.assertEqual(384 * 1048576, sandbox.ADDRESS_SPACE)
+        self.assertIn('seccomp_attr_set(ctx, 4, 1)', source)
+        self.assertIn("rule('write', Arg(0, 5, 3, 0))", source)
+        self.assertNotIn('socket.create_connection =', source)

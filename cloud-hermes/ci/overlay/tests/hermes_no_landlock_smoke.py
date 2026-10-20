@@ -33,4 +33,6 @@ libc.syscall.restype = ctypes.c_long
 abi = libc.syscall(444, 0, 0, 1)
 assert abi == -1 and ctypes.get_errno() == errno.ENOSYS
 print(json.dumps({'landlock_abi': abi, 'errno': ctypes.get_errno(), 'profile': 'additive_ENOSYS_no_security_bypass'}))
-runpy.run_path('/app/hermes_upstream_smoke.py', run_name='__main__')
+for step in range(3):
+    print(json.dumps({'repeated_offline_step': step + 1, 'steps': 3}))
+    runpy.run_path('/app/hermes_upstream_smoke.py', run_name='__main__')

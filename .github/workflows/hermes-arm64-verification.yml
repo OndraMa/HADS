@@ -59,6 +59,16 @@ jobs:
           print("Verified source extracted; this is not an installable RC2.")
           PY
           cp -a ci/overlay/. source-rc1/
+          python - <<'PY'
+          from pathlib import Path
+          root = Path('source-rc1')
+          legacy = root / 'hermes_isolation.py'
+          legacy.unlink()
+          main = root / 'hads4.py'
+          value = main.read_text()
+          assert value.count('VERSION = "2.0.0-rc1"') == 1
+          main.write_text(value.replace('VERSION = "2.0.0-rc1"', 'VERSION = "2.0.0-rc2"', 1))
+          PY
       - name: Install test dependencies (no model SDK calls)
         run: python -m pip install PyYAML==6.0.3 jsonschema==4.26.0 "websocket-client>=1.8,<2"
       - name: Python regression suite
@@ -74,14 +84,14 @@ jobs:
         run: |
           for script in web/*.js; do node --check "$script"; done
           for script in tests/*.mjs; do node "$script"; done
-      - name: Build pinned real Hermes with its original isolation smoke test
+      - name: Build pinned Hermes with mandatory sandbox smoke test
         id: image_build
         if: ${{ !cancelled() }}
         timeout-minutes: 28
         working-directory: cloud-hermes/source-rc1
         run: |
           timeout --signal=TERM --kill-after=30s 25m docker build --progress=plain --tag hads-hermes:cloud-test .
-      - name: Real worker test with bounded memory and no external network
+      - name: Three real worker steps: ENOSYS Landlock, 512 MiB, no network
         id: worker
         if: ${{ !cancelled() && steps.image_build.outcome == 'success' }}
         timeout-minutes: 4
@@ -106,7 +116,7 @@ jobs:
               for key in ("PYTHON_OUTCOME", "UI_OUTCOME", "BUILD_OUTCOME", "WORKER_OUTCOME"):
                   report.write(f"- {key}: {os.environ.get(key, 'not run')}\n")
               report.write("\nActual upstream Hermes uses a local fake model, no paid API. No production HAOS access, no deployment, no release.\n")
-              report.write("A 512 MiB container trial is not a measurement of combined HAOS/Pi memory and cannot justify lowering the admission gate.\n")
+              report.write("The 384 MiB hard worker AS limit plus 192 MiB system reserve defines the 576 MiB admission gate; this is not a guarantee of combined HAOS/Pi memory.\n")
               report.write("Host/BuildKit Landlock failures remain failures; no protection bypass is enabled.\n")
           PY
           docker rm --force hads-hermes-smoke >/dev/null 2>&1 || true

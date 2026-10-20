@@ -119,20 +119,21 @@ class BridgeTests(unittest.TestCase):
         docker = Path(h.__file__).with_name("Dockerfile").read_text()
         self.assertIn(h.REVISION, docker)
         self.assertIn("RUN python /app/hermes_upstream_smoke.py", docker)
-        isolation = Path(h.__file__).with_name("hermes_isolation.py").read_text()
-        self.assertIn('"/opt/sqlite-fixed"', isolation)
+        isolation = Path(h.__file__).with_name("hermes_sandbox.py").read_text()
+        self.assertIn('os.chroot(ROOT)', isolation)
+        self.assertIn('seccomp_filter()', isolation)
 
     def test_isolation_rejects_unsupported_os(self):
-        import hermes_isolation
-        with mock.patch.object(hermes_isolation.sys, "platform", "win32"):
+        import hermes_sandbox
+        with mock.patch.object(hermes_sandbox.sys, "platform", "win32"):
             with self.assertRaises(RuntimeError):
-                hermes_isolation.confine("/tmp/hads-hermes-test", 1234)
+                hermes_sandbox.confine("/tmp/hads-hermes-test", 1234)
 
     def test_unknown_or_low_memory_prevents_reasoning(self):
-        for available in (None, 0, 767 * 1048576):
+        for available in (None, 0, 576 * 1048576 - 1):
             with self.assertRaises(h.runtime_core.ResourceDeferred):
                 h.require_resources(lambda: {"available_bytes": available})
-        h.require_resources(lambda: {"available_bytes": 768 * 1048576})
+        h.require_resources(lambda: {"available_bytes": 576 * 1048576})
 
     def test_streaming_is_one_metered_request(self):
         sent = []

@@ -52,7 +52,6 @@ COPY hermes_sandbox.py /app/hermes_sandbox.py
 COPY hermes_sandbox.py /opt/hermes-root/app/hermes_sandbox.py
 COPY hermes_transport.py /app/hermes_transport.py
 COPY hermes_transport.py /opt/hermes-root/app/hermes_transport.py
-COPY hermes_isolation.py /app/hermes_isolation.py
 COPY tests/hermes_upstream_smoke.py /app/hermes_upstream_smoke.py
 COPY tests/hermes_no_landlock_smoke.py /app/hermes_no_landlock_smoke.py
 # This build-time test invokes real Hermes with a fake local model, no paid API.

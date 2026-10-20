@@ -2,7 +2,7 @@
 
 No Landlock, namespaces, Docker socket or privileged-container dependency.
 The sole network descriptor is connected by the trusted parent before launch.
-Python's socket adapter is compatibility glue, NOT the security boundary.
+The HTTPX descriptor transport is compatibility glue, NOT the security boundary.
 """
 from contextlib import contextmanager
 import ctypes
@@ -177,26 +177,6 @@ def confine(home, port):
     os.umask(0o077)
     seccomp_filter()
     os.chdir(inside)
-
-
-def install_broker_socket_adapter(port):
-    """Retain upstream HTTPX/OpenAI SDK; replace dialing with a connected FD.
-
-    seccomp forbids socket/connect/socketpair even if this adapter is bypassed.
-    The parent broker independently enforces authentication, schema and one call.
-    """
-    fd = int(os.environ['HADS_BROKER_FD'])
-    used = False
-    def connect(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None, **kwargs):
-        nonlocal used
-        if used or address != ('127.0.0.1', int(port)) or source_address is not None:
-            raise PermissionError('Only one inherited HADS broker connection is available')
-        used = True
-        result = socket.socket(fileno=fd)
-        if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
-            result.settimeout(timeout)
-        return result
-    socket.create_connection = connect
 
 
 def seal_filesystem():

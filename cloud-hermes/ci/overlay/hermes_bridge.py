@@ -3,7 +3,7 @@
 The worker has no real API or Supervisor credentials. Its only model route is
 a one-request localhost broker. Every upstream request crosses HADS's existing
 persistent spending gate. Read requests are validated and executed by HADS, not
-by Hermes tools. Linux additionally requires Landlock confinement, not a VM.
+by Hermes tools. Linux requires chroot, UID drop and seccomp, not a VM.
 """
 from __future__ import annotations
 
@@ -51,8 +51,11 @@ def status():
 def require_resources(sample=None):
     memory = (sample or runtime_core.memory_sample)()
     available = memory.get("available_bytes")
-    if available is None or available < 768 * runtime_core.MIB:
-        raise runtime_core.ResourceDeferred("Hermes odložen: vyžaduje nejméně 768 MiB ověřené paměťové rezervy. Místní diagnostika pokračuje; žádný placený požadavek nebyl odeslán.")
+    # 384 MiB hard worker address-space ceiling + 192 MiB system reserve.
+    # Admission uses the lesser of host availability and cgroup headroom.
+    # Cloud measurements support this bounded profile, not an OOM guarantee.
+    if available is None or available < 576 * runtime_core.MIB:
+        raise runtime_core.ResourceDeferred("Hermes odložen: vyžaduje nejméně 576 MiB ověřené volné rezervy (limit pracovníka 384 MiB + 192 MiB pro systém). Místní diagnostika pokračuje; žádný placený požadavek nebyl odeslán.")
 
 
 def _update(**values):
