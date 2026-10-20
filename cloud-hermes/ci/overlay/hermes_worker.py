@@ -84,10 +84,9 @@ def restrict_network(url):
 def run(payload):
     global PHASE
     PHASE = "izolace chroot + UID + seccomp"
-    from hermes_sandbox import confine, install_broker_socket_adapter
+    from hermes_sandbox import confine
     confine(os.environ["HERMES_HOME"], urlsplit(payload["url"]).port)
     check_confinement()
-    install_broker_socket_adapter(urlsplit(payload['url']).port)
     # Interpreter and dependencies are now resolved exclusively inside the jail.
     import site
     sys.path[:] = ['/app', '/opt/hermes', '/usr/local/lib/python3.14', '/usr/local/lib/python3.14/lib-dynload']
@@ -112,6 +111,8 @@ def run(payload):
     with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
         PHASE = "načtení Hermes a jeho závislostí"
         from run_agent import AIAgent
+        from hermes_transport import client_factory
+        AIAgent._build_keepalive_http_client = staticmethod(client_factory(urlsplit(payload['url']).port))
         PHASE = "inicializace agenta bez přímých nástrojů"
         agent = AIAgent(base_url=payload["url"], api_key=payload["token"],
                         provider="custom", api_mode="chat_completions", model=payload["model"],
@@ -123,6 +124,29 @@ def run(payload):
             if agent.tools:
                 raise RuntimeError("Hermes unexpectedly enabled native tools; refusing to run")
             agent.compression_enabled = False
+            # HADS owns retries, budgets and evidence rounds. Never let an
+            # upstream conversation silently retry a paid model inside one step.
+            agent._api_max_retries = 1
+            agent._auto_recovery_cycles = 0
+            agent._try_recover_primary_transport = lambda *args, **kwargs: False
+            agent._try_activate_fallback = lambda *args, **kwargs: False
+            wire_errors = []
+            if payload.get('offline_test'):
+                def capture(original):
+                    def call(*args, **kwargs):
+                        try:
+                            return original(*args, **kwargs)
+                        except Exception as error:
+                            chain, seen, current = [], set(), error
+                            while current is not None and id(current) not in seen:
+                                seen.add(id(current))
+                                chain.append(type(current).__name__ + ': ' + str(current)[:160])
+                                current = current.__cause__ or current.__context__
+                            wire_errors.append(' <- '.join(reversed(chain)))
+                            raise
+                    return call
+                for name in ('_interruptible_streaming_api_call', '_interruptible_api_call'):
+                    setattr(agent, name, capture(getattr(agent, name)))
             agent._persist_disabled = True
             from hermes_sandbox import seal_filesystem
             seal_filesystem()
@@ -137,7 +161,7 @@ def run(payload):
             if not isinstance(result, dict) or result.get("completed") is not True:
                 if payload.get('offline_test'):
                     detail = {k: result.get(k) for k in ('error', 'status', 'completed', 'final_response')} if isinstance(result, dict) else {'type': type(result).__name__}
-                    PHASE = 'OFFLINE FAKE-MODEL TEST ONLY: ' + json.dumps(detail)[:1000]
+                    PHASE = 'OFFLINE FAKE-MODEL TEST ONLY: ' + (wire_errors[-1] if wire_errors else json.dumps(detail))[:1000]
                 raise RuntimeError("Hermes conversation did not complete")
             import resource
             return {"completed": True, "tool_count": 0, "isolation_verified": True,

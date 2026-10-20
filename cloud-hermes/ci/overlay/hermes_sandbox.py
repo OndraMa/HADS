@@ -224,6 +224,11 @@ def seal_filesystem():
     ctx = lib.seccomp_init(0x7fff0000)
     if not ctx:
         raise RuntimeError('Cannot initialize inference write seal')
+    lib.seccomp_attr_set.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint32]
+    lib.seccomp_attr_set.restype = ctypes.c_int
+    if lib.seccomp_attr_set(ctx, 4, 1) != 0:  # SCMP_FLTATR_CTL_TSYNC
+        lib.seccomp_release(ctx)
+        raise RuntimeError('Cannot synchronize inference seal across threads')
     def rule(name, condition=None):
         number = lib.seccomp_syscall_resolve_name(name.encode())
         if number < 0:

@@ -50,6 +50,8 @@ COPY hermes_bridge.py /app/hermes_bridge.py
 COPY hermes_worker.py /app/hermes_worker.py
 COPY hermes_sandbox.py /app/hermes_sandbox.py
 COPY hermes_sandbox.py /opt/hermes-root/app/hermes_sandbox.py
+COPY hermes_transport.py /app/hermes_transport.py
+COPY hermes_transport.py /opt/hermes-root/app/hermes_transport.py
 COPY hermes_isolation.py /app/hermes_isolation.py
 COPY tests/hermes_upstream_smoke.py /app/hermes_upstream_smoke.py
 COPY tests/hermes_no_landlock_smoke.py /app/hermes_no_landlock_smoke.py
