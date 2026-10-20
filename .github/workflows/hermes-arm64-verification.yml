@@ -91,7 +91,7 @@ jobs:
         working-directory: cloud-hermes/source-rc1
         run: |
           timeout --signal=TERM --kill-after=30s 25m docker build --progress=plain --tag hads-hermes:cloud-test .
-      - name: Three real worker steps: ENOSYS Landlock, 512 MiB, no network
+      - name: "Three real worker steps: ENOSYS Landlock, 512 MiB, no network"
         id: worker
         if: ${{ !cancelled() && steps.image_build.outcome == 'success' }}
         timeout-minutes: 4
