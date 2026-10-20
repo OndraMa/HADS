@@ -35,14 +35,19 @@ def main():
         calls.append(request)
         text = json.dumps({"read_requests": [], "analysis": {"summary": "Funkční HTTP není výpadek lampy."}})
         return {"id": "offline", "status": "completed", "output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}]}
-    result = bridge.run_step(body(), model, timeout=90, offline_test=True)
+    try:
+        result = bridge.run_step(body(), model, timeout=90, offline_test=True)
+    except Exception:
+        print(json.dumps({'worker_memory_metrics': bridge.status().get('worker_memory_metrics')}))
+        raise
     assert len(calls) == 1
     assert result["hads_engine"] == "hermes"
     assert "Funkční HTTP" in bridge._text(result)
     assert bridge.status()["last_isolation_verified"] is True
     import resource
     info = {"sandbox": bridge.status()['isolation'], "worker_peak_rss_bytes": bridge.status()['worker_peak_rss_bytes'],
-            "parent_peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024}
+            "parent_peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024,
+            "worker_memory_metrics": bridge.status().get('worker_memory_metrics')}
     for name in ('memory.peak', 'memory.max', 'memory.events'):
         path = Path('/sys/fs/cgroup') / name
         if path.is_file():

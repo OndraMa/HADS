@@ -105,7 +105,8 @@ def seccomp_filter():
         epoll_create epoll_create1 epoll_ctl epoll_wait epoll_pwait epoll_pwait2
         fsync fdatasync ftruncate truncate mkdir mkdirat unlink unlinkat
         rename renameat renameat2 rmdir chmod fchmod fchmodat fchmodat2
-        utime utimes utimensat sched_yield sched_getaffinity
+        utime utimes utimensat sched_yield sched_getaffinity sched_getparam
+        sched_getscheduler sched_get_priority_max sched_get_priority_min getpriority getcpu
         getsockname getpeername getsockopt setsockopt recvfrom sendto
         recvmsg sendmsg shutdown exit exit_group restart_syscall'''.split()
     try:
@@ -155,6 +156,7 @@ def confine(home, port):
         raise RuntimeError('Cannot set no_new_privs')
     os.chroot(ROOT)
     os.chdir('/')
+    os.nice(10)
     os.setgroups([])
     os.setresgid(UID, UID, UID)
     os.setresuid(UID, UID, UID)

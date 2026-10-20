@@ -270,7 +270,24 @@ def worker_environment(directory):
                 "LD_LIBRARY_PATH": "/opt/sqlite-fixed/lib", "PYTHONDONTWRITEBYTECODE": "1",
                 "TMPDIR": private, "TMP": private, "TEMP": private,
                 "USER": "nobody", "LOGNAME": "nobody"})
+    # Bound glibc's virtual-memory arenas and native library thread pools on Pi.
+    env.update({'MALLOC_ARENA_MAX': '1', 'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1'})
     return env
+
+
+def sample_worker_memory(pid, stop, result):
+    """Trusted parent observes only numeric /proc status fields, not worker data."""
+    while not stop.is_set():
+        try:
+            lines = Path('/proc/' + str(pid) + '/status').read_text().splitlines()
+            for line in lines:
+                name, _, value = line.partition(':')
+                if name in ('VmPeak', 'VmSize', 'VmHWM', 'VmRSS', 'Threads'):
+                    count = int(value.split()[0]) * (1 if name == 'Threads' else 1024)
+                    result[name] = max(result.get(name, 0), count)
+        except (OSError, ValueError, IndexError):
+            pass
+        stop.wait(0.05)
 
 
 def run_step(body, send, *, timeout=240, worker_path=None, python=None, offline_test=False):
@@ -299,12 +316,19 @@ def run_step(body, send, *, timeout=240, worker_path=None, python=None, offline_
                 with subprocess.Popen([interpreter, str(worker_path)], cwd='/', pass_fds=(channel.fileno(),),
                         stdin=subprocess.PIPE, stdout=output, stderr=subprocess.DEVNULL,
                         env=env) as process:
+                    memory, stopped = {}, threading.Event()
+                    monitor = threading.Thread(target=sample_worker_memory, args=(process.pid, stopped, memory), daemon=True)
+                    monitor.start()
                     try:
                         process.communicate(json.dumps(payload).encode(), timeout=timeout)
                     except subprocess.TimeoutExpired:
                         process.kill()
                         process.wait()
                         raise HermesError("Hermes nedokončil krok včas. Automatické opakování je zastaveno; požadavek mohl být účtován.") from None
+                    finally:
+                        stopped.set()
+                        monitor.join(1)
+                        _update(worker_memory_metrics=dict(memory))
                 if broker.error:
                     raise broker.error
                 output.seek(0)

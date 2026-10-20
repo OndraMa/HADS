@@ -94,6 +94,13 @@ def run(payload):
     site.addsitedir('/opt/hermes/.venv/lib/python3.14/site-packages')
     sys.executable = '/opt/hermes/.venv/bin/python'
     sys.prefix = sys.exec_prefix = '/opt/hermes/.venv'
+    PHASE = 'ověření běžných vláken po aktivaci izolace'
+    import threading
+    probe = threading.Thread(target=lambda: None)
+    probe.start()
+    probe.join(2)
+    if probe.is_alive():
+        raise RuntimeError('Sandbox thread probe timed out')
     class NullWriter(io.TextIOBase):
         def write(self, value):
             return len(value)
