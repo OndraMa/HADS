@@ -37,6 +37,6 @@ class SandboxTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 sandbox.socket.create_connection(('example.org', 443))
             sandbox.socket.create_connection(('127.0.0.1', 12345), timeout=3)
-            sock.assert_called_once_with(fileno=43)
+            sock.assert_called_once_with(fileno=42)
             with self.assertRaises(PermissionError):
                 sandbox.socket.create_connection(('127.0.0.1', 12345))

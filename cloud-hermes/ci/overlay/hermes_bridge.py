@@ -273,7 +273,7 @@ def worker_environment(directory):
     return env
 
 
-def run_step(body, send, *, timeout=240, worker_path=None, python=None):
+def run_step(body, send, *, timeout=240, worker_path=None, python=None, offline_test=False):
     previous = status()
     if previous.get("retry_at") and previous["retry_at"] > time.time():
         stamp = dt.datetime.fromtimestamp(previous["retry_at"], dt.timezone.utc).isoformat(timespec="seconds")
@@ -287,7 +287,7 @@ def run_step(body, send, *, timeout=240, worker_path=None, python=None):
         with private_home() as directory, Broker(body, send) as broker, socket.create_connection(('127.0.0.1', broker.server.server_port), timeout=5) as channel:
             payload = {"url": f"http://127.0.0.1:{broker.server.server_port}/v1", "token": broker.token,
                        "model": body["model"], "prompt": reasoning_prompt(body),
-                       "max_tokens": 4000}
+                       "max_tokens": 4000, 'offline_test': bool(offline_test)}
             if len(json.dumps(payload).encode()) > MAX_WIRE:
                 raise HermesError("Kontext pro Hermes překročil limit; API nebylo zavoláno.")
             # stdout is a file, not an unbounded in-memory pipe. The worker

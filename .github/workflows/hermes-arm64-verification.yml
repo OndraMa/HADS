@@ -86,7 +86,7 @@ jobs:
         if: ${{ !cancelled() && steps.image_build.outcome == 'success' }}
         timeout-minutes: 4
         run: |
-          docker create --name hads-hermes-smoke --network none --memory 512m --memory-swap 512m --pids-limit 64 --cpus 1 --read-only --tmpfs /tmp:rw,nosuid,nodev,size=32m,mode=1777 --tmpfs /opt/hermes-root/tmp:rw,nosuid,nodev,size=32m,mode=1777 --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add SYS_CHROOT --security-opt no-new-privileges --entrypoint python3 hads-hermes:cloud-test /app/hermes_upstream_smoke.py
+          docker create --name hads-hermes-smoke --network none --memory 512m --memory-swap 512m --pids-limit 64 --cpus 1 --read-only --tmpfs /tmp:rw,nosuid,nodev,size=32m,mode=1777 --tmpfs /opt/hermes-root/tmp:rw,nosuid,nodev,size=32m,mode=1777 --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add SYS_CHROOT --security-opt no-new-privileges --entrypoint python3 hads-hermes:cloud-test /app/hermes_no_landlock_smoke.py
           hads_status=0
           timeout --signal=TERM --kill-after=10s 180s docker start --attach hads-hermes-smoke || hads_status=$?
           docker inspect --format '{{json .State}}' hads-hermes-smoke

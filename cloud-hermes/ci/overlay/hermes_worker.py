@@ -34,6 +34,19 @@ def check_confinement():
             pass
         else:
             raise RuntimeError('Confinement socket-creation check failed')
+    for operation in (lambda: os.setuid(0), lambda: os.chroot('/..'), os.fork):
+        try:
+            operation()
+        except PermissionError:
+            pass
+        else:
+            raise RuntimeError('Confinement privilege/process check failed')
+    try:
+        os.execve(sys.executable, [sys.executable, '-c', 'raise SystemExit(91)'], {})
+    except PermissionError:
+        pass
+    else:
+        raise RuntimeError('Confinement execve check failed')
     for path in ('/data/options.json', '/homeassistant/configuration.yaml', '/share/hads-secret-canary', '/proc/1/environ'):
         try:
             Path(path).read_bytes()
@@ -100,9 +113,21 @@ def run(payload):
             if agent.tools:
                 raise RuntimeError("Hermes unexpectedly enabled native tools; refusing to run")
             agent.compression_enabled = False
+            agent._persist_disabled = True
+            from hermes_sandbox import seal_filesystem
+            seal_filesystem()
+            try:
+                Path('unexpected-inference-write').write_text('denied')
+            except PermissionError:
+                pass
+            else:
+                raise RuntimeError('Inference write seal failed')
             PHASE = "vyhodnocení přes účtovanou HADS bránu"
             result = agent.run_conversation(payload["prompt"])
             if not isinstance(result, dict) or result.get("completed") is not True:
+                if payload.get('offline_test'):
+                    detail = {k: result.get(k) for k in ('error', 'status', 'completed', 'final_response')} if isinstance(result, dict) else {'type': type(result).__name__}
+                    PHASE = 'OFFLINE FAKE-MODEL TEST ONLY: ' + json.dumps(detail)[:1000]
                 raise RuntimeError("Hermes conversation did not complete")
             import resource
             return {"completed": True, "tool_count": 0, "isolation_verified": True,
@@ -120,5 +145,11 @@ if __name__ == "__main__":
         outcome = run(json.loads(raw))
     except BaseException as exc:
         # Do not echo exception messages: upstream errors can contain prompts.
-        outcome = {"completed": False, "tool_count": 0, "error": PHASE + ": " + type(exc).__name__}
+        frames = []
+        tb = exc.__traceback__
+        while tb:
+            frames.append(Path(tb.tb_frame.f_code.co_filename).name + ':' + tb.tb_frame.f_code.co_name + ':' + str(tb.tb_lineno))
+            tb = tb.tb_next
+        outcome = {"completed": False, "tool_count": 0,
+                   "error": PHASE + ": " + type(exc).__name__ + ' errno=' + str(getattr(exc, 'errno', None)) + ' @ ' + ' > '.join(frames[-5:])}
     print(json.dumps(outcome, ensure_ascii=False))

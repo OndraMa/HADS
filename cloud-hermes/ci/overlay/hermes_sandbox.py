@@ -62,8 +62,8 @@ def private_home():
     if not base.is_dir() or base.is_symlink():
         raise RuntimeError('Sandbox private temporary storage is missing')
     directory = Path(tempfile.mkdtemp(prefix='hads-hermes-', dir=base))
-    os.chown(directory, 0, UID)
-    os.chmod(directory, 0o770)
+    os.chown(directory, UID, UID)
+    os.chmod(directory, 0o700)
     try:
         yield directory
     finally:
@@ -125,6 +125,14 @@ def seccomp_filter():
         conditions = (Arg * 1)(Arg(0, 7, 0x7e030980, 0x10900))
         if lib.seccomp_rule_add_array(ctx, allow, lib.seccomp_syscall_resolve_name(b'clone'), 1, conditions) != 0:
             raise RuntimeError('Cannot constrain thread creation')
+        # Additional filters can only restrict further, never undo this one.
+        # libseccomp uses these queries when installing the inference write seal.
+        for name, operations in (('seccomp', (1, 2, 3)), ('prctl', (21, 22, 38, 39))):
+            number = lib.seccomp_syscall_resolve_name(name.encode())
+            for operation in operations:
+                condition = Arg(0, 4, operation, 0)
+                if lib.seccomp_rule_add_array(ctx, allow, number, 1, ctypes.byref(condition)) != 0:
+                    raise RuntimeError('Cannot allow additive sandbox hardening')
         if lib.seccomp_load(ctx) != 0:
             raise RuntimeError('Kernel/security profile rejected seccomp allowlist')
     finally:
@@ -182,8 +190,59 @@ def install_broker_socket_adapter(port):
         if used or address != ('127.0.0.1', int(port)) or source_address is not None:
             raise PermissionError('Only one inherited HADS broker connection is available')
         used = True
-        result = socket.socket(fileno=os.dup(fd))
+        result = socket.socket(fileno=fd)
         if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
             result.settimeout(timeout)
         return result
     socket.create_connection = connect
+
+
+def seal_filesystem():
+    """After trusted bootstrap, inference cannot create/modify disk files.
+
+    Existing stdout/stderr are the result/null protocol. SDK socket.send uses
+    sendto on the sole inherited TCP connection. Descriptor duplication and
+    writable opens are blocked so files cannot be moved onto stdout/stderr.
+    """
+    lib = ctypes.CDLL('libseccomp.so.2', use_errno=True)
+    lib.seccomp_init.argtypes = [ctypes.c_uint32]
+    lib.seccomp_init.restype = ctypes.c_void_p
+    lib.seccomp_syscall_resolve_name.argtypes = [ctypes.c_char_p]
+    lib.seccomp_syscall_resolve_name.restype = ctypes.c_int
+    lib.seccomp_rule_add.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int, ctypes.c_uint]
+    lib.seccomp_rule_add.restype = ctypes.c_int
+    class Arg(ctypes.Structure):
+        _fields_ = [('arg', ctypes.c_uint), ('op', ctypes.c_int), ('a', ctypes.c_uint64), ('b', ctypes.c_uint64)]
+    lib.seccomp_rule_add_array.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int, ctypes.c_uint, ctypes.POINTER(Arg)]
+    lib.seccomp_rule_add_array.restype = ctypes.c_int
+    lib.seccomp_load.argtypes = [ctypes.c_void_p]
+    lib.seccomp_load.restype = ctypes.c_int
+    lib.seccomp_release.argtypes = [ctypes.c_void_p]
+    deny = 0x00050000 | errno.EPERM
+    ctx = lib.seccomp_init(0x7fff0000)
+    if not ctx:
+        raise RuntimeError('Cannot initialize inference write seal')
+    def rule(name, condition=None):
+        number = lib.seccomp_syscall_resolve_name(name.encode())
+        if number < 0:
+            return
+        code = (lib.seccomp_rule_add(ctx, deny, number, 0) if condition is None else
+                lib.seccomp_rule_add_array(ctx, deny, number, 1, ctypes.byref(condition)))
+        if code:
+            raise RuntimeError('Cannot seal inference syscall ' + name)
+    try:
+        for name in ('mkdir', 'mkdirat', 'unlink', 'unlinkat', 'rmdir', 'rename', 'renameat', 'renameat2',
+                     'truncate', 'ftruncate', 'chmod', 'fchmod', 'fchmodat', 'fchmodat2', 'utime', 'utimes', 'utimensat',
+                     'pwrite64', 'pwritev', 'pwritev2', 'dup', 'dup2', 'dup3', 'writev'):
+            rule(name)
+        rule('write', Arg(0, 5, 3, 0))  # fd >= 3, stdout/stderr remain explicit protocol.
+        for name, argument in (('open', 1), ('openat', 2)):
+            for flag in (os.O_WRONLY, os.O_RDWR, os.O_CREAT, os.O_TRUNC, os.O_APPEND, 0x400000):
+                rule(name, Arg(argument, 7, flag, flag))
+        # Prevent F_DUPFD / F_DUPFD_CLOEXEC aliases of pre-existing writable FDs.
+        rule('fcntl', Arg(1, 4, 0, 0))
+        rule('fcntl', Arg(1, 4, 1030, 0))
+        if lib.seccomp_load(ctx) != 0:
+            raise RuntimeError('Cannot activate inference filesystem write seal')
+    finally:
+        lib.seccomp_release(ctx)

@@ -15,6 +15,18 @@ def body():
 
 
 def main():
+    import os
+    import hermes_sandbox as sandbox
+    # Parent cleanup must work with only CHOWN/SETUID/SETGID/SYS_CHROOT,
+    # including mode-000 directories and links to outside the worker root.
+    with sandbox.private_home() as directory:
+        nested = directory / 'private'
+        nested.mkdir()
+        (nested / 'file').write_text('fixture')
+        (directory / 'outside-link').symlink_to('/etc/passwd')
+        os.chown(nested, 65534, 65534)
+        os.chmod(nested, 0)
+    assert not directory.exists()
     calls = []
     def model(request):
         assert request["model"] == "hads-offline-test-model"
@@ -23,7 +35,7 @@ def main():
         calls.append(request)
         text = json.dumps({"read_requests": [], "analysis": {"summary": "Funkční HTTP není výpadek lampy."}})
         return {"id": "offline", "status": "completed", "output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}]}
-    result = bridge.run_step(body(), model, timeout=90)
+    result = bridge.run_step(body(), model, timeout=90, offline_test=True)
     assert len(calls) == 1
     assert result["hads_engine"] == "hermes"
     assert "Funkční HTTP" in bridge._text(result)
