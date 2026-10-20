@@ -31,4 +31,3 @@ Přesné běhy a měření jsou v `VERIFICATION_RC2.md`. Cloud není skutečný 
 AppArmor/seccomp cílového HAOS, souběh doplňků, OneDrive a první opravná dávka
 vyžadují následnou přejímku. Chyba izolace nesmí povolit neizolovaný fallback.
 Nejde o ochranu proti chybě jádra ani záruku všech možných oprav.
-

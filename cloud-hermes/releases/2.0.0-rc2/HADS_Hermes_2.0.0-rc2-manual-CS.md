@@ -64,4 +64,3 @@ další diagnostika, nikoli falešné potvrzení úspěchu.
 Skutečný HAOS profil, souběh ostatních doplňků na 2GB RPi, přístup konektorů,
 OneDrive readback a výsledek konkrétní schválené opravy. Cloudové testy tato
 živá ověření nenahrazují. Měření a přesné omezení RAM: `VERIFICATION_RC2.md`.
-

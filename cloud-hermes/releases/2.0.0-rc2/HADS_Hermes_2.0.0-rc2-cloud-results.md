@@ -51,4 +51,3 @@ zastavit pracovníka před placeným API; není povolen neizolovaný fallback.
 Instalátor na předchozí výslovnou žádost nevytváří novou předinstalační HA ani
 OneDrive zálohu. Opravy nadále vyžadují konkrétní schválení a ověřené cloudové
 zálohy. Main větev a běžící HAOS nebyly změněny.
-

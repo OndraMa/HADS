@@ -82,4 +82,3 @@ Test spojení a MCP čtení nevyžadují placené OpenAI. Vyšetřovací úlohy 
 - [OpenAI prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching): podle OpenAI Docs doplněna explicitní cache GPT-6.1 Sol bez přepnutí modelu. Cache hit ani skutečné úspory nejsou bez měření zaručené.
 
 RC3 vznikla s offline testy, bez nasazení na vašem HAOS, placeného API testu a systémové opravy. Povinné ověřené zálohy před opravami zůstávají. Dosavadní uživatelem požadovaný instalátor je bez nové předinstalační HA/OneDrive zálohy; místní kopie zdrojů ji nenahrazuje.
-

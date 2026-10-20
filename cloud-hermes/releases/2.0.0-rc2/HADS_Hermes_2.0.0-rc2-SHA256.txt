@@ -5,4 +5,3 @@
 57d448905579ca777d6240d8dacf3de380bc880c5b2c7a9f85d3bda42d5dea96  HADS_Hermes_2.0.0-rc2-HA-MCP-nastaveni-CS.md
 5a6dcb3202ec24eb261c31931fd85fc6f23c015a0e235e141f10b1dba9c1aa0d  HADS_Rescue_Readback_0.1.0.zip
 bc69d3559910f56af12e8c5881169cd75b9f251b58bc8e1bc41325c100bd07c3  HADS4_2.0.0-rc2-payload.tar.gz
-
