@@ -62,8 +62,8 @@ def private_home():
     if not base.is_dir() or base.is_symlink():
         raise RuntimeError('Sandbox private temporary storage is missing')
     directory = Path(tempfile.mkdtemp(prefix='hads-hermes-', dir=base))
-    os.chown(directory, UID, UID)
     os.chmod(directory, 0o700)
+    os.chown(directory, UID, UID)
     try:
         yield directory
     finally:

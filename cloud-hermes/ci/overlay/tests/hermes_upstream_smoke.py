@@ -20,12 +20,14 @@ def main():
     # Parent cleanup must work with only CHOWN/SETUID/SETGID/SYS_CHROOT,
     # including mode-000 directories and links to outside the worker root.
     with sandbox.private_home() as directory:
+        os.chown(directory, 0, 0)
         nested = directory / 'private'
         nested.mkdir()
         (nested / 'file').write_text('fixture')
         (directory / 'outside-link').symlink_to('/etc/passwd')
-        os.chown(nested, 65534, 65534)
         os.chmod(nested, 0)
+        os.chown(nested, 65534, 65534)
+        os.chown(directory, 65534, 65534)
     assert not directory.exists()
     calls = []
     def model(request):
