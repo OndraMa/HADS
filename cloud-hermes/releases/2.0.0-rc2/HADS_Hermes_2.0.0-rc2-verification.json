@@ -1,0 +1,58 @@
+{
+  "version": "2.0.0-rc2",
+  "installer_backup_policy": "no_preinstall_ha_or_cloud_backup_user_requested",
+  "source_files": 128,
+  "python_unittest": {
+    "tests": 395,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "status": "passed"
+  },
+  "python_compileall": "passed",
+  "javascript_syntax": "passed",
+  "webmcp_contract": "passed",
+  "incident_ui_regressions": "passed",
+  "audit_503_ui_regressions": "passed",
+  "mcp_504_ui_regressions": "passed",
+  "collector_505_ui_regressions": "passed",
+  "functional_510_ui_regressions": "passed",
+  "snapshot_511_ui_regressions": "passed",
+  "audit_512_ui_regressions": "passed",
+  "hermes_ui_state_contract": "passed",
+  "installer_payload_sha256": "bc69d3559910f56af12e8c5881169cd75b9f251b58bc8e1bc41325c100bd07c3",
+  "embedded_payload_matches": true,
+  "extracted_payload_matches_source": true,
+  "excluded_from_package": [
+    "__pycache__",
+    "*.pyc",
+    ".test-tmp"
+  ],
+  "live_haos_test": "not_run_requires_post_install_browser_acceptance",
+  "hermes_upstream": {
+    "version": "v0.22.2",
+    "commit": "d923a5eb487a17c0a68801bba9ef0f56c81040a8"
+  },
+  "docker_build": "not_run_locally_no_docker; build_time_real_hermes_smoke_required",
+  "cloud_arm64_verification": {
+    "url": "https://github.com/OndraMa/HADS/actions/runs/39410665467",
+    "source_commit": "f3692081cf0dbbb6f92950de9ae1827e229cad11",
+    "scope": "real_pinned_Hermes_fake_model_ENOSYS_Landlock_three_steps_512MiB_no_external_network",
+    "result": "see_exact_workflow_result_not_a_live_HAOS_acceptance"
+  },
+  "bash_tree_sitter_parse": "passed",
+  "embedded_python_blocks": 1,
+  "embedded_python": "passed",
+  "yaml_and_unique_keys": "passed",
+  "python_modules": 23,
+  "payload_sha256": "bc69d3559910f56af12e8c5881169cd75b9f251b58bc8e1bc41325c100bd07c3",
+  "payload_files": 128,
+  "source_payload_match": "passed",
+  "manual_release_source_match": "passed",
+  "real_haos_install": "not_tested",
+  "real_browser_ingress": "not_tested",
+  "restore_test": "not_tested",
+  "companion_package_source_match": "passed",
+  "companion_core_setup_and_cloud_readback": "not_tested"
+}
+
