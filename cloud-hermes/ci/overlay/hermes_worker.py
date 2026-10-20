@@ -101,6 +101,9 @@ def run(payload):
     probe.join(2)
     if probe.is_alive():
         raise RuntimeError('Sandbox thread probe timed out')
+    if payload.get('offline_test'):
+        import faulthandler
+        faulthandler.dump_traceback_later(15, file=sys.stderr)
     class NullWriter(io.TextIOBase):
         def write(self, value):
             return len(value)

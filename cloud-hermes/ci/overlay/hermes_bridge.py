@@ -309,12 +309,12 @@ def run_step(body, send, *, timeout=240, worker_path=None, python=None, offline_
                 raise HermesError("Kontext pro Hermes překročil limit; API nebylo zavoláno.")
             # stdout is a file, not an unbounded in-memory pipe. The worker
             # redirects Hermes logs away from its single JSON result.
-            with tempfile.TemporaryFile() as output:
+            with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as diagnostics:
                 interpreter = python or sys.executable
                 env = worker_environment(directory)
                 env['HADS_BROKER_FD'] = str(channel.fileno())
                 with subprocess.Popen([interpreter, str(worker_path)], cwd='/', pass_fds=(channel.fileno(),),
-                        stdin=subprocess.PIPE, stdout=output, stderr=subprocess.DEVNULL,
+                        stdin=subprocess.PIPE, stdout=output, stderr=diagnostics if offline_test else subprocess.DEVNULL,
                         env=env) as process:
                     memory, stopped = {}, threading.Event()
                     monitor = threading.Thread(target=sample_worker_memory, args=(process.pid, stopped, memory), daemon=True)
@@ -324,7 +324,11 @@ def run_step(body, send, *, timeout=240, worker_path=None, python=None, offline_
                     except subprocess.TimeoutExpired:
                         process.kill()
                         process.wait()
-                        raise HermesError("Hermes nedokončil krok včas. Automatické opakování je zastaveno; požadavek mohl být účtován.") from None
+                        detail = ''
+                        if offline_test:
+                            diagnostics.seek(0)
+                            detail = ' OFFLINE TEST: broker_calls=' + str(broker.calls) + ' broker_error=' + type(broker.error).__name__ + '\n' + diagnostics.read(6000).decode('utf-8', 'replace')
+                        raise HermesError("Hermes nedokončil krok včas. Automatické opakování je zastaveno; požadavek mohl být účtován." + detail) from None
                     finally:
                         stopped.set()
                         monitor.join(1)
