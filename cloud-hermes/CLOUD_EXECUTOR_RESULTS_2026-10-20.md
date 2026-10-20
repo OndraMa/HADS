@@ -83,3 +83,6 @@ Only after a future candidate has passed cloud safety gates, test compatibility 
 ## Next blocking work
 
 A compatible executor or staging environment must provide the actual target architecture/runtime and enforceable kernel isolation. Until then, changing or removing the mandatory isolation and lowering the memory threshold would weaken safety without evidence, so no RC2 code fix or release claim is justified.
+
+
+Additional memory sample: HADS `runtime_core.memory_sample()` reported `available_bytes=8052232192` and process RSS `14168064` bytes in the executor. This is executor-only data, not Hermes worker RSS; it reflects the runtime's cgroup-aware sampler and cannot size the Pi deployment.
