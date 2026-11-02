@@ -12,7 +12,7 @@ import zipfile
 from run_checks import run_checks
 
 
-VERSION = "2.0.0-rc2"
+VERSION = "2.0.0-rc3"
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCE = HERE / "src"
 OUTPUT = HERE.parents[1] / "outputs"
@@ -163,6 +163,11 @@ def main() -> None:
         "live_haos_test": "not_run_requires_post_install_browser_acceptance",
         "hermes_upstream": {"version": "v0.22.2", "commit": "d923a5eb487a17c0a68801bba9ef0f56c81040a8"},
         "docker_build": "not_run_locally_no_docker; build_time_real_hermes_smoke_required",
+        "cloud_arm64_verification": {
+            "result": "not_run_for_rc3_at_build_time",
+            "baseline_rc2_url": "https://github.com/OndraMa/HADS/actions/runs/39410665467",
+            "note": "RC2 result is not verification of the RC3 payload.",
+        },
     }
     verification_path.write_text(json.dumps(verification, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({"installer": str(install_path), "source": str(zip_path), "manual": str(manual_path), "hashes": str(hash_path), "verification": str(verification_path), "files": len(files)}, ensure_ascii=False))
@@ -170,4 +175,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
