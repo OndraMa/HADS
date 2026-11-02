@@ -93,8 +93,10 @@ def sha256(path: pathlib.Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main() -> None:
-    checks = run_checks()
+def main(*, verified_checks: dict | None = None) -> None:
+    # The separate cloud packaging entrypoint verifies the exact source ZIP
+    # hash before reusing Linux/ARM64 results. Default remains local execution.
+    checks = run_checks() if verified_checks is None else verified_checks
     OUTPUT.mkdir(parents=True, exist_ok=True)
     files = included_files()
     payload = tar_payload(files)
@@ -162,12 +164,12 @@ def main() -> None:
         "excluded_from_package": ["__pycache__", "*.pyc", ".test-tmp"],
         "live_haos_test": "not_run_requires_post_install_browser_acceptance",
         "hermes_upstream": {"version": "v0.22.2", "commit": "d923a5eb487a17c0a68801bba9ef0f56c81040a8"},
-        "docker_build": "not_run_locally_no_docker; build_time_real_hermes_smoke_required",
-        "cloud_arm64_verification": {
+        "docker_build": checks.get("docker_build", "not_run_locally_no_docker; build_time_real_hermes_smoke_required"),
+        "cloud_arm64_verification": checks.get("cloud_arm64_verification", {
             "result": "not_run_for_rc3_at_build_time",
             "baseline_rc2_url": "https://github.com/OndraMa/HADS/actions/runs/39410665467",
             "note": "RC2 result is not verification of the RC3 payload.",
-        },
+        }),
     }
     verification_path.write_text(json.dumps(verification, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({"installer": str(install_path), "source": str(zip_path), "manual": str(manual_path), "hashes": str(hash_path), "verification": str(verification_path), "files": len(files)}, ensure_ascii=False))
