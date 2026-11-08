@@ -153,3 +153,35 @@ platný souhlas k novému plánu.
 Živá HAOS autentizace ani testovací domácnost nejsou k dispozici. Kontrola přesných
 HA API, nový Hermes runtime, container/ARM64 sestavení a fyzické výsledky musí mít
 vlastní protokoly; tento audit je za ně nenahrazuje.
+
+## Nezávislá review prvního Next průchodu
+
+Offline review nových hranic odhalila a vedla k opravě těchto konkrétních problémů:
+
+- Strukturované klíče `api-key`, `credentials`, `private_key` a autentizační údaje
+  v logovém textu původně prošly redakcí. Centrální redakce a ingestion byly
+  zpřísněny; zůstává best-effort ochrana libovolného volného textu, nikoli záruka
+  rozpoznání každého tajemství bez strukturovaného kontraktu.
+- Dva různé schválené plány téhož souboru mohly před zápisem oba projít kontrolou
+  původního hashe. Nový filesystem lock pokrývá preflight, trvalý intent, zápis a
+  readback; nejasný výsledek zásahu blokuje i další plán stejného cíle.
+- Dřívější funkční selhání mohlo být z následujícího vyhodnocení vypuštěno a
+  výsledek se neoprávněně změnil na ověřený. Verifier nyní v jedné transakci
+  slučuje trvalý deduplikovaný korpus důkazů a posuzuje jej společně.
+- Vnořené párování důkazů mohlo růst kombinatoricky. Verifier používá index
+  kontextů a časové vyhledávání; má omezenou dávku, korpus i velikost položky.
+
+Reprodukce:
+
+```sh
+cd hads-next
+PYTHONPATH=src python -m unittest discover -s tests -p test_security_review.py -v
+PYTHONPATH=src python -m unittest discover -s tests -p test_repair.py -v
+PYTHONPATH=src python -m unittest discover -s tests -p test_verification.py -v
+```
+
+Výsledek nového běhu: **6 adversarial + 17 repair + 7 verification testů prošlo**.
+Pokrývají i zákaz neautorizovaného zápisu, změnu plánu/cíle, expiraci, symlinky a
+hardlinky, opakované vykonání, přerušení zásahu a falešnou opravu bez funkčního
+výsledku. Jde o Linux offline fixtures. Neprokazují produkční HA Ingress identitu,
+živé HA API, obnovitelnost OneDrive zálohy ani fyzický výsledek zařízení.

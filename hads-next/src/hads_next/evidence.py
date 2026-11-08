@@ -225,6 +225,34 @@ class IncidentStore:
             db.execute("INSERT INTO case_records(incident_id,kind,recorded_at,content) VALUES(?, 'verified_resolution',?,?)",
                        (incident_id,time.time(),serialized))
 
+    def reopen_for_report(self, incident_id: str, report: dict) -> None:
+        """Trusted offline recurrence transition; dedup repeated verification."""
+        if (report.get("classification") not in {"Oprava selhala", "Problém se opakoval"}
+                or report.get("scope") != "offline_isolated_fixture"
+                or report.get("incident_id") != incident_id or not report.get("execution_id")):
+            raise ValueError("Only a matching failed offline report can reopen this case")
+        failures = [item for item in report.get("evidence", []) if item.get("kind") == "functional_failure"]
+        if not failures:
+            raise ValueError("Recurrence requires functional failure evidence")
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            previous = db.execute("SELECT status FROM incidents WHERE id=?", (incident_id,)).fetchone()
+            if previous is None:
+                raise KeyError(incident_id)
+            inserted = 0
+            for item in failures:
+                stamp = item["observed_at"]
+                if isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or not math.isfinite(stamp):
+                    raise ValueError("Recurrence timestamp must be finite")
+                event_id = digest([report["execution_id"], redact(item)])
+                inserted += db.execute("INSERT OR IGNORE INTO occurrences VALUES(?,?,?)", (incident_id,event_id,stamp)).rowcount
+                db.execute("UPDATE incidents SET first_seen=min(first_seen,?),last_seen=max(last_seen,?) WHERE id=?",
+                           (stamp,stamp,incident_id))
+            db.execute("UPDATE incidents SET status='open',archived_at=NULL WHERE id=?", (incident_id,))
+            if inserted or previous[0] != "open":
+                db.execute("INSERT INTO case_records(incident_id,kind,recorded_at,content) VALUES(?, 'reopened_after_repair',?,?)",
+                           (incident_id,time.time(),canonical(redact(report))))
+
     def export(self, incident_id: str) -> str:
         return canonical(self.case(incident_id))
 

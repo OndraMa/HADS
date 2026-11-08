@@ -40,7 +40,7 @@ def investigate_radio(events: list[dict], entity_id: str, incident_at: float, wi
     for event in events:
         payload = event["payload"]
         lag = stop["observed_at"] - event["observed_at"]
-        if not -2 <= lag <= 30:
+        if not 0 <= lag <= 30:
             continue
         tied = payload.get("entity_id") == entity_id
         if event["kind"] == "ha_action" and payload.get("action") in {"media_player.media_stop","media_player.media_pause","media_player.turn_off"} and payload.get("target_entity_id") == entity_id and 0 <= lag <= 10:

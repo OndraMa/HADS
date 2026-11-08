@@ -46,6 +46,12 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(result["category"],"insufficient_evidence")
         self.assertEqual(set(result["hypotheses"]),{"stream_failure","player_disconnected"})
 
+    def test_later_stream_error_is_not_reported_as_preceding_cause(self):
+        fixture = json.loads((FIXTURES/"radio.json").read_text())
+        events = fixture["stream_failure"]
+        events[0]["observed_at"] = fixture["incident_at"] + 1
+        self.assertEqual(investigate_radio(events,fixture["entity_id"],fixture["incident_at"])["category"], "insufficient_evidence")
+
     def _zigbee(self, events):
         fixture = json.loads((FIXTURES/"zigbee.json").read_text())
         return investigate_zigbee(events,fixture["device_id"],fixture["automation_id"],fixture["target_entity_id"],fixture["incident_at"])

@@ -81,6 +81,7 @@ class SourceStatus:
     read_succeeded: bool = False
     relevant: bool | None = None
     last_error: str | None = None
+    last_read_at: float | None = None
     last_evidence_at: float | None = None
 
     def snapshot(self, now=None):
@@ -137,7 +138,7 @@ class NativeHTTP:
 class NativeWebSocket:
     """Optional real websocket transport; opens one bounded authenticated read.
 
-    Requires websockets>=15,<16, installed only for native WS use. No subscription,
+    Requires websockets>=16,<17, installed only for native WS use. No subscription,
     service call or arbitrary command is exposed by CoreReader.
     """
     def __init__(self, url, token):
@@ -175,7 +176,7 @@ class _Reader:
         self.transport = transport
         self.status = SourceStatus(source)
 
-    def _read(self, request, *, relevant=None):
+    def _read(self, request, *, relevant=None, evidence_time=None):
         self.status.relevant = None
         try:
             result = self.transport(request)
@@ -183,7 +184,9 @@ class _Reader:
             self.status.authenticated = True
             self.status.read_succeeded = True
             self.status.relevant = relevant(result) if relevant else None
-            self.status.last_evidence_at = time.time()
+            self.status.last_read_at = time.time()
+            # A fresh read of an old event must never rejuvenate its evidence.
+            self.status.last_evidence_at = evidence_time(result) if evidence_time else None
             self.status.last_error = None
             return redact(result)
         except Exception as exc:
@@ -207,7 +210,16 @@ class CoreReader(_Reader):
     def states(self, entity_id=None):
         if entity_id is not None and not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id):
             raise ValueError("invalid entity ID")
-        return self._read("/api/states" + ("/" + entity_id if entity_id else ""))
+        def observed(value):
+            from datetime import datetime
+            if not isinstance(value, dict) or not value.get("last_updated"):
+                return None
+            try:
+                stamp = datetime.fromisoformat(value["last_updated"])
+                return stamp.timestamp() if stamp.tzinfo else None
+            except (ValueError, TypeError):
+                return None
+        return self._read("/api/states" + ("/" + entity_id if entity_id else ""), evidence_time=observed)
 
     def history(self, start_iso, entity_id, end_iso):
         from datetime import datetime
@@ -248,7 +260,8 @@ class CoreWSReader(_Reader):
                 raise ValueError("timezone required")
         shadow = _Reader("ha_core_ws", lambda request: project_action_calls(self.transport(request)))
         shadow.status = self.status
-        return shadow._read({"type": "logbook/get_action_calls", "start_time": start_iso, "end_time": end_iso})
+        return shadow._read({"type": "logbook/get_action_calls", "start_time": start_iso, "end_time": end_iso},
+            evidence_time=lambda rows: max((row["when"] for row in rows if "when" in row), default=None))
 
 
 class SupervisorReader(_Reader):

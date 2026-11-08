@@ -39,6 +39,15 @@ class ReadContractTests(unittest.TestCase):
         core = CoreReader(lambda path: {"entity_id": "media_player.radio", "state": "idle"})
         self.assertEqual(core.states("media_player.radio")["state"], "idle")
 
+    def test_read_of_old_state_does_not_refresh_evidence_age(self):
+        reader = CoreReader(lambda _: {"last_updated": "2026-11-08T12:00:00+00:00", "state": "idle"})
+        reader.states("media_player.radio")
+        observed = reader.status.last_evidence_at
+        self.assertEqual(reader.status.snapshot(now=observed + 3600)["evidence_age_seconds"], 3600)
+        reader.states("media_player.radio")
+        self.assertEqual(reader.status.last_evidence_at, observed)
+        self.assertGreater(reader.status.last_read_at, observed)
+
     def test_supervisor_envelope_and_no_write_surface(self):
         calls = []
         def read(path):
