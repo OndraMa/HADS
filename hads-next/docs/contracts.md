@@ -14,6 +14,12 @@ read_succeeded/relevant/last_error a stáří důkazu; neznámé hodnoty jsou nu
 Každá vrstva přijímá explicitní závislosti. Databáze je SQLite s verzí schématu.
 Incidentní store uchovává celé důkazy, opakování a audit; AI má pouze kopii
 relevantních důkazů bez tajemství. Analýzu znovu spouští až nový otisk důkazů.
+Claim analýzy přetrvává i po pádu. Zůstal-li po restartu ve stavu running,
+stejná data se automaticky znovu neanalyzují; je potřeba nový důkaz a přerušení
+zůstává viditelné ve spisu. Tento stav není úspěšně dokončené vyšetření.
+Evidence má limit 64 KiB na událost, 1000 událostí a 4 MiB na spis. Opakované
+načtení identického eventu nezvyšuje počet důkazů ani výskytů. Nový skutečný
+výskyt s novým ID znovu otevře i dříve vyřešený spis.
 
 Opravný plán je neměnný kanonický JSON svázaný hashem. Obsahuje původní stav,
 konkrétní změnu, důvod, evidence IDs, riziko, preconditions, backup policy,
