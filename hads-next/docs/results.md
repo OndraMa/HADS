@@ -1,7 +1,8 @@
 # Výsledky HADS Next, 2026-11-08
 
 Tento strom je funkční **izolovaný vývojový základ**, nikoli hotová autonomní
-HAOS aplikace. Produkční RC3 ani vydané archivy nebyly změněny. Výchozí commit
+HAOS platforma. Následně byl přidán samostatný vývojový HAOS instalátor popsaný
+níže. Produkční RC3 ani vydané archivy nebyly změněny. Výchozí commit
 je `c491893bd433fa0e17dcd852a3eaa610eb3148ad`, nová větev `codex/hads-next`.
 
 ## Co bylo skutečně provedeno
@@ -80,8 +81,25 @@ Dosud neimplementováno: kompletní Music Assistant MCP discovery/transport,
 živé ZHA odběry, System Health stream collector, log stream/PSI collector,
 automatický externí výzkum s citations, osm specialistických workflow,
 dlouhodobý scheduler/watchdog/resource admission, bezpečné nové skills,
-RC3 DB importer, HAOS instalátor/ingress identity a živý opravný katalog.
+RC3 DB importer a živý opravný katalog.
 Osm názvů rolí v kontraktu samo o sobě neznamená jejich hotovou implementaci.
+
+## Doplnění: instalační balíček 0.1.0-dev1
+
+V `releases/0.1.0-dev1` je samostatný self-contained shell instalátor, zdrojový
+tar.gz a SHA256SUMS. Balíček se reprodukuje `python scripts/build_haos_installer.py`.
+Nová aplikace používá vlastní slug `local_hads_next_dev`, privátní SQLite spisy,
+omezené Core GET čtení a ruční cílený incident. Ingress vyžaduje Supervisor peer,
+explicitně nastaveného vlastníka a CSRF pro lokální změny spisů. Proces po startu
+odloží UID na 65532; AI a živý vykonavatel nejsou aktivovány.
+
+AMD64 build, start bez capabilities po odložení UID, nepřímý přístup 403,
+persistence po restartu kontejneru a instalační sekvence s **falešným Supervisorem**
+prošly; účtenka `evidence/haos-package.json`. Browser test formuláře a obnovení
+stránky proti místnímu serveru s umělou ingress identitou také prošel, viz
+`evidence/haos-browser.json`. Konkrétní aktuální počet unit/integration testů
+je v `evidence/offline-tests.json`. Nejde o živou HAOS instalaci; Core/Supervisor
+autorizace, skutečný ingress a ARM64/RPi přejímka zůstávají čekající.
 
 ## Další povolený technický krok
 

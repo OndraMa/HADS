@@ -2,8 +2,26 @@
 
 Vývojová větev `codex/hads-next` vychází přesně z Hermes RC3
 `c491893bd433fa0e17dcd852a3eaa610eb3148ad`. RC3, vydané archivy i jeho
-bezpečnostní kontroly zůstávají zachované. Toto **není instalační balík HAOS ani
-produkční Release Candidate**. Neinstalujte jej přes existující HADS.
+bezpečnostní kontroly zůstávají zachované. Toto **není produkční Release Candidate**.
+Nový [HAOS instalační soubor](releases/0.1.0-dev1/HADS_Next_install_0.1.0-dev1.sh)
+přidá samostatnou vývojovou aplikaci vedle RC3. Nepřepisuje existující HADS.
+
+## Instalace vývojové aplikace do testovacího HAOS
+
+Stáhni instalační soubor a [SHA-256 manifest](releases/0.1.0-dev1/SHA256SUMS).
+V Terminálu/SSH s `ha`, `bash` a `python3` spusť:
+
+```sh
+bash HADS_Next_install_0.1.0-dev1.sh --verify
+bash HADS_Next_install_0.1.0-dev1.sh --install-dev
+```
+
+Aplikace má vlastní slug `local_hads_next_dev` a český ingress. Umožňuje číst
+Core, nahlásit incident, získat cílenou historii a uchovat spis. Vlastníka
+nastaví správce podle ID na úvodní stránce do volby `owner_user_id`.
+**Hermes a živé opravy nejsou v této instalační verzi aktivní.** Původní agentní
+smyčka je nadále samostatně ověřená offline. Živá HAOS a ARM64 přejímka čekají.
+Podrobný postup, oprávnění a omezení jsou v [instalačním návodu](haos/DOCS.md).
 
 První scénář: incident testovací automatizace → trvalé důkazy → originální
 Hermes přečte automatizaci a následně trace → přesný plán jediné změny odkazu →
@@ -88,7 +106,7 @@ službu. Hash účtenky Hermes spojuje vstup a test, není podpis runtime ani so
 Radio/Zigbee/DNS jsou deterministické vyšetřovací moduly s anonymizovanými
 **syntetickými** fixtures; nevydáváme je za zachycená data skutečné domácnosti.
 Music Assistant FastMCP, externí výzkum za běhu, dlouhodobé monitorovací úlohy,
-osm specializovaných workflow, automatická tvorba skills a plný HAOS instalátor
+osm specializovaných workflow, automatická tvorba skills a produkční HAOS nasazení
 zatím nejsou implementované. Povinná další aplikace se nepřidává. Podrobné
 kontrakty, oprávnění a alternativy jsou v [rešerši](docs/research.md).
 

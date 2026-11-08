@@ -2,12 +2,13 @@
 
 Stav protokolu k **2026-11-08 UTC: ČEKÁ – NEPROVEDENO**.
 
-Současný balík `hads-next` je vývojový Python balík s izolovanou JSON fixture,
-nikoliv instalovatelná HAOS aplikace ani HAOS Release Candidate. Nemá živý
+Současný balík `hads-next` obsahuje izolovanou JSON fixture a nově samostatnou
+instalovatelnou HAOS vývojovou aplikaci 0.1.0-dev1; není to HAOS Release Candidate. Nemá živý
 zapisovací adaptér, ověřenou HAOS schvalovací identitu ani hotovou izolaci
 produkčního workeru. **Nasazení do produkční domácnosti je blokované.**
 Container smoke, testy na syntetických datech a historické účtenky RC3 nejsou
-náhradou tohoto protokolu. Níže není instalační příkaz pro neexistující balíček.
+náhradou tohoto protokolu. Instalace omezeného read-only preview je popsána
+v [haos/DOCS.md](../haos/DOCS.md); tím se nesplní gates plné platformy níže.
 
 ## Rozsah, role a evidence
 
@@ -44,7 +45,8 @@ zapisovací část, zaznamenat blocker a pokračovat pouze nezávislým čtením
 1. Existuje zkontrolovaný kandidát HAOS aplikace s manifestem, přesnými verzemi,
    minimálními oprávněními, dokumentovaným instalačním i odinstalačním postupem
    a hashem/image digestem. Balení nesmí přepsat RC3, jeho adresář ani DB.
-   Dnes takový kandidát není součástí tohoto stromu.
+   Vývojový read-only balík již existuje; kandidát s bezpečným živým workerem
+   a vykonavatelem zatím chybí.
 2. M0–M4 mají vlastní reprodukovatelné protokoly; bezpečnostní negativní testy
    musí platit pro přesně tentýž commit/image, ne starý tag nebo image před opravou.
 3. Ověřená identita schvalovatele přichází z autentizovaného důvěryhodného
@@ -283,7 +285,7 @@ ze skutečného běhu; nepřebírají se z historických účtenek RC3.
 
 | Test / přijímací podmínka | Stav live | Evidence | Verze / commit / hardware | Datum UTC | Operátor |
 |---|---|---|---|---|---|
-| J0 balíček a ověřená instalační cesta | ČEKÁ – balíček chybí | čeká | čeká | neprovedeno | neurčen |
+| J0 balíček a ověřená instalační cesta | ČEKÁ – preview existuje, živá přejímka neproběhla | čeká | čeká | neprovedeno | neurčen |
 | J0 autentická identita, expirace, replay, cizí uživatel | ČEKÁ | čeká | čeká | neprovedeno | neurčen |
 | J0 broker/worker/executor isolation, všechny write cesty | ČEKÁ | čeká | čeká | neprovedeno | neurčen |
 | J0 OneDrive readback a nezávislý restore test | ČEKÁ | čeká | čeká | neprovedeno | neurčen |

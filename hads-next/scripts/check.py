@@ -23,7 +23,7 @@ def main():
         "errors": [test.id() for test, _ in result.errors],
         "skipped": [test.id() for test, _ in result.skipped],
         "passed": result.wasSuccessful(), "input_sha256": inputs,
-        "limitations": ["Synthetic fixtures, no physical HAOS installation", "Native Hermes has separate container receipts"],
+        "limitations": ["Synthetic fixtures, no physical HAOS installation", "Native Hermes has separate container receipts", "HAOS package and browser checks have separate receipts"],
     }
     output = ROOT / "docs/evidence/offline-tests.json"
     output.parent.mkdir(parents=True, exist_ok=True)

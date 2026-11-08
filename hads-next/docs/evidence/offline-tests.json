@@ -1,29 +1,36 @@
 {
-  "recorded_at": "2026-11-08T15:42:47.246357+00:00",
+  "recorded_at": "2026-11-08T22:34:08.036477+00:00",
   "scope": "offline",
   "live_haos": false,
   "python": "3.12.14",
   "architecture": "x86_64",
-  "tests_run": 73,
+  "tests_run": 89,
   "failures": [],
   "errors": [],
   "skipped": [],
   "passed": true,
   "input_sha256": {
-    "scripts/check.py": "ae4b8f3c8b8c8b95d6995915d957254856d33de7a50a58a3bb545a81f188a09d",
+    "scripts/build_haos_installer.py": "63cd2b3a826a252f256c8a7b3756fe726f5252ad11dec980ea37917c3d86980f",
+    "scripts/check.py": "7fc5352c630ed5b605c5278b4e1545165d0ca973e0d7c01d2ca1236e07e590cc",
+    "scripts/haos_smoke.py": "0a8c92410a982b5fd5f53790fa4d24ed1832c5925f61b8756f8ce8bd09c3187b",
     "scripts/hermes_smoke.py": "72a9e653b1227b657a91b8ef11b49d6f358adfa94a78d95d30d913c79f0f3f94",
     "scripts/hermes_smoke_run.py": "2315c93ee96d67eaedf71187f5af015866882bf24fc490d2dc5551dc081a36cd",
     "src/hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "src/hads_next/addon_server.py": "453c7620b2c259655281ba77482387cdf95face1cfa0a0de0ae5ec2c50800347",
     "src/hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
     "src/hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
     "src/hads_next/evidence.py": "865930f81a28c44b1e43c103c393d75bfe40956649fd0d77b216998ec43b5c2f",
+    "src/hads_next/haos_application.py": "a761539592735a0c5faafd1fc4cd43185cd486e9b5f02cc17951d3eec4fced38",
     "src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
     "src/hads_next/observability.py": "b170f6669e420eb3178ae417755d119e92e14711e48c18b21af675e4ad2faef9",
     "src/hads_next/repair.py": "3466277aa496be74e1b2a3291b38a3a4dd327e2eea9d3806276c75b745ec6189",
     "src/hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
     "src/hads_next/verification.py": "86c210b6b7c1892304d0fc96e0bccfe3366294d81a8fdd575591fd2506973e4f",
+    "tests/test_addon_server.py": "1502242df82620ce5f63673411392f7faf28279e227cecf6c5a75ff6245ef4bc",
     "tests/test_diagnostics.py": "172354654c301fb1412a66e8421070b88b4fea2f14687b75e5ff592dca71665f",
     "tests/test_evidence.py": "da316e8574dd28b2c97301ca00731639e837d1f39471427aff8d1924894a68b3",
+    "tests/test_haos_application.py": "86e71cba4787b304e28b8c3cf8d7924b7de226b5e4050e8ac1c6752c92f81182",
+    "tests/test_haos_installer.py": "d48b1118e6f09a7f67485e96a4b6e0442d2f8426cebb4ae163d604909046d513",
     "tests/test_hermes.py": "092e65a2c793a6c4b703b409ca7c1e9f9a624fe372e8958fadce3fb9f2cf3f4b",
     "tests/test_observability.py": "ddf51446354595b84c4944f9d0a8cc8e1501d53b0324bdf0efbe4a70b33aac96",
     "tests/test_repair.py": "33d86ed7ea60c73ff3fe7b918065bad596c5c9dc1ce0d9b880fbba7cdf026c58",
@@ -34,6 +41,7 @@
   },
   "limitations": [
     "Synthetic fixtures, no physical HAOS installation",
-    "Native Hermes has separate container receipts"
+    "Native Hermes has separate container receipts",
+    "HAOS package and browser checks have separate receipts"
   ]
 }
