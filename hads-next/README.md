@@ -1,5 +1,9 @@
 # HADS Next – izolovaný funkční základ
 
+**Ke stažení ve Windows:** [GitHub vydání a kompletní ZIP](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1).
+Cloud není potřeba; pro soukromý repozitář se přihlas do GitHubu.
+[Průvodce stažením](docs/STAZENI_WINDOWS_CS.md) vysvětluje jednotlivé soubory.
+
 Vývojová větev `codex/hads-next` vychází přesně z Hermes RC3
 `c491893bd433fa0e17dcd852a3eaa610eb3148ad`. RC3, vydané archivy i jeho
 bezpečnostní kontroly zůstávají zachované. Toto **není produkční Release Candidate**.
