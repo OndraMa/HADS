@@ -11,7 +11,7 @@ import time
 
 from .diagnostics import investigate_radio
 from .evidence import IncidentStore
-from .observability import redact
+from .observability import redact,project_supervisor_read
 
 VERSION = "0.1.0-dev1"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
@@ -128,9 +128,14 @@ class Application:
             now = self.clock()
             incident = self.store.open_incident('application_failure', redact(symptom), [slug], now,
                 correlation_key='app:' + slug + ':' + hashlib.sha256(symptom.encode()).hexdigest())
-            for kind, value in [('app_info', info), ('app_stats', self.supervisor.app_stats(slug)),
-                                ('app_logs', self.supervisor.app_logs(slug))]:
+            for kind, read in [('app_info',lambda:info),('app_stats',lambda:self.supervisor.app_stats(slug)),
+                               ('app_logs',lambda:self.supervisor.app_logs(slug))]:
+                value=read()
                 status = self.supervisor.status.snapshot(self.clock())
+                if value is not None and kind in {'app_info','app_stats'}:
+                    try:value=project_supervisor_read(kind,value)
+                    except (ValueError,TypeError,OverflowError):
+                        value=None;status={**status,'read_succeeded':False,'last_error':'Zdroj vrátil neočekávaný diagnostický formát.'}
                 if value is not None:
                     if isinstance(value,str): value=value[-16000:]
                     payload = {'data': value}

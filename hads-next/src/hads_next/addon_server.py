@@ -169,6 +169,14 @@ class Handler(BaseHTTPRequestHandler):
             result=investigations[-1] if investigations else {}
             jobs=self.server.app.investigations.for_case(case['incident']['id'])
             if jobs and jobs[0]['conclusion']:result=jobs[0]['conclusion']
+            suggestion=result.get('repair_suggestion')
+            suggestion_html=''
+            if isinstance(suggestion,dict):
+                suggestion_html='<h2>Návrh dalšího postupu</h2><p>'+escape(suggestion['summary_cs'])+'</p>'
+                if suggestion.get('change'):
+                    suggestion_html+='<p>Automatizace '+escape(suggestion['target'])+': '+escape(suggestion['change']['from'])+' → '+escape(suggestion['change']['to'])+'.</p>'
+                suggestion_html+='<p>Tuto změnu zde HADS zatím nevykonává. Můžeš podle postupu zkontrolovat nastavení ručně.</p><ol>'+''.join('<li>'+escape(x)+'</li>' for x in suggestion['manual_steps_cs'])+'</ol>'
+                suggestion_html+='<form method="post" action="../repair/preference"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'"><input type="hidden" name="suggestion_id" value="'+escape(suggestion['suggestion_id'],quote=True)+'"><button name="decision" value="manual">Chci postupovat ručně</button><button name="decision" value="reject">Zamítnout tento návrh</button></form><p>Tato volba nepotvrzuje provedení ani úspěch opravy. Incident čeká na funkční ověření.</p>'
             progress=''.join('<li>'+escape(step['reason'])+'</li>' for job in jobs[:1] for step in job['steps'])
             from .investigator_roles import ROLE_LABELS
             progress+=''.join('<li>'+escape(ROLE_LABELS.get(r['content'].get('role'),'Vyšetřování'))+': '+escape(r['content'].get('task',''))+'</li>'
@@ -180,7 +188,7 @@ class Handler(BaseHTTPRequestHandler):
                 +'</h1><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul>'+stop_form+'<details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
                 + '<h2>Pracovní závěr</h2><p>' + escape(result.get('summary_cs','Vyšetřování ještě nemá závěr.'))
                 + '</p><h2>Další potřebné důkazy</h2><ul>' + ''.join('<li>'+escape(str(x))+'</li>' for x in result.get('needed',[]))
-                + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p><p>Žádná oprava nebyla provedena a incident zůstává otevřený.</p><details><summary>Technické důkazy spisu</summary><pre>'
+                + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p>'+suggestion_html+'<p>Žádná oprava nebyla provedena a incident zůstává otevřený.</p><details><summary>Technické důkazy spisu</summary><pre>'
                 + escape(json.dumps(case,ensure_ascii=False,indent=2)) + '</pre></details></html>')
         if path not in {"/", "/index.html"}:
             return self.send_body(404, "Stránka nebyla nalezena.")
@@ -260,6 +268,15 @@ class Handler(BaseHTTPRequestHandler):
                 job=service.jobs.get(job_id)
                 service.cancel(job_id,self.headers['X-Remote-User-Id'])
                 self.send_response(303);self.send_header('Location','../case/'+job['incident_id']);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/repair/preference':
+                identity=form.get('incident_id',[''])[0];choice=form.get('decision',[''])[0]
+                jobs=self.server.app.investigations.for_case(identity)
+                proposal=(jobs[0].get('conclusion') or {}).get('repair_suggestion') if jobs else None
+                if choice not in {'manual','reject'} or not proposal or not secrets.compare_digest(proposal['suggestion_id'],form.get('suggestion_id',[''])[0]):
+                    raise ValueError('Tato verze návrhu již není aktuální.')
+                self.server.app.store.record(identity,'repair_suggestion_decision',{'job_id':jobs[0]['id'],'suggestion_id':proposal['suggestion_id'],
+                    'decision':choice,'principal':self.headers['X-Remote-User-Id'],'approval_granted':False,'functional_result':'not_verified'})
+                self.send_response(303);self.send_header('Location','../case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/check':
                 self.server.app.request_source_check()
             elif path == '/incident/app':

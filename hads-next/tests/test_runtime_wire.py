@@ -64,6 +64,7 @@ class WireIntegration(unittest.TestCase):
                     if handler.path=='/core/api/config': result={'version':'2026.11.0','time_zone':'Europe/Prague'}
                     elif handler.path=='/core/api/states': result=[]
                     elif handler.path=='/addons': result={'result':'ok','data':{'addons':[{'slug':'fixture_music','name':'Music fixture'}]}}
+                    elif handler.path.endswith('/stats'):result={'result':'ok','data':{'cpu_percent':1.0,'memory_usage':1048576}}
                     elif handler.path.startswith('/core/api/history/period/'):
                         from datetime import datetime,timezone
                         iso=lambda n:datetime.fromtimestamp(n,timezone.utc).isoformat()

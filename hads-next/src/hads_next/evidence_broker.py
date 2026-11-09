@@ -12,7 +12,7 @@ import re
 import threading
 import time
 
-from .observability import redact
+from .observability import redact,project_supervisor_read
 from .evidence import canonical
 
 
@@ -86,7 +86,7 @@ def project_trace(value):
 # Explicit HADS schemas, not upstream API names. additionalProperties=False is
 # enforced again in dispatch; an LLM schema is not an authorization boundary.
 _PARAMS={
-    'hads_get_incident':{}, 'hads_get_related_incidents':{}, 'hads_get_core_status':{},
+    'hads_get_incident':{}, 'hads_get_related_incidents':{}, 'hads_get_core_status':{}, 'hads_get_supported_repairs':{},
     'hads_get_entity_registry':{'entity_id':'entity'},'hads_get_device_registry':{'device_id':'id'},
     'hads_get_entity_state':{'entity_id':'entity'},
     'hads_get_entity_history':{'entity_id':'entity','start':'time','end':'time'},
@@ -190,6 +190,9 @@ class EvidenceBroker:
             status='available' if value['events'] else 'no_relevant_data' if value['capture_covers_window'] else 'not_read'
             observed=max((datetime.fromisoformat(x['time_fired']).timestamp() for x in value['events']),default=None)
             return self._result(incident_id,name,'zha_event',status,value,now,value['limitation_cs'],observed=observed)
+        elif name=='hads_get_supported_repairs':
+            from .repair_suggestions import supported_catalog
+            value=supported_catalog()
         elif name=='hads_get_incident':
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
@@ -248,13 +251,7 @@ class EvidenceBroker:
             elif name=='hads_get_device_registry':
                 projection=lambda rows:[{k:x[k] for k in ('id','manufacturer','model','config_entries','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('id')==args['device_id']]
             elif name in {'hads_get_supervisor_status','hads_get_haos_status','hads_get_addon_info','hads_get_addon_stats'}:
-                fields={
-                    'hads_get_supervisor_status':('version','version_latest','update_available','healthy','supported','arch','channel'),
-                    'hads_get_haos_status':('version','version_latest','update_available','board','boot','data_disk'),
-                    'hads_get_addon_info':('slug','name','version','version_latest','state','update_available','boot','startup','watchdog','healthy','available','arch'),
-                    'hads_get_addon_stats':('cpu_percent','memory_usage','memory_limit','memory_percent','network_tx','network_rx','blk_read','blk_write'),
-                }[name]
-                projection=lambda value:{k:value[k] for k in fields if k in value}
+                projection=lambda value:project_supervisor_read(method,value)
             elif name=='hads_get_applications':
                 projection=lambda value:{'addons':[{k:row[k] for k in ('slug','name','state','version','version_latest','update_available','available') if k in row}
                     for row in value.get('addons',[])[:200] if isinstance(row,dict)]} if isinstance(value.get('addons'),list) else None
@@ -265,7 +262,7 @@ class EvidenceBroker:
             if name in {'hads_get_supervisor_status','hads_get_haos_status','hads_get_addon_info','hads_get_addon_stats','hads_get_applications'} and not value:
                 raise ValueError('missing_supervisor_fields')
             raw=canonical(value)
-        except (ValueError,TypeError,KeyError):
+        except (ValueError,TypeError,KeyError,OverflowError):
             return self._result(incident_id,name,source,'read_failed',None,now,'Neočekávaný formát zdrojových dat.')
         if len(raw.encode())>12000:
             return self._result(incident_id,name,source,'read_failed',None,now,'Výsledek překročil limit; zúžení čtení je nutné.')

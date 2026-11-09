@@ -1,5 +1,34 @@
 # Výsledky HADS Next, 2026-11-09
 
+## P5: validovaný návrh a stávající plánovač
+
+**OVĚŘENO SE SKUTEČNÝM CORE A PŮVODNÍM HERMES:** modelový návrh jediné
+reference prošel nezávislým controller validátorem. Ten vyžaduje načtenou
+jednoduchou konfiguraci, doložený chybějící původní stav, dostupný náhradní cíl,
+odpovídající doménu akce a existující citace. Novější nedostupný stav nelze
+zakrýt starším dobrým. Riziko, záloha a rollback se neurčují z tvrzení modelu.
+[Nativní protokol a konkrétní neměnný návrh](evidence/hermes-repair-suggestion.json).
+Model zůstává skriptovaný; tento běh do Core nezapisuje.
+
+**OVĚŘENO OFFLINE NAD SKUTEČNÝM SOUBOREM FIXTURE:** nový bridge předá návrh
+původnímu `RepairEngine.prepare_entity_reference`, který znovu načte plný objekt,
+ověří cíl, vytvoří původní neměnný RepairPlan a ověřený snapshot. Původní
+ApprovalAuthority blokuje zápis bez souhlasu a replay. Po simulovaném schválení
+se změnil jediný odkaz; původní FunctionalVerifier nad výslovně syntetickými
+funkčními důkazy uložil český report. Není to nový živý Core/HAOS opravný test.
+Dosavadní samostatný odpojený Core repair test a jeho ochrany zůstaly zachované.
+
+Provozní UI zobrazuje konkrétní návrh a ruční postup. Nabízí pouze ruční kontrolu
+nebo zamítnutí, vázané na neměnný `suggestion_id`; nevytváří falešné schválení
+nepodporovaného produkčního zápisu. Takové rozhodnutí nikdy neoznačuje opravu
+za provedenou nebo ověřenou. Původní OneDrive a rollback kontroly se nemění.
+
+Obě cesty evidence aplikací nyní sdílejí pozitivní výběr Supervisor polí:
+celé aplikační `options` se neukládají do spisu. Výsledek každého čtení je
+zachycen před dalším požadavkem; čitelné logy nezakryjí nedostupné statistiky.
+Prošlo 145 regresních testů včetně tohoto negativního scénáře.
+P6 (finální instalovatelný runtime a ARM64/HAOS přejímka) ještě není dokončené.
+
 ## P4: řízené specializace a cílený výzkum
 
 **OVĚŘENO:** originální izolovaný Hermes předal vyšetřování z Automation
@@ -24,7 +53,8 @@ reference, nikoli příkazy nebo potvrzení příčiny.
 **SKUTEČNÉ VEŘEJNÉ API:** modul přečetl pět GitHub Issues a jednu forum shodu.
 Tento samostatný [veřejný test](evidence/research-public.json) používá fixture
 verze, žádný model ani HAOS. Nelze jej zaměnit za úsudek skutečného LLM.
-P5 a P6 ještě nejsou dokončené; živá přejímka níže zůstává čekající.
+V tomto historickém P4 checkpointu ještě nebyly dokončené P5 a P6;
+živá přejímka níže zůstává čekající.
 
 ## P3: nativní zdroje a volitelný Music Assistant
 

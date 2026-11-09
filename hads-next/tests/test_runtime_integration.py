@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 import unittest
 
 from hads_next.haos_application import Application
-from hads_next.observability import CoreReader, CoreWSReader, SupervisorReader
+from hads_next.observability import CoreReader, CoreWSReader, SupervisorReader,ReadFailure
 import test_addon_server as ingress_fixture
 
 
@@ -53,6 +53,20 @@ class SetupAndPrivilegeTests(unittest.TestCase):
 
 
 class RuntimeSourceTests(unittest.TestCase):
+    def test_app_read_status_is_captured_before_the_next_request(self):
+        def native(path):
+            if path.endswith('/stats'):raise ReadFailure('http_error',403)
+            if path.endswith('/logs'):return 'App log is readable.'
+            return {'result':'ok','data':{'slug':'fixture','state':'started','version':'1'}}
+        with tempfile.TemporaryDirectory() as tmp:
+            app=Application(tmp,supervisor=SupervisorReader(native))
+            case=app.report_app_incident('Aplikace nereaguje.','fixture','owner')
+            reads={r['content']['kind']:r['content'] for r in case['records'] if r['kind']=='source_read'}
+            self.assertTrue(reads['app_info']['status']['read_succeeded'])
+            self.assertFalse(reads['app_stats']['status']['read_succeeded'])
+            self.assertEqual(reads['app_stats']['status']['last_response_status'],403)
+            self.assertTrue(reads['app_logs']['status']['read_succeeded'])
+
     def test_history_context_can_only_be_enriched_from_the_exact_native_state(self):
         from datetime import datetime,timezone
         at=1794153600.;iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
@@ -113,8 +127,9 @@ class RuntimeSourceTests(unittest.TestCase):
         def transport(path):
             calls.append(path)
             if path.endswith('/logs'):return '2026-11-09 ERROR provider disconnected password=DO_NOT_STORE'
+            if path.endswith('/stats'):return {'result':'ok','data':{'cpu_percent':1.2,'memory_usage':1048576,'memory_limit':2147483648}}
             if path=='/addons':return {'result':'ok','data':{'addons':[{'slug':'fixture_radio','name':'Radio'}]}}
-            return {'result':'ok','data':{'slug':'fixture_radio','state':'stopped','version':'1.0'}}
+            return {'result':'ok','data':{'slug':'fixture_radio','state':'stopped','version':'1.0','options':{'unknown_option':'PRIVATE_OPTION_VALUE'}}}
         with tempfile.TemporaryDirectory() as tmp:
             now=[100.0]
             app=Application(Path(tmp),supervisor=SupervisorReader(transport),clock=lambda:now[0])
@@ -125,6 +140,7 @@ class RuntimeSourceTests(unittest.TestCase):
             case=app.report_app_incident('Rádio neběží','fixture_radio','owner')
             self.assertEqual(len(case['evidence']),3)
             self.assertNotIn('DO_NOT_STORE',json.dumps(case))
+            self.assertNotIn('PRIVATE_OPTION_VALUE',json.dumps(case))
             now[0]+=10
             again=app.report_app_incident('Rádio neběží','fixture_radio','owner')
             self.assertEqual(len(again['evidence']),3)

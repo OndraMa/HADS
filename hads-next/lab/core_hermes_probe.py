@@ -200,9 +200,13 @@ input_button:
                             await asyncio.sleep(.1)
                         job=investigations[0]
                         assert job['state']=='hypothesis_ready',{'state':job['state'],'calls':job['model_calls'],'requests':len(model.requests),'reads':job['reads']}
+                        suggestion=job['conclusion']['repair_suggestion']
+                        assert suggestion['status']=='supported_lab_candidate' and suggestion['production_executable'] is False,suggestion
+                        assert suggestion['change']=={'from':'input_boolean.hads_lab_missing','to':'input_boolean.hads_lab_target'}
                         async with ui_client.get(ui+'/case/'+incident['id']) as response:
                             page=await response.text();assert response.status==200
                             assert 'Automatizace se spustila' in page and 'SYNTHETIC_TEST_KEY' not in page
+                            assert 'Návrh dalšího postupu' in page and 'Chci postupovat ručně' in page and 'Schválit opravu' not in page
                         async with ui_client.get(ui+'/api/status') as response:
                             status=await response.text();assert 'SYNTHETIC_TEST_KEY' not in status and token not in status
                     result={'completed':True,'engine':'NousResearch/hermes-agent','revision':'d923a5eb487a17c0a68801bba9ef0f56c81040a8',

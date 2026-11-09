@@ -21,6 +21,24 @@ _BEARER = re.compile(r"Bearer\s+[^\s\"']+", re.I)
 _ASSIGNMENT = re.compile(r"((?:token|password|secret|api[-_]?key|access[-_]?key|authorization)\s*[=:]\s*)[^\s&\"'<>]+", re.I)
 _URL_CREDENTIAL = re.compile(r"(https?://)[^/@\s]+:[^/@\s]+@", re.I)
 
+SUPERVISOR_FIELDS={
+    'info':('version','version_latest','update_available','healthy','supported','arch','channel'),
+    'os_info':('version','version_latest','update_available','board','boot','data_disk'),
+    'app_info':('slug','name','version','version_latest','state','update_available','boot','startup','watchdog','healthy','available','arch'),
+    'app_stats':('cpu_percent','memory_usage','memory_limit','memory_percent','network_tx','network_rx','blk_read','blk_write'),
+}
+
+
+def project_supervisor_read(kind,value):
+    """Shared positive projection; never persist an application's options."""
+    import math
+    if kind not in SUPERVISOR_FIELDS or not isinstance(value,dict):raise ValueError('invalid_supervisor_contract')
+    result={key:value[key] for key in SUPERVISOR_FIELDS[kind] if key in value}
+    if not result:raise ValueError('missing_supervisor_fields')
+    if kind=='app_stats' and any(type(x) not in {int,float} or not math.isfinite(x) or x<0 for x in result.values()):
+        raise ValueError('invalid_supervisor_statistics')
+    return redact(result)
+
 
 def redact(value):
     """Action payloads are excluded wholesale: they may include alarm PINs."""

@@ -8,6 +8,7 @@ from .evidence import canonical
 from .observability import redact
 from .worker_protocol import receive,send
 from .investigator_roles import RoleBroker
+from .repair_suggestions import interpret_proposal
 
 
 class BrokerSession:
@@ -69,7 +70,7 @@ def run_investigation(jobs,job_id,broker,launcher,model_send,*,model):
         'Samostatně vyber další potřebné důkazy, například konfiguraci a trace automatizace, historii a Action history rádia. '
         'Při chybějícím zdroji ji uveď jako omezení. Neprohlašuj incident za vyřešený. '
         'Závěr vrať jako JSON: summary_cs, hypotheses:[{claim,evidence_ids,confidence}], needed:[], '
-        'next_test_cs, repair_proposal:null nebo objekt s target,change,reason,evidence_ids,risk,backup,verification,rollback,manual_alternative. '
+        'next_test_cs, repair_proposal:null nebo objekt s target,change:{from,to},reason,evidence_ids,risk,backup,preconditions,verification,rollback,manual_alternative. '
         'Pro jinou specializaci zvol hads_select_investigator s konkrétním úkolem a doloženým předáním. '
         'Aktuální role: '+canonical(broker.status())+'. Návrh není schválená oprava. Incident: '+canonical(incident)+'. '
         'Dřívější ověřená čtení po přerušení: '+canonical(job['reads'])[:20000])
@@ -101,6 +102,8 @@ def run_investigation(jobs,job_id,broker,launcher,model_send,*,model):
             conclusion=redact(conclusion)
             conclusion['repair_executable']=False
             conclusion['repair_limitation_cs']='Produkční opravný katalog není aktivní. Návrh není schválení ani příkaz.'
+            suggestion=interpret_proposal(conclusion.get('repair_proposal'),jobs.store.case(job['incident_id']))
+            conclusion['repair_suggestion']=None if suggestion is None else {'suggestion_id':suggestion.suggestion_id,**suggestion.document}
             unavailable=any(row['result']['status'] in {'unavailable','insufficient_permissions','read_failed','not_read'} for row in job['reads'])
             if unsupported or not available:
                 conclusion['unverified_model_summary_cs']=conclusion['summary_cs']
