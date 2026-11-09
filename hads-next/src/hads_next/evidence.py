@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from contextlib import contextmanager
 import json
 import math
 from pathlib import Path
@@ -99,11 +100,16 @@ class IncidentStore:
             if row is None:
                 db.execute("INSERT INTO evidence_schema VALUES (?)", (SCHEMA_VERSION,))
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
         db = sqlite3.connect(self.db_path, timeout=5)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
-        return db
+        try:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA foreign_keys=ON")
+            with db:
+                yield db
+        finally:
+            db.close()
 
     def open_incident(self, kind: str, symptom: str, components: list[str], at: float,
                       *, correlation_key: str | None = None, occurrence_id: str | None = None) -> dict:

@@ -1,5 +1,11 @@
 # Instalace a přejímka HADS Next 0.1.0-dev1
 
+**Pracovní větev `codex/hads-next-correction`: změny níže ještě nejsou vydaný
+instalační balíček.** Již vydaná 0.1.0-dev1 se nemění. V pracovním kódu přibyl
+průvodce s ověřením správce přes HA `config/auth/list`, automatické uložení
+vlastníka a propojení Supervisor zdrojů. Neinstaluj pracovní zdroje jako hotovou
+náhradu celé platformy; Hermes a živé opravy stále nejsou dokončené.
+
 Tento balík je vývojová aplikace pro testovací HAOS. Dosavadní Next prokázal
 izolovaný scénář s originálním Hermes, ale produkční HAOS worker a živé schvalované
 opravy nejsou dokončené. Tento balík je neaktivuje a nenahrazuje je demonstrací.
@@ -64,11 +70,12 @@ jako Doplňky. Aplikace má výchozí `boot: manual`; automatické spuštění p
 HAOS zapni až po úspěšné místní přejímce. Manuální spuštění příkazem `ha apps start`
 nebo tlačítkem Spustit není potvrzením úspěšné diagnostiky.
 
-Úvodní stránka zobrazí jen ID přihlášeného uživatele. Jako správce jej zkopíruj
-do volby `owner_user_id` v konfiguraci aplikace a aplikaci znovu spusť. Potom
-jsou data a hlášení dostupné pouze tomuto uživateli přes ingress. Prázdná volba,
-jiná identita nebo přímé spojení mimo Supervisor data nezpřístupní. Ověření ID
-je přístupová kontrola vývojového rozhraní, nikoli hotové schvalování HA oprav.
+Ve vydané 0.1.0-dev1 se vlastník nastavuje ruční volbou `owner_user_id`.
+Pracovní oprava tento krok nahrazuje průvodcem: přihlášeného správce ověří
+proti HA API a po potvrzení uloží jeho identitu do databáze. Jiná identita,
+neaktivní/systémový účet, neověřitelná role nebo spojení mimo Supervisor data
+nezpřístupní. Role se opětovně ověřuje s nejvýše patnáctisekundovou cache.
+Jde o přístupovou kontrolu, nikoli hotové schvalování HA oprav.
 
 ## Co tato verze dělá
 
@@ -88,7 +95,11 @@ je přístupová kontrola vývojového rozhraní, nikoli hotové schvalování H
 `homeassistant_api: true` zpřístupní Core proxy a Supervisor předá aplikaci
 `SUPERVISOR_TOKEN`. Tento token přes Core proxy jedná jako **administrátor HA**;
 není to read-only token. Proto jej drží pouze pevný čtecí adaptér bez obecného
-výběru URL/metody a nikde se neexportuje. Aplikace nemá `hassio_api`, `docker_api`,
+výběru URL/metody a nikde se neexportuje. Vydaná 0.1.0-dev1 nemá `hassio_api`.
+Pracovní oprava jej zapíná s rolí `manager`, protože ji dokumentované čtení
+seznamu, logů a statistik jiných aplikací vyžaduje. Role umožňuje i zápis;
+omezení zajišťuje pevný katalog GET operací a absence živého zapisovacího
+rozhraní, nikoli read-only scope tokenu. Pracovní aplikace nadále nemá `docker_api`,
 host networking, `privileged`, přístup k zařízením ani připojenou `/config`.
 
 Do příkazové řádky, kódu nebo promptu nedávej skutečné tokeny. UI nepřijímá
