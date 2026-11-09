@@ -8,10 +8,14 @@ Výchozí větev `main` stále obsahuje starší HADS 4.6.3. Její soubor
 ## Nejjednodušší stažení všeho
 
 Otevři **[GitHub Releases — HADS Next 0.1.0-dev1](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1)**.
-V části **Assets** klikni na **`HADS_Next_0.1.0-dev1-komplet.zip`**.
+Klikni na odkaz **Stáhnout kompletní ZIP**, který směřuje do složky
+**[KE_STAZENI/HADS_Next_0.1.0-dev1](https://github.com/OndraMa/HADS/tree/codex/hads-next/KE_STAZENI/HADS_Next_0.1.0-dev1)**.
+Otevři **`HADS_Next_0.1.0-dev1-komplet.zip`** a použij ikonu stažení.
 Tento ZIP má instalátor a český návod hned v kořeni; celý verzovaný repozitář
 je v jeho podsložce `zdrojovy-repozitar`. Vedle ZIPu jsou ke stažení také
-jednotlivé soubory a kontrolní součty.
+jednotlivé soubory a kontrolní součty. Automatické přílohy **Source code**
+v části Assets jsou archiv GitHubu; pro přehledné rozložení použij uvedený
+kompletní ZIP ve složce `KE_STAZENI`.
 
 Vydání je označené **Pre-release**, protože jde o vývojovou přejímku. Pokud
 na výchozí stránce stále vidíš 4.6.3, klikni na **Releases** nebo použij přímý

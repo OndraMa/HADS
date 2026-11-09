@@ -4,7 +4,9 @@
 
 **[Otevřít stránku vydání a stáhnout vše](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1)**
 
-V části **Assets** zvol `HADS_Next_0.1.0-dev1-komplet.zip`. Obsahuje instalační
+Na stránce vydání zvol **Stáhnout kompletní ZIP**, nebo otevři
+**[složku KE_STAZENI](KE_STAZENI/HADS_Next_0.1.0-dev1/)**
+a soubor `HADS_Next_0.1.0-dev1-komplet.zip`. Obsahuje instalační
 soubor, české návody, zdrojový balíček aplikace a celý verzovaný repozitář.
 Cloudový panel ChatGPT není potřeba. Repozitář je soukromý: přihlas se na GitHub
 účtem, který k němu má přístup.
