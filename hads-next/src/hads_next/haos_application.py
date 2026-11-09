@@ -28,7 +28,7 @@ def project_state(row):
 
 
 class Application:
-    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time):
+    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time, launcher=None):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.store = IncidentStore(self.data_dir / "incidents.sqlite")
@@ -47,6 +47,8 @@ class Application:
         self._apps = []
         self._timezone='UTC'
         self._source_job={'state':'idle','completed_at':None,'last_error':None}
+        from .investigation_service import InvestigationService
+        self.investigations=InvestigationService(self,launcher)
 
     def request_source_check(self):
         with self._lock:
@@ -188,12 +190,13 @@ class Application:
         with self._lock:
             return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
                     "entities": list(self._entities), "cases": cases,
-                    "hermes_enabled": False, "live_repairs_enabled": False,
+                    "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": False,
+                    'investigation_service':self.investigations.status(),
                     'sources': dict(self._sources),
                     'applications': list(self._apps),
                     'source_job': dict(self._source_job),
                     'timezone': self._timezone,
-                    "limitations_cs": "Vývojová přejímka: Hermes a živé opravy nejsou aktivní. Nedostupnost entity sama nedokazuje příčinu závady."}
+                    "limitations_cs": "Živé opravy nejsou aktivní. AI vyžaduje izolovaný runtime a výslovný souhlas s poskytovatelem. Nedostupnost entity sama nedokazuje příčinu závady."}
 
     def report_incident(self, symptom, entity_id, principal, *, occurred_at=None):
         symptom = " ".join(str(symptom).split())

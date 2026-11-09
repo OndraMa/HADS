@@ -83,6 +83,7 @@ class SourceStatus:
     last_error: str | None = None
     last_read_at: float | None = None
     last_evidence_at: float | None = None
+    last_response_status: int | None = None
 
     def snapshot(self, now=None):
         result = asdict(self)
@@ -141,10 +142,11 @@ class NativeWebSocket:
     Requires websockets>=16,<17, installed only for native WS use. No subscription,
     service call or arbitrary command is exposed by CoreReader.
     """
-    def __init__(self, url, token, *, supervisor_proxy=False):
+    def __init__(self, url, token, *, supervisor_proxy=False, allow_loopback=False):
         p = urlsplit(url)
         internal = supervisor_proxy and url == 'ws://supervisor/core/websocket'
-        if (not internal and (p.scheme != "wss" or p.path != "/api/websocket")) or p.username or p.password or p.query or p.fragment:
+        local = allow_loopback and p.scheme=='ws' and p.hostname=='127.0.0.1' and p.path=='/api/websocket'
+        if (not internal and not local and (p.scheme != "wss" or p.path != "/api/websocket")) or p.username or p.password or p.query or p.fragment:
             raise ValueError("explicit secure HA websocket URL required")
         self._url, self._token = url, token
 
@@ -189,9 +191,11 @@ class _Reader:
             # A fresh read of an old event must never rejuvenate its evidence.
             self.status.last_evidence_at = evidence_time(result) if evidence_time else None
             self.status.last_error = None
+            self.status.last_response_status = None
             return redact(result)
         except Exception as exc:
             status = exc.status if isinstance(exc, ReadFailure) else None
+            self.status.last_response_status = status
             if status in {401, 403}:
                 self.status.authenticated = False
                 self.status.interface_available = True
@@ -207,6 +211,11 @@ class CoreReader(_Reader):
 
     def config(self):
         return self._read("/api/config")
+
+    def automation_config(self, automation_id):
+        if not isinstance(automation_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', automation_id):
+            raise ValueError('invalid automation ID')
+        return self._read('/api/config/automation/config/' + automation_id)
 
     def states(self, entity_id=None):
         if entity_id is not None and not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id):

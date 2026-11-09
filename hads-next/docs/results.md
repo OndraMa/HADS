@@ -1,5 +1,33 @@
 # Výsledky HADS Next, 2026-11-09
 
+## P0–P2: skutečný vyšetřovací broker a provozní controller
+
+**HOTOVO A PROKAZATELNĚ FUNGUJE, AMD64 build container:** originální Hermes
+`d923a5e` řídí čtení přes pojmenovaný Evidence Broker a skutečné Core 2026.11.0.
+Produkční controller zpracoval ověření HA admin identity, registraci vlastníka,
+explicitní opt-in, skutečné HTTPS volání místního skriptovaného modelu, frontu,
+šest čtení a pět nových důkazů, včetně skutečného 404 pro chybějící entitu.
+Závěr je uložen v češtině; incident se pouze analýzou neuzavírá. Worker s UID
+65534 je izolovaný chroot/NNP/seccomp, controller má UID 65532 a drží tokeny.
+
+Prošel skutečný SIGKILL workeru a pokračování novým procesem ve stejném
+vyšetřování z perzistentního čtení bez opakovaného požadavku na Core.
+Negativní scénáře původního agenta odmítají shell, Python čtení tokenů a write
+parametr. Chybějící Supervisor se vykáže jako nedostupný; vymyšlená jistá
+příčina bez důkazů se nepřijímá. Viz [protokol](evidence/hermes-controller-core.json)
+a [popis runtime](hermes.md). Model je skriptovaný a ingress peer simulovaný.
+
+**IMPLEMENTOVÁNO, ČEKÁ NA ŽIVÝ HAOS TEST:** provozní start izolovaného launcheru,
+modelová konfigurace v souboru 0600 mimo worker, persistentní fronta, metering,
+resume a webové ovládání. HAOS výchozí instalační cesta se ještě dokončuje;
+obecné produkční zápisy jsou vypnuté.
+
+**NEDOKONČENO / ČEKÁ:** P3 Music Assistant a ZHA sběr, P4 výzkum a specializace,
+P5 úplné předávání návrhů, P6 ARM64/HAOS přejímka a instalační kandidát.
+Autorizovaný reálný modelový endpoint ani testovací HAOS nejsou v cloudu
+dostupné. Toto není výsledek autonomního úsudku reálného LLM ani živé domácnosti.
+Nový release nebo instalační archiv zatím nevzniká. Níže jsou starší checkpointy.
+
 ## Nově: skutečná oprava v odpojeném Home Assistant Core
 
 Uživatel zatím nemá testovací HAOS. V cloudu byl proto skutečně sestaven a

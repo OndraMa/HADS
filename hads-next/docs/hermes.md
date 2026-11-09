@@ -1,5 +1,45 @@
 # Hermes: skutečný runtime, přesný rozsah ověření
 
+## P0–P2 provozní vyšetřování, 2026-11-09
+
+Nový provozní průchod používá `evidence_broker.py`, `investigation_jobs.py`,
+`investigation_service.py`, `hermes_runtime.py` a oddělený root launcher.
+`AIAgent.run_conversation` v auditovaném upstream pinu dostává pojmenované
+čtecí nástroje. Každé jejich volání se vrací přes zděděný spojený FD do
+controlleru, který provede skutečné nativní čtení. HA token ani modelový API
+klíč nejsou ve workeru, jeho prostředí či filesystemu.
+
+Controller odloží UID na 65532. Samostatný launcher bez přihlašovacích údajů
+spouští pevně určený worker, který před inferencí aktivuje chroot, UID 65534,
+NNP, limit 384 MiB adresního prostoru a RC3 seccomp/write seal. RC3 filtr není
+rozšířen; doplněno bylo obnovení parent-death SIGKILL po změně UID. Worker
+nevytváří sockety, nespouští procesy, nečte HA soubory a nemění filesystem.
+Launcher přijímá pouze pevný start/stop/cancel protokol; nemá shell rozhraní.
+
+Prošel skutečný Core 2026.11.0 + skutečný Hermes + provozní controller:
+ověření HA admina → registrace → výslovná konfigurace AI → ověřený HTTPS
+skriptovaný endpoint → fronta → šest čtení → pět nových důkazů → český závěr.
+Odpověď Core 404 je samostatný negativní důkaz, nikoli vymyšlený stav entity.
+Testovaný ingress peer je loopback simulace, nikoli HAOS ingress.
+
+Prošel také skutečný SIGKILL workeru po uloženém čtení, rekonstrukce aplikace
+a pokračování novým workerem ve stejném spisu; potvrzená konfigurace se znovu
+nečetla z Core. Neznámý výsledek modelového volání blokuje další účtovaný retry.
+Každý intent se uloží před síťovým požadavkem. Limit je 8 požadavků na případ,
+12 za UTC den, 1024 výstupních tokenů na požadavek a nejvýše dvě spuštění
+workeru na vyšetřování. Retence případů nesmaže denní počítadlo.
+
+Přesné vstupy a rozsahy: `evidence/core-broker.json`,
+`evidence/hermes-core-broker.json`, `evidence/hermes-controller-core.json`.
+Základní instalační zdroj se ještě nepovažuje za hotový kandidát. Nový runtime
+se sestavuje přes `scripts/investigation_context.py` a `haos/Hermes.Dockerfile`;
+žádný nový instalační archiv se v tomto checkpointu nepublikuje.
+Živý HAOS, skutečný Supervisor, ARM64/RPi a reálný jazykový model čekají.
+Placený poskytovatel je standardně vypnutý; OAuth zde není implementováno.
+
+Následující části popisují historickou snapshot demonstraci. Její omezení se
+vztahují na starý `native_hermes_investigation`, který zůstává test entry pointem.
+
 Stav k 2026-11-08: integrační test používá originální `NousResearch/hermes-agent`
 `v0.22.2`, commit `d923a5eb487a17c0a68801bba9ef0f56c81040a8`.
 Jde o stejný pin jako v RC3; novější upstream HEAD byl při rešerši
