@@ -94,7 +94,7 @@ class IngressTests(unittest.TestCase):
         self.assertFalse(self.app.investigations.research.enabled())
         self.assertEqual(self.request('POST','/setup/research',urlencode(form))[0],303)
         self.assertTrue(self.app.investigations.research.enabled())
-        self.assertEqual(self.request('POST','/investigate/cancel',urlencode({'csrf':self.server.csrf,'job_id':'unknown'}))[0],400)
+        self.assertEqual(self.request('POST','/investigate/cancel',urlencode({'csrf':self.server.csrf,'job_id':'unknown'}))[0],409)
 
     def test_manual_preference_is_bound_to_draft_and_never_approves_a_write(self):
         self.app.enroll_owner('owner-id')
@@ -111,7 +111,7 @@ class IngressTests(unittest.TestCase):
         self.assertFalse(decision['approval_granted']);self.assertEqual(decision['functional_result'],'not_verified')
         self.assertEqual(stored['incident']['status'],'open')
         page=self.request('GET','/case/'+case['id'])[1]
-        self.assertIn('Chci postupovat ručně',page);self.assertNotIn('Schválit opravu',page)
+        self.assertIn('Zvolil jsi ruční kontrolu',page);self.assertNotIn('Schválit opravu',page)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import threading
 from .ai_provider import AIProvider,ProviderDisabled
 from .evidence_broker import EvidenceBroker
 from .hermes_runtime import run_investigation
+from .runtime_check import probe_runtime,verified_probe
 from .investigation_jobs import InvestigationJobs,JobBlocked
 from .zha_observer import ZHAJournal,ZHAObserver
 from .music_configuration import MusicConfiguration
@@ -25,14 +26,49 @@ class InvestigationService:
         self._slot=threading.Lock()
         self._schedule_lock=threading.RLock()
         self._active_job=None
+        self._probe={'state':'not_read','summary_cs':'Kontrola izolovaného Hermesu zatím neproběhla. Model se při ní nevolá.','checked_at':None}
 
     def status(self):
         return {'provider':self.provider.public_status(),'runtime_installed':self.launcher is not None,
             'public_research_enabled':self.research.enabled(),
+            'runtime_probe':dict(self._probe),'runtime_start_error':getattr(self.app,'runtime_error',None),
             'worker_active':self._slot.locked(),'execution_authority':'none',
             'real_model_acceptance':'pending','haos_acceptance':'pending'}
 
+    def request_probe(self,principal):
+        if not principal or principal!=self.app.owner():raise JobBlocked('Kontrolu runtime může spustit pouze ověřený vlastník.')
+        if self.launcher is None:
+            self._probe={'state':'unavailable','summary_cs':'Izolovaný launcher není dostupný. Diagnostická čtení mohou pokračovat bez AI.','checked_at':self.app.clock()}
+            return False
+        with self._schedule_lock:
+            if not self._slot.acquire(blocking=False):raise JobBlocked('Právě probíhá vyšetřování nebo kontrola. Vyčkej na jeho dokončení.')
+            self._probe={'state':'running','summary_cs':'Načítám původní Hermes a ověřuji jeho izolaci. Žádný modelový požadavek se neposílá.','checked_at':None}
+        def run():
+            try:
+                # No job/credentials/provider is attached. Unexpected model or
+                # source requests fail before any external operation can run.
+                result=probe_runtime(self.launcher,self.broker.schemas())
+                valid=verified_probe(result)
+                summary='Původní Hermes se načetl a izolace prošla. Nebyl volán model; skutečný výsledek vyšetřování tím ještě není ověřen.' if valid else \
+                    'Pro Hermes není dostatečná paměťová rezerva. Sběr dat pokračuje bez AI.' if result.get('error')=='insufficient_memory_reserve' else \
+                    'Izolaci Hermesu se nepodařilo potvrdit. AI se nespustí bez úspěšné kontroly před voláním modelu.'
+                outcome={'state':'ready' if valid else 'failed','summary_cs':summary,'checked_at':self.app.clock(),'receipt':result}
+            except Exception as error:
+                outcome={'state':'failed','summary_cs':'Izolovaný Hermes není připraven. Diagnostika bez AI zůstává dostupná.',
+                    'checked_at':self.app.clock(),'error_type':type(error).__name__}
+            finally:
+                # A readiness check must not start any queued model work.
+                with self._schedule_lock:
+                    self._slot.release();self._probe=outcome
+        threading.Thread(target=run,daemon=True,name='hads-hermes-readiness').start()
+        return True
+
     def start(self,incident_id,principal,*,ack_unknown=False):
+        with self._schedule_lock:
+            if self._probe['state']=='running':raise JobBlocked('Právě se ověřuje Hermes bez volání modelu. Po dokončení spusť vyšetřování znovu.')
+            return self._start(incident_id,principal,ack_unknown=ack_unknown)
+
+    def _start(self,incident_id,principal,*,ack_unknown=False):
         if not principal or principal!=self.app.owner():raise JobBlocked('Vyšetřování může spustit pouze ověřený vlastník.')
         identity=self.jobs.enqueue(incident_id)
         job=self.jobs.get(identity)

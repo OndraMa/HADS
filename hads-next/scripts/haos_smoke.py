@@ -9,19 +9,21 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-IMAGE = "hads-next-haos:0.1.0-dev1"
+IMAGE = "hads-next-haos:0.2.0-dev1"
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--installer", type=Path, required=True)
+    parser.add_argument("--image",default=IMAGE)
     args = parser.parse_args()
+    image=args.image
     env = dict(os.environ)
     for name in ("DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_TLS", "DOCKER_TLS_VERIFY", "DOCKER_CERT_PATH"):
         env.pop(name, None)
-    def docker(*command, check=True):
+    def docker(*command, check=True, timeout=60):
         result = subprocess.run(["docker", "--host=unix:///var/run/docker.sock", *command],
-            env=env, capture_output=True, text=True, timeout=60)
+            env=env, capture_output=True, text=True, timeout=timeout)
         if check and result.returncode:
             raise RuntimeError(f"Docker {command[0]} exited {result.returncode}: " + (result.stderr + result.stdout)[-3000:])
         return result
@@ -30,12 +32,27 @@ def main():
     report = {"scope": "container_with_fake_supervisor", "live_haos": False, "arm64_tested": False,
               "installer_sha256": hashlib.sha256(args.installer.read_bytes()).hexdigest()}
     try:
+        isolation=["run","--rm","--network","none","--read-only","--cap-drop","ALL",
+            "--cap-add","CHOWN","--cap-add","SETUID","--cap-add","SETGID","--cap-add","SYS_CHROOT",
+            "--security-opt","no-new-privileges","--pids-limit","64","--cpus","1",
+            "--tmpfs","/tmp:rw,nosuid,nodev,size=32m,mode=1777",
+            "--tmpfs","/opt/hermes-root/tmp:rw,nosuid,nodev,size=32m,mode=1777"]
+        result=docker(*isolation,"--memory","768m","--memory-swap","768m","--entrypoint","python",image,
+            "-m","hads_next.runtime_check","--self-check",timeout=195)
+        report["native_runtime_readiness"]=json.loads(result.stdout)
+        assert report["native_runtime_readiness"]["passed"] is True
+        rejected=docker(*isolation,"--memory","512m","--memory-swap","512m","--entrypoint","python",image,
+            "-m","hads_next.runtime_check","--self-check",check=False,timeout=195)
+        memory_receipt=json.loads(rejected.stdout)
+        assert rejected.returncode!=0 and memory_receipt["result"]["error"]=="insufficient_memory_reserve",memory_receipt
+        report["memory_admission_refused_without_model"]=memory_receipt
         docker("volume", "create", volume)
         docker("run", "-d", "--name", name, "--network", "none", "--read-only",
-            "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "SETUID", "--cap-add", "SETGID",
-            "--security-opt", "no-new-privileges", "--memory", "256m", "--memory-swap", "256m",
-            "--cpus", "1", "--pids-limit", "32", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-            "--mount", f"type=volume,src={volume},dst=/data", IMAGE)
+            "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "SETUID", "--cap-add", "SETGID", "--cap-add", "SYS_CHROOT",
+            "--security-opt", "no-new-privileges", "--memory", "768m", "--memory-swap", "768m",
+            "--cpus", "1", "--pids-limit", "64", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
+            "--tmpfs", "/opt/hermes-root/tmp:rw,nosuid,nodev,size=32m,mode=1777",
+            "--mount", f"type=volume,src={volume},dst=/data", image)
         probe = '''import http.client,json,time
 for attempt in range(30):
  try:
@@ -53,8 +70,10 @@ print(json.dumps({'health':body,'runtime_uid':65532,'capabilities':0,'direct_dat
         read = "from hads_next.haos_application import Application; a=Application('/data/hads-next'); assert a.snapshot()['cases'][0]['id']==" + repr(case_id)
         docker("exec", "--user", "65532", name, "python", "-c", read)
         report["case_persisted_after_container_restart"] = True
-        report["image"] = json.loads(docker("image", "inspect", IMAGE, "--format", "{{json .}}").stdout)
+        report["image"] = json.loads(docker("image", "inspect", image, "--format", "{{json .}}").stdout)
         report["image"] = {k: report["image"][k] for k in ("Id", "Architecture", "Os", "Size")}
+        report["arm64_tested"]=report["image"]["Architecture"]=="arm64"
+        report["raspberry_pi_tested"]=False
         with tempfile.TemporaryDirectory(prefix="hads-next-fake-ha-") as tmp:
             fake = Path(tmp) / "ha"
             fake.write_text('''#!/usr/local/bin/python3
@@ -62,13 +81,13 @@ import json,sys
 args=sys.argv[1:]
 with open('/tmp/ha-calls.jsonl','a') as f:f.write(json.dumps(args)+'\\n')
 if args==['apps','--raw-json']:print(json.dumps({'result':'ok','data':{'addons':[]}}))
-elif args==['apps','info','local_hads_next_dev','--raw-json']:print(json.dumps({'data':{'version':'0.1.0-dev1','state':'started'}}))
-elif args not in [['apps','--help'],['store','reload'],['apps','install','local_hads_next_dev'],['apps','start','local_hads_next_dev']]:sys.exit(91)
+elif args==['apps','info','local_hads_next_investigation','--raw-json']:print(json.dumps({'data':{'version':'0.2.0-dev1','state':'started'}}))
+elif args not in [['apps','--help'],['store','reload'],['apps','install','local_hads_next_investigation'],['apps','start','local_hads_next_investigation']]:sys.exit(91)
 ''')
             fake.chmod(0o755)
             assertion = '''import json,subprocess,pathlib
 calls=[json.loads(x) for x in pathlib.Path('/tmp/ha-calls.jsonl').read_text().splitlines()]
-assert calls==[['apps','--help'],['apps','--raw-json'],['store','reload'],['apps','install','local_hads_next_dev'],['apps','start','local_hads_next_dev'],['apps','info','local_hads_next_dev','--raw-json']],calls
+assert calls==[['apps','--help'],['apps','--raw-json'],['store','reload'],['apps','install','local_hads_next_investigation'],['apps','start','local_hads_next_investigation'],['apps','info','local_hads_next_investigation','--raw-json']],calls
 again=subprocess.run(['bash','/installer.sh','--install-dev'],capture_output=True)
 assert again.returncode!=0
 assert len(pathlib.Path('/tmp/ha-calls.jsonl').read_text().splitlines())==len(calls)
@@ -79,10 +98,10 @@ print(json.dumps({'fake_supervisor_only':True,'commands':calls,'reinstallation_r
                 "--tmpfs", "/tmp:rw,noexec,nosuid,size=32m", "--tmpfs", "/addons:rw,nosuid,size=16m",
                 "--mount", f"type=bind,src={args.installer.resolve()},dst=/installer.sh,readonly",
                 "--mount", f"type=bind,src={fake},dst=/usr/local/bin/ha,readonly",
-                "--entrypoint", "bash", IMAGE, "-c", script)
+                "--entrypoint", "bash", image, "-c", script)
             report["install"] = json.loads(result.stdout)
         report["passed"] = True
-        output = ROOT / "docs/evidence/haos-package.json"
+        output = ROOT / "docs/evidence/haos-investigation-package.json"
         output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps(report, ensure_ascii=False, indent=2))
     except Exception:

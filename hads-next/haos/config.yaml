@@ -1,8 +1,8 @@
 name: "HADS Next – vývojová přejímka"
-version: "0.1.0-dev1"
-slug: "hads_next_dev"
-description: "České incidentní spisy a omezená čtení HA Core; AI a živé opravy jsou vypnuté."
-url: "https://github.com/OndraMa/HADS/tree/codex/hads-next/hads-next"
+version: "0.2.0-dev1"
+slug: "hads_next_investigation"
+description: "Původní Hermes, čtecí vyšetřování a české návrhy. AI vyžaduje souhlas; produkční zápisy jsou vypnuté."
+url: "https://github.com/OndraMa/HADS/tree/codex/hads-next-investigation/hads-next"
 arch:
   - aarch64
   - amd64
@@ -24,9 +24,7 @@ host_network: false
 apparmor: true
 ports: {}
 map: []
-options:
-  owner_user_id: ""
-schema:
-  owner_user_id: str?
+options: {}
+schema: {}
 backup: cold
 watchdog: "http://[HOST]:8099/health"

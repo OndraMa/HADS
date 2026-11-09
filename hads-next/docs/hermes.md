@@ -32,7 +32,7 @@ workeru na vyšetřování. Retence případů nesmaže denní počítadlo.
 Přesné vstupy a rozsahy: `evidence/core-broker.json`,
 `evidence/hermes-core-broker.json`, `evidence/hermes-controller-core.json`.
 Základní instalační zdroj se ještě nepovažuje za hotový kandidát. Nový runtime
-se sestavuje přes `scripts/investigation_context.py` a `haos/Hermes.Dockerfile`;
+se sestavuje přes `scripts/investigation_context.py` a `haos/Dockerfile`;
 žádný nový instalační archiv se v tomto checkpointu nepublikuje.
 Živý HAOS, skutečný Supervisor, ARM64/RPi a reálný jazykový model čekají.
 Placený poskytovatel je standardně vypnutý; OAuth zde není implementováno.

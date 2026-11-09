@@ -13,7 +13,7 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read
 
-VERSION = "0.1.0-dev1"
+VERSION = "0.2.0-dev1"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -28,12 +28,13 @@ def project_state(row):
 
 
 class Application:
-    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time, launcher=None):
+    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time, launcher=None,runtime_error=None):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.store = IncidentStore(self.data_dir / "incidents.sqlite")
         self.core, self.clock = core, clock
         self.core_ws, self.supervisor = core_ws, supervisor
+        self.runtime_error=runtime_error
         with self.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS application_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
         self._lock = threading.RLock()

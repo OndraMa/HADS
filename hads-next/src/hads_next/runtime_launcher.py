@@ -33,7 +33,7 @@ def serve(fd):
             if request=={'kind':'stop'}:return
             if request=={'kind':'cancel'}:continue
             try:
-                if set(request)!={'kind','port','nonce','model','prompt','schemas'} or request['kind']!='run':
+                if set(request)!={'kind','port','nonce','model','prompt','schemas','probe_only'} or request['kind']!='run' or type(request['probe_only']) is not bool:
                     raise ValueError('Invalid launcher request')
                 if type(request['port']) is not int or not 1024<=request['port']<=65535:
                     raise ValueError('Invalid broker port')
@@ -47,7 +47,9 @@ def serve(fd):
                 limit_file=Path('/sys/fs/cgroup/memory.max');used_file=Path('/sys/fs/cgroup/memory.current')
                 if limit_file.exists() and used_file.exists() and limit_file.read_text().strip()!='max':
                     available=min(available,int(limit_file.read_text())-int(used_file.read_text()))
-                if available<576*1024*1024:raise RuntimeError('Insufficient memory reserve for safe investigation')
+                if available<576*1024*1024:
+                    send(control,{'ok':True,'result':{'completed':False,'error':'insufficient_memory_reserve','required_reserve_bytes':576*1024*1024}})
+                    continue
                 with private_home() as directory, socket.create_connection(('127.0.0.1',request['port']),timeout=5) as channel:
                     env={'PATH':'/usr/local/bin:/usr/bin:/bin','LANG':'C.UTF-8','PYTHONPATH':'/app',
                         'PYTHONDONTWRITEBYTECODE':'1','PYTHONNOUSERSITE':'1','PYTHONUNBUFFERED':'1',
@@ -97,11 +99,11 @@ class RuntimeLauncher:
         if receive(self.channel)!={'ok':True,'kind':'ready'}:raise RuntimeError('Root launcher did not initialize')
         self.channel.settimeout(180)
 
-    def run(self,*,port,nonce,model,prompt,schemas):
+    def run(self,*,port,nonce,model,prompt,schemas,probe_only=False):
         with self._run_lock:
             try:
                 with self._send_lock:
-                    send(self.channel,{'kind':'run','port':port,'nonce':nonce,'model':model,'prompt':prompt,'schemas':schemas})
+                    send(self.channel,{'kind':'run','port':port,'nonce':nonce,'model':model,'prompt':prompt,'schemas':schemas,'probe_only':probe_only})
                     self._active.set()
                 response=receive(self.channel)
             finally:self._active.clear()

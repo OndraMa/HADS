@@ -330,12 +330,15 @@ class CoreReader(_Reader):
 class CoreWSReader(_Reader):
     def __init__(self, transport):
         super().__init__("ha_core_ws", transport)
+        self._auth_reader=_Reader('ha_admin_identity',transport)
 
     def entity_registry(self):
         return self._read({"type": "config/entity_registry/list"})
 
     def auth_users(self):
-        return self._read({"type": "config/auth/list"})
+        # Ingress identity checks may overlap a diagnostic read. Their status
+        # must not overwrite a trace/registry failure in the shared reader.
+        return self._auth_reader._read({"type": "config/auth/list"})
 
     def repairs(self):
         return self._read({"type": "repairs/list_issues"})

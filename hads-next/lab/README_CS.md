@@ -2,7 +2,7 @@
 
 ## Nový běh P0–P3: původní Hermes a skutečná diagnostická API
 
-`haos/Hermes.Dockerfile` s `CORE_LAB=1` nyní navíc spouští
+`haos/Dockerfile` s `CORE_LAB=1` nyní navíc spouští
 `core_hermes_probe.py`: provozní controller, zabezpečené první nastavení,
 skutečný izolovaný Hermes, živé dotazy Evidence Brokeru a místní skriptovaný
 HTTPS model. `source_contract_probe.py` doplňuje Recorder, Activity/Action

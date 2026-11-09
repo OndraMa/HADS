@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from datetime import datetime,timedelta,timezone
 import ipaddress
 import logging
+import ctypes
 import aiohttp
 
 import yaml
@@ -81,6 +82,7 @@ class ScriptedModel:
 async def main():
     logging.basicConfig(level=logging.WARNING)
     launcher=RuntimeLauncher()
+    assert ctypes.CDLL(None).prctl(38,1,0,0,0)==0
     os.setgroups([]);os.setresgid(65532,65532,65532);os.setresuid(65532,65532,65532)
     try:
         with tempfile.TemporaryDirectory(prefix='hads-native-core-') as directory:
@@ -191,6 +193,13 @@ input_button:
                     ui='http://127.0.0.1:'+str(controller.server_port)
                     async with aiohttp.ClientSession(headers={'X-Remote-User-Id':user.id}) as ui_client:
                         async with ui_client.post(ui+'/setup/enroll',data={'csrf':controller.csrf},allow_redirects=False) as response:assert response.status==303
+                        async with ui_client.post(ui+'/setup/runtime',data={'csrf':controller.csrf},allow_redirects=False) as response:assert response.status==303
+                        for _ in range(800):
+                            readiness=app.investigations.status()['runtime_probe']
+                            if readiness['state'] in {'ready','failed','unavailable'}:break
+                            await asyncio.sleep(.05)
+                        assert readiness['state']=='ready',readiness
+                        assert model.requests==[],'Runtime readiness must not call the model'
                         async with ui_client.post(ui+'/setup/ai',data={'csrf':controller.csrf,'endpoint':'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions',
                             'model':'hads-scripted-contract','api_key':'SYNTHETIC_TEST_KEY','consent':'yes'},allow_redirects=False) as response:assert response.status==303
                         async with ui_client.post(ui+'/investigate',data={'csrf':controller.csrf,'incident_id':incident['id']},allow_redirects=False) as response:assert response.status==303
@@ -210,7 +219,7 @@ input_button:
                         async with ui_client.get(ui+'/api/status') as response:
                             status=await response.text();assert 'SYNTHETIC_TEST_KEY' not in status and token not in status
                     result={'completed':True,'engine':'NousResearch/hermes-agent','revision':'d923a5eb487a17c0a68801bba9ef0f56c81040a8',
-                        'job':job,'isolation_verified':True,'execution_authority':'none'}
+                        'job':job,'runtime_readiness':readiness,'isolation_verified':True,'execution_authority':'none'}
                     runtime=next(row['content'] for row in reversed(store.case(incident['id'])['records']) if row['kind']=='hermes_worker_runtime')
                     result.update(runtime)
                     assert runtime['uid']==65534 and runtime['isolation_verified']
@@ -247,4 +256,4 @@ input_button:
     finally:launcher.close()
 
 
-if __name__=='__main__':asyncio.run(asyncio.wait_for(main(),timeout=210))
+if __name__=='__main__':asyncio.run(asyncio.wait_for(main(),timeout=360))

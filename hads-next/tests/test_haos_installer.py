@@ -79,6 +79,12 @@ class HAOSInstallerTests(unittest.TestCase):
             self.assertEqual(len(names), len(set(names)))
             self.assertIn("config.yaml", names)
             self.assertIn("Dockerfile", names)
+            self.assertIn('hermes-constraints.txt',names)
+            self.assertIn('lab/core-constraints.txt',names)
+            self.assertNotIn('lab/core_repair.py',names)
+
+    def test_published_release_paths_cannot_be_overwritten(self):
+        with self.assertRaises(ValueError):self.builder.build_installer(ROOT/'releases'/'0.1.0-dev1')
 
     def test_inspection_extracts_verified_package_without_any_ha_call(self):
         destination = self.root / "inspection with spaces"

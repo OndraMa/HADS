@@ -1,5 +1,31 @@
 # Výsledky HADS Next, 2026-11-09
 
+## P6: instalační runtime a kontrola připravenosti
+
+**ZDROJOVÝ CHECKPOINT, BALÍČEK SE OVĚŘUJE:** kanonický HAOS Dockerfile
+obsahuje skutečný připnutý Hermes. Výchozí stavba neinstaluje Core ani testovací
+zapisovací server. Nový slug `local_hads_next_investigation` zachovává staré
+aplikace a data. První nastavení používá ověřenou HA identitu; AI je opt-in.
+
+Vlastník může bez modelu spustit skutečnou izolovanou kontrolu načtení upstream
+agenta. Kontrola sdílí jediný worker slot s vyšetřováním, nezapíná model ani
+neobnovuje staré placené úlohy. Nedostatek paměti odmítne spuštění před modelem.
+Chyby spuštění pomocníka jsou viditelné. Oddělené čtení HA identity nepřepisuje
+výsledek diagnostických WS čtení. Prošlo 150 offline regresních testů.
+
+**SKUTEČNÝ CORE A HERMES V AMD64 KONTEJNERU:**
+[protokol instalační smyčky](evidence/hermes-installation-core.json) obsahuje
+kontrolu připravenosti bez jediného modelového volání, poté opt-in, osm volání
+skriptovaného HTTPS endpointu, živá Core čtení a validovaný návrh. Obsahuje
+restart/SIGKILL a negativní bezpečnostní výsledky s hashi vstupů. Pozdější drobná
+změna pouze UI potvrzuje zaznamenání ruční volby; přesné vstupy nejsou zaměnitelné.
+Autonomní úsudek skutečného LLM tímto testem prokázaný není.
+
+Výchozí instalační image, jeho paměťová brána a restart se nyní ověřují.
+Nativní AMD64/ARM64 CI je připravené; jeho výsledek se nesmí předjímat.
+Živý HAOS, Supervisor, MA server, fyzická zařízení, RPi a skutečný LLM čekají.
+Produkční zapisovací katalog a migrační importér nejsou zpřístupněné.
+
 ## P5: validovaný návrh a stávající plánovač
 
 **OVĚŘENO SE SKUTEČNÝM CORE A PŮVODNÍM HERMES:** modelový návrh jediné

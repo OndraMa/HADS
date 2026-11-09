@@ -39,7 +39,7 @@ nikoli ve Windows.
 ## Proč je na výchozí stránce stará 4.6.3
 
 Výchozí větev `main` obsahuje historickou verzi. Pro novou práci vyber nad
-seznamem souborů **`codex/hads-next`**, nebo otevři výše uvedené **Releases**.
+seznamem souborů **`codex/hads-next-investigation`**. Staré Releases neobsahují nový runtime.
 Historické zdroje 4.x nejsou zdroje Hermes RC3 ani HADS Next.
 
 RC3 zůstává beze změn ve větvi `hermes-2-rc2-cloud-verification` a v adresáři

@@ -94,6 +94,11 @@ def run(payload):
         try:Path('write-canary').write_text('forbidden')
         except PermissionError:pass
         else:raise RuntimeError('Inference filesystem seal failed')
+        if payload.get('probe_only') is True:
+            import resource
+            return {'completed':True,'probe_only':True,'engine':'NousResearch/hermes-agent','revision':pin,
+                'native_agent_loaded':True,'model_calls':0,'isolation_verified':True,'uid':os.geteuid(),
+                'peak_rss_bytes':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,'execution_authority':'none'}
         result=agent.run_conversation(payload['prompt'])
         if not isinstance(result,dict) or result.get('completed') is not True:
             return {'completed':False,'error':'native_loop_incomplete','wire_errors':wire_errors[-2:],
