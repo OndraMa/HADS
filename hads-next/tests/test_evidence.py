@@ -115,6 +115,14 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(reopened["status"],"open")
         self.assertEqual(self.store.case(self.case_id)["records"][-1]["kind"],"verified_resolution")
 
+    def test_claim_of_real_core_success_without_persisted_verifier_is_rejected(self):
+        report = {"incident_id": self.case_id, "scope": "actual_core_container",
+                  "classification": "Vyřešeno a ověřeno", "execution_id": "invented"}
+        with self.assertRaises(ValueError):
+            self.store.mark_resolved(self.case_id, report)
+        self.assertEqual(self.store.case(self.case_id)["incident"]["status"], "open")
+        self.assertEqual(self.store.case(self.case_id)["records"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

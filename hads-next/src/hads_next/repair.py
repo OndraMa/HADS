@@ -134,6 +134,14 @@ class ApprovalAuthority:
 
 class RepairEngine:
     """No network, shell, service invocation or arbitrary-path repair capability."""
+    # The installed catalog remains fixture-only. A separate, non-installed
+    # real-Core laboratory specializes these hooks while reusing the exact
+    # durable approval/intent/replay boundary below.
+    _operation = "fixture.replace_entity_reference"
+    _risk = "low_isolated_fixture_only"
+    _snapshot_scope = "single_fixture_not_HAOS"
+    _preconditions = ("exact_original_sha256", "private_fixture_directory", "unexpired_owner_approval")
+
     def __init__(self, db_path, isolated_root, *, allowed_files, owner="owner", clock: Callable = time.time):
         root = Path(isolated_root).absolute()
         # A protected directory prevents another user from replacing files between checks.
@@ -181,6 +189,19 @@ class RepairEngine:
         except (KeyError, TypeError) as error:
             raise RepairBlocked("Fixture nemá podporovaný tvar automatizace.") from error
 
+    @staticmethod
+    def _change_entity(document, new_entity_id):
+        changed = json.loads(canonical(document))
+        changed["action"]["target"]["entity_id"] = new_entity_id
+        return changed
+
+    def _manual_alternative(self, filename, expected_old, new_entity_id):
+        return f"V izolovaném souboru {filename} změň pouze action.target.entity_id " \
+               f"z {expected_old} na {new_entity_id}; potom proveď funkční test."
+
+    def _target_metadata(self, filename, original):
+        return {"root": str(self.root), "filename": filename, "automation_id": original["id"]}
+
     def prepare_entity_reference(self, incident_id, filename, expected_old, new_entity_id,
                                  evidence_ids, reason, *, watch_seconds=30, target_state="on",
                                  rollback_of=None) -> RepairPlan:
@@ -197,23 +218,21 @@ class RepairEngine:
             raise RepairBlocked("Fixture není platný JSON.") from error
         if self._entity(original) != expected_old:
             raise RepairBlocked("Původní odkaz se změnil; plán je nutné připravit znovu.")
-        changed = json.loads(canonical(original))
-        changed["action"]["target"]["entity_id"] = new_entity_id
+        changed = self._change_entity(original, new_entity_id)
         document = {
-            "schema": 1, "operation": "fixture.replace_entity_reference", "incident_id": incident_id,
-            "target": {"root": str(self.root), "filename": filename, "automation_id": original["id"]},
+            "schema": 1, "operation": self._operation, "incident_id": incident_id,
+            "target": self._target_metadata(filename, original),
             "original": original, "proposed": changed, "original_sha256": digest(raw),
-            "reason": reason, "evidence_ids": sorted(set(evidence_ids)), "risk": "low_isolated_fixture_only",
-            "backup": {"required": "verified_local_snapshot", "scope": "single_fixture_not_HAOS",
+            "reason": reason, "evidence_ids": sorted(set(evidence_ids)), "risk": self._risk,
+            "backup": {"required": "verified_local_snapshot", "scope": self._snapshot_scope,
                        "onedrive_required": False},
-            "preconditions": ["exact_original_sha256", "private_fixture_directory", "unexpired_owner_approval"],
+            "preconditions": list(self._preconditions),
             "expected_result": f"Automatizace {original['id']} po spuštění nastaví {new_entity_id} na {target_state}.",
             "verification": {"automation_id": original["id"], "entity_id": new_entity_id,
                              "state": target_state, "watch_seconds": watch_seconds},
             "rollback": {"supported": True, "separate_approval_required": True,
-                         "scope": "single_fixture_not_HAOS", "rollback_of": rollback_of},
-            "manual_alternative": f"V izolovaném souboru {filename} změň pouze action.target.entity_id "
-                                  f"z {expected_old} na {new_entity_id}; potom proveď funkční test.",
+                         "scope": self._snapshot_scope, "rollback_of": rollback_of},
+            "manual_alternative": self._manual_alternative(filename, expected_old, new_entity_id),
         }
         plan = RepairPlan(canonical(document))
         conn = connect(self.db_path)
@@ -231,12 +250,11 @@ class RepairEngine:
         if row is None or row["document"] != plan.serialized:
             raise RepairBlocked("Plán nebyl připraven tímto katalogem nebo byl pozměněn.")
         document = plan.document
-        if document["operation"] != "fixture.replace_entity_reference" or document["target"]["root"] != str(self.root):
+        if document["operation"] != self._operation or document["target"]["root"] != str(self.root):
             raise RepairBlocked("Operace nebo kořen nemá oprávnění.")
-        if document["backup"]["onedrive_required"] or document["risk"] != "low_isolated_fixture_only":
+        if document["backup"]["onedrive_required"] or document["risk"] != self._risk:
             raise RepairBlocked("Rizikový zásah vyžaduje nezávisle ověřenou obnovitelnou OneDrive zálohu; není podporován.")
-        changed = json.loads(canonical(document["original"]))
-        changed["action"]["target"]["entity_id"] = self._entity(document["proposed"])
+        changed = self._change_entity(document["original"], self._entity(document["proposed"]))
         if changed != document["proposed"] or digest(row["snapshot"]) != document["original_sha256"]:
             raise RepairBlocked("Plán obsahuje změny mimo jediný podporovaný odkaz nebo neplatnou zálohu.")
         return document

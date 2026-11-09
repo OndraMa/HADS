@@ -1,4 +1,37 @@
-# Výsledky HADS Next, 2026-11-08
+# Výsledky HADS Next, 2026-11-09
+
+## Nově: skutečná oprava v odpojeném Home Assistant Core
+
+Uživatel zatím nemá testovací HAOS. V cloudu byl proto skutečně sestaven a
+spuštěn Home Assistant Core `2026.11.0` z PyPI. Nativní HA autentizace, validace,
+registry, automation trace, služby a event bus v tomto testu nejsou mocky.
+
+**HOTOVO A PROKAZATELNĚ FUNGUJE — pouze Core container:** nefunkční virtuální
+automatizace → spis s konfigurací, stavem a skutečným trace → přesný plán
+jediné reference → simulované místní schválení → skutečné Core config API →
+skutečný trigger a změna virtuálního cíle se společným kontextem → dvě reálné
+sekundy aktivního sledování → uložený český report a uzavření spisu.
+Řízeně vložená skutečná změna cíle na `off` potom znovu otevřela tentýž spis;
+vynechání staršího důkazu v dalším ověření úspěch neobnovilo.
+Odmítnuty byly zápisy bez souhlasu, cizí principal, nevirtuální cíl a opakované
+vykonání po znovuvytvoření vykonavatele nad stejnou databází. Samotné potvrzení
+zápisu nechalo opravu čekat na funkční ověření.
+
+Reprodukce: [lab/README_CS.md](../lab/README_CS.md).
+Přesné vstupy, image, naměřené RSS a výsledky: [core-lab.json](evidence/core-lab.json).
+Tento běh neobsahuje Hermes a není splněním celého autonomního workflow.
+Neprokazuje procesový restart celého HAOS ani stabilitu fyzického zařízení.
+
+**IMPLEMENTOVÁNO, ČEKÁ NA ŽIVÝ HAOS TEST:** provozní čtecí propojení a průvodce
+popsané níže. Laboratorní zapisovač je oddělen v `lab/` a do instalačního
+payloadu se nebalí; v provozní HAOS aplikaci zůstávají opravy vypnuté.
+
+**NEDOKONČENO / BLOKOVÁNO:** bezpečná produkční Hermes integrace a živý writer,
+modelový poskytovatel s výslovným opt-in, HAOS/Supervisor/Ingress přejímka,
+OneDrive restore důkaz, MA FastMCP, ZHA, fyzické funkční zkoušky a ARM64/RPi.
+Core config API nemá CAS/ETag, zapisuje celý soubor a může doplnit ID ostatním
+automatizacím; bezpečný souběh s HA UI není vyřešen. Laboratorní úspěch tyto
+mezery neuzavírá. Nový instalátor ani hotové vydání se z této práce nepublikuje.
 
 ## Pracovní architektonická oprava — není dokončený produkt
 
