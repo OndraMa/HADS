@@ -1,6 +1,19 @@
 # HADS — stažení a návody
 
-## HADS Next 0.1.0-dev1 pro testovací HAOS
+## Aktuální HADS Next – zdroje vyšetřovacího runtime
+
+Práce pokračuje ve větvi **`codex/hads-next-investigation`**,
+[návrh změn č. 6](https://github.com/OndraMa/HADS/pull/6).
+Zde jsou [aktuální zdroje a testy](hads-next/),
+[česká zpráva o výsledcích](hads-next/docs/results.md)
+a [reprodukovatelný Core/Hermes test](hads-next/lab/README_CS.md).
+Ve Windows vyber tuto větev a **Code → Download ZIP**; cloudový panel není potřeba.
+
+Původní Hermes nyní čte skutečné Core API přes oddělený broker. Nový kompletní
+HAOS instalační kandidát **zatím vydán není**; živá HAOS a reálná modelová
+přejímka čekají. Níže uvedený starší instalátor nový runtime neobsahuje.
+
+## Historický HADS Next 0.1.0-dev1 pro testovací HAOS
 
 **[Otevřít stránku vydání a stáhnout vše](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1)**
 

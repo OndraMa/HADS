@@ -40,6 +40,9 @@ def project_automation(value):
                 if key in row:item[key]=_ids(row[key])
             target=row.get('target')
             if isinstance(target,dict):item['target']={k:_ids(target[k]) for k in ('entity_id','device_id','area_id') if k in target}
+            event_data=row.get('event_data')
+            if isinstance(event_data,dict):
+                item['event_data']={k:_ids(event_data[k]) for k in ('device_id','command') if k in event_data}
             # Arbitrary service data, templates, variables and webhook secrets
             # are deliberately excluded. Unsupported branches stay visible.
             item['omitted_fields']=sorted(set(row)-set(item))
@@ -55,6 +58,8 @@ def project_automation(value):
 def project_trace(value):
     if not isinstance(value,dict):raise BrokerDenied('Neplatný automation trace.')
     result={k:redact(value[k]) for k in ('run_id','state','script_execution','last_step','timestamp') if k in value}
+    if isinstance(value.get('context'),dict):
+        result['context']={k:value['context'][k] for k in ('id','parent_id','user_id') if isinstance(value['context'].get(k),str)}
     trace=value.get('trace',{})
     if isinstance(trace,dict):
         result['steps']={}
@@ -92,13 +97,17 @@ _PARAMS={
     'hads_get_supervisor_status':{},'hads_get_haos_status':{},'hads_get_applications':{},
     'hads_get_addon_info':{'slug':'slug'},'hads_get_addon_stats':{'slug':'slug'},
     'hads_get_addon_logs':{'slug':'slug'}, 'hads_get_integration_repairs':{},
-    'hads_get_system_log':{},
+    'hads_get_system_log':{}, 'hads_get_system_health':{},
+    'hads_get_zha_events':{'device_id':'id','start':'time','end':'time'},
+    'hads_get_music_assistant_diagnostics':{'entity_id':'entity','section':'section','start':'time','end':'time'},
 }
 
 
 class EvidenceBroker:
-    def __init__(self, store, *, core=None, core_ws=None, supervisor=None, clock=time.time):
+    def __init__(self, store, *, core=None, core_ws=None, supervisor=None, zha=None, music=None, clock=time.time):
         self.store,self.core,self.ws,self.supervisor,self.clock=store,core,core_ws,supervisor,clock
+        self.zha=zha
+        self.music=music
         self._lock=threading.RLock()
         self.extensions={}
 
@@ -127,6 +136,7 @@ class EvidenceBroker:
             pattern={'entity':r'[a-z][a-z0-9_]*\.[a-z0-9_]+','id':r'[A-Za-z0-9_-]{1,128}','slug':r'[a-z0-9_]{1,128}'}.get(kind)
             if not isinstance(value,str) or len(value)>128 or (pattern and not re.fullmatch(pattern,value)):
                 raise BrokerDenied('Neplatný parametr '+key)
+            if kind=='section' and value not in {'player','health','events','buffer','logs'}:raise BrokerDenied('Nepovolené čtení Music Assistantu.')
         if 'start' in args:
             try:
                 start=datetime.fromisoformat(args['start']);end=datetime.fromisoformat(args['end'])
@@ -145,8 +155,42 @@ class EvidenceBroker:
                         permitted.update(step.get('target',{}).get('entity_id',[]))
             if args['entity_id'] not in permitted:
                 raise BrokerDenied('Entita nesouvisí s incidentem ani načtenou automatizací.')
+        if 'device_id' in args:
+            devices=set()
+            for row in case['evidence']:
+                data=row['payload'].get('data')
+                if row['kind']=='hads_get_entity_registry' and isinstance(data,list):
+                    devices.update(x['device_id'] for x in data if isinstance(x,dict) and x.get('device_id'))
+                if row['kind']=='hads_get_automation_config' and isinstance(data,dict):
+                    for step in data.get('triggers',[])+data.get('actions',[]):
+                        devices.update(step.get('device_id',[]))
+                        devices.update(step.get('event_data',{}).get('device_id',[]))
+                        devices.update(step.get('target',{}).get('device_id',[]))
+            if args['device_id'] not in devices:raise BrokerDenied('Zařízení není doložené registry ani automatizací tohoto případu.')
         reader=None;source='hads_database';value=None;projection=lambda x:x
-        if name=='hads_get_incident':
+        if name=='hads_get_music_assistant_diagnostics':
+            if self.music is None:return self._result(incident_id,name,'music_assistant_fastmcp','unavailable',None,now,'Music Assistant FastMCP není nastavený. Použij historii HA a logy aplikace přes Supervisor.')
+            from .observability import ReadFailure
+            try:value=self.music.diagnostics(args['entity_id'],args['section'],start.timestamp(),end.timestamp())
+            except ReadFailure as error:return self._result(incident_id,name,'music_assistant_fastmcp','not_read',None,now,str(error))
+            if value is None:
+                status='insufficient_permissions' if self.music.status.last_response_status in {401,403} else 'read_failed'
+                return self._result(incident_id,name,'music_assistant_fastmcp',status,None,now,self.music.status.last_error)
+            if len(canonical(value).encode())>12000:return self._result(incident_id,name,'music_assistant_fastmcp','read_failed',None,now,'Výsledek překročil limit důkazů.')
+            status='available'
+            if args['section']=='events':
+                if value['data']['buffer_capacity']==0:status='not_read'
+                elif not value['data']['events']:status='no_relevant_data'
+            elif value['data'] is None:status='no_relevant_data'
+            return self._result(incident_id,name,'music_assistant_fastmcp',status,value,now,
+                'Prázdný buffer bez známé doby sběru nevylučuje dřívější událost; dodávka streamu nebyla testována.')
+        elif name=='hads_get_zha_events':
+            if self.zha is None:return self._result(incident_id,name,'zha_event','not_read',None,now,'Sběr ZHA událostí není zapnutý.')
+            value=self.zha.query(args['device_id'],start.timestamp(),end.timestamp())
+            status='available' if value['events'] else 'no_relevant_data' if value['capture_covers_window'] else 'not_read'
+            observed=max((datetime.fromisoformat(x['time_fired']).timestamp() for x in value['events']),default=None)
+            return self._result(incident_id,name,'zha_event',status,value,now,value['limitation_cs'],observed=observed)
+        elif name=='hads_get_incident':
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
         elif name=='hads_get_related_incidents':
@@ -162,7 +206,8 @@ class EvidenceBroker:
                 'hads_get_action_history':('action_history',(args.get('start'),args.get('end'))),
                 'hads_get_automation_traces':('traces',('automation',args.get('automation_id'))),
                 'hads_get_automation_trace':('trace',('automation',args.get('automation_id'),args.get('run_id'))),
-                'hads_get_integration_repairs':('repairs',()),'hads_get_system_log':('system_log',())}
+                'hads_get_integration_repairs':('repairs',()),'hads_get_system_log':('system_log',()),
+                'hads_get_system_health':('system_health',())}
             supervisor={'hads_get_supervisor_status':('info',()),'hads_get_haos_status':('os_info',()),
                 'hads_get_applications':('apps',()),'hads_get_addon_info':('app_info',(args.get('slug'),)),
                 'hads_get_addon_stats':('app_stats',(args.get('slug'),)),'hads_get_addon_logs':('app_logs',(args.get('slug'),))}
@@ -196,10 +241,23 @@ class EvidenceBroker:
                 projection=lambda rows:[{k:x[k] for k in ('entity_id','unique_id','platform','device_id','config_entry_id','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('entity_id')==args['entity_id']]
             elif name=='hads_get_device_registry':
                 projection=lambda rows:[{k:x[k] for k in ('id','manufacturer','model','config_entries','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('id')==args['device_id']]
+            elif name in {'hads_get_supervisor_status','hads_get_haos_status','hads_get_addon_info','hads_get_addon_stats'}:
+                fields={
+                    'hads_get_supervisor_status':('version','version_latest','update_available','healthy','supported','arch','channel'),
+                    'hads_get_haos_status':('version','version_latest','update_available','board','boot','data_disk'),
+                    'hads_get_addon_info':('slug','name','version','version_latest','state','update_available','boot','startup','watchdog','healthy','available','arch'),
+                    'hads_get_addon_stats':('cpu_percent','memory_usage','memory_limit','memory_percent','network_tx','network_rx','blk_read','blk_write'),
+                }[name]
+                projection=lambda value:{k:value[k] for k in fields if k in value}
+            elif name=='hads_get_applications':
+                projection=lambda value:{'addons':[{k:row[k] for k in ('slug','name','state','version','version_latest','update_available','available') if k in row}
+                    for row in value.get('addons',[])[:200] if isinstance(row,dict)]} if isinstance(value.get('addons'),list) else None
             elif name=='hads_get_addon_logs':
                 projection=lambda value:{'text':value[-7000:],'truncated':len(value)>7000}
         try:
             value=redact(projection(value))
+            if name in {'hads_get_supervisor_status','hads_get_haos_status','hads_get_addon_info','hads_get_addon_stats','hads_get_applications'} and not value:
+                raise ValueError('missing_supervisor_fields')
             raw=canonical(value)
         except (ValueError,TypeError,KeyError):
             return self._result(incident_id,name,source,'read_failed',None,now,'Neočekávaný formát zdrojových dat.')

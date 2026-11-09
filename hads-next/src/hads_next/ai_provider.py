@@ -8,7 +8,7 @@ import threading
 from urllib.parse import urlsplit
 from urllib.request import Request,build_opener
 
-from .observability import _NoRedirect,redact
+from .observability import _NoRedirect,redact,bounded_body
 
 
 class ProviderDisabled(ValueError):pass
@@ -87,8 +87,8 @@ class AIProvider:
                 'Authorization':'Bearer '+settings['api_key'],'Content-Type':'application/json'})
             try:
                 with opener.open(request,timeout=30) as response:
-                    raw=response.read(128001)
-                    if len(raw)>128000 or response.status!=200:raise ProviderDisabled('Neplatný výsledek poskytovatele.')
+                    raw=bounded_body(response,128000,30)
+                    if response.status!=200:raise ProviderDisabled('Neplatný výsledek poskytovatele.')
                     result=json.loads(raw)
                     if not isinstance(result,dict) or not isinstance(result.get('choices'),list):raise ValueError()
                     return redact(result)

@@ -1,5 +1,35 @@
 # Skutečný Home Assistant Core bez testovacího HAOS
 
+## Nový běh P0–P3: původní Hermes a skutečná diagnostická API
+
+`haos/Hermes.Dockerfile` s `CORE_LAB=1` nyní navíc spouští
+`core_hermes_probe.py`: provozní controller, zabezpečené první nastavení,
+skutečný izolovaný Hermes, živé dotazy Evidence Brokeru a místní skriptovaný
+HTTPS model. `source_contract_probe.py` doplňuje Recorder, Activity/Action
+history, System Health, virtuální rádio a vloženou ZHA událost s nativní trace.
+Přehled a hashe: [hermes-core-sources.json](../docs/evidence/hermes-core-sources.json).
+Nejde o reálný LLM úsudek, Music Assistant, Supervisor nebo fyzický HAOS test.
+
+Reprodukce z adresáře `hads-next` (nové výstupní adresáře, žádné živé HA tokeny):
+
+```bash
+python scripts/investigation_context.py --receipt .test-tmp/investigation-context
+docker build --build-arg CORE_LAB=1 --target receipt \
+  --output type=local,dest=.test-tmp/investigation-result \
+  .test-tmp/investigation-context
+```
+
+V cloud prostředí s TLS proxy je nutné doplnit BuildKit secret
+`--secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt`. Ověřování TLS
+zůstává zapnuté. Pro běh je potřeba dostatek prostoru pro Python/Core/Hermes;
+VFS Docker driver dělá úplné kopie vrstev. Laboratoř vynechává pouze nepoužívané
+UI překlady a JS source mapy z oficiálního frontend wheelu (verze 20261028.4,
+SHA-256 `e5e59b82e63b288323d35886272f2e490ee62f6c7aaa2c56e7ef45e300d44757`).
+Python kód Core/frontend ani diagnostické API nejsou nahrazené nebo upravené.
+Virtuální platforma `hads_lab_player` je pouze řízený testovací přehrávač.
+
+## Původní samostatný laboratorní test oprav
+
 Tato laboratoř spouští skutečný balíček `homeassistant==2026.11.0` z PyPI
 s nativními komponentami, validací, autentizací, automatizacemi a event bus.
 HA objekty ani HTTP handlery nejsou nahrazené fixtures nebo mocky.

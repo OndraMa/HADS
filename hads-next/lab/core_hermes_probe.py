@@ -11,6 +11,7 @@ import ssl
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from datetime import datetime,timedelta,timezone
 import ipaddress
+import logging
 import aiohttp
 
 import yaml
@@ -72,14 +73,20 @@ class ScriptedModel:
 
 
 async def main():
+    logging.basicConfig(level=logging.WARNING)
     launcher=RuntimeLauncher()
     os.setgroups([]);os.setresgid(65532,65532,65532);os.setresuid(65532,65532,65532)
     try:
         with tempfile.TemporaryDirectory(prefix='hads-native-core-') as directory:
             path=Path(directory)
+            from source_contract_probe import prepare_fixture
+            prepare_fixture(path)
             automation={'id':'hads_lab_reference','triggers':[{'trigger':'state','entity_id':'input_button.hads_lab_run'}],
                 'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':'input_boolean.hads_lab_missing'}}]}
-            (path/'automations.yaml').write_text(yaml.safe_dump([automation]))
+            zha={'id':'hads_zha_chain','alias':'HADS ZHA chain','triggers':[{'trigger':'event','event_type':'zha_event',
+                'event_data':{'device_id':'11111111111111111111111111111111','command':'toggle'}}],
+                'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':'input_boolean.hads_zha_target'}}]}
+            (path/'automations.yaml').write_text(yaml.safe_dump([automation,zha]))
             (path/'configuration.yaml').write_text('''homeassistant:
   name: HADS native investigation lab
   latitude: 0
@@ -94,9 +101,20 @@ http:
 api:
 websocket_api:
 config:
+recorder:
+  commit_interval: 1
+history:
+logbook:
+system_health:
+system_log:
+repairs:
+media_player:
+  - platform: hads_lab_player
 automation: !include automations.yaml
 input_boolean:
   hads_lab_target:
+    initial: false
+  hads_zha_target:
     initial: false
 input_button:
   hads_lab_run:
@@ -108,7 +126,9 @@ input_button:
             try:
                 for domain in bootstrap.CORE_INTEGRATIONS:assert await async_setup_component(hass,domain,config)
                 await core_config.async_process_ha_core_config(hass,config['homeassistant'])
-                for domain in ('http','websocket_api','api','config','input_boolean','input_button','automation'):
+                from homeassistant.helpers.recorder import async_initialize_recorder
+                async_initialize_recorder(hass)
+                for domain in ('homeassistant','http','websocket_api','api','config','recorder','history','logbook','system_health','system_log','repairs','input_boolean','input_button','media_player','automation'):
                     assert await async_setup_component(hass,domain,config),domain
                 user=await hass.auth.async_create_user('Native lab admin',group_ids=['system-admin'])
                 refresh=await hass.auth.async_create_refresh_token(user,client_id='https://hads-lab.invalid/')
@@ -190,6 +210,8 @@ input_button:
                     from negative_investigation_probe import exercise_negative
                     result['negative_tests']=await exercise_negative(path,core,ws,launcher,user,
                         'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions',models)
+                    from source_contract_probe import exercise_sources
+                    result['source_contracts']=await exercise_sources(hass,app)
                 finally:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()

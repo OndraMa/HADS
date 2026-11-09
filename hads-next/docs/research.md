@@ -192,6 +192,58 @@ Adaptér musí porovnat `tools/list` schémata, oprávnění a verzi; obecný co
 passthrough není bezpečný read-only adaptér. Stream dostupnost z textu chyby
 zůstává hypotéza, pokud chybí nezávislé časové důkazy.
 
+### Implementovaný čtecí adaptér P3
+
+Znovu ověřen pin `16cc25456f3107f7a5db875b07b69efb079643fa`. Skutečná permanentní
+MCP jména jsou `search_tools`, `get_tool_schema` a `call_tool`, nikoli samotné
+interní příkazy. `meta_discovery.py` (`731c6dbe4ada03bf2da5248d1afd99e6e19fc486`)
+a `execution.py` (`e642041648b411c4b15d5717eb3ad4c2f9141f0d`) potvrzují kanonický
+tvar `ma_api:players/get` a obálku `command/data/truncated`. Konkrétní
+`players/get(player_id, raise_unavailable=False)` ověřen v
+`controllers/players/controller.py` (`246b23c9a519d4ade866caa5181668fbf7819034`),
+scope `PLAYERS_READ`. Debug čtení potřebují povolené odpovídající schopnosti
+a `Scope.SYSTEM_READ` podle registru; nejsou automaticky zapínána.
+
+HADS nyní používá pevně vyjmenované `players/get`, `fastmcp/debug/health`,
+`recent_events`, `event_buffer_stats`, `tail_log`. Před každým voláním porovná
+identitu příkazu, `readOnlyHint`, `destructiveHint` a potřebné parametry.
+URL, token, player mapping ani obecný meta-tool nedostává model. Vlastník může
+nastavit volitelné připojení na `/setup/music`; výchozí stav je vypnuto.
+Vyžaduje pevný HTTPS `/mcp/v1`. Nešifrované vzdálené MA připojení se zde
+nepodporuje; dostupná alternativa jsou HA historie a Supervisor logy aplikace.
+Při změně adresy nelze automaticky přenést starý token. Konfigurace má mód 0600.
+
+MCP Streamable HTTP subset (JSON nebo konečný POST SSE stream, inicializace,
+session, protokolové hlavičky) porovnán s oficiálním Python SDK `v1.13.1`,
+`src/mcp/client/streamable_http.py`, blob `b1ab2c0797ce03d2291fe55bc5939c013362d5dd`.
+Serverové žádosti o sampling/elicitation a přesměrování jsou odmítnuté.
+Protokolové testy používají věrný offline kontrakt; **Music Assistant server
+zde spuštěn není**. Kompatibilita konkrétní instalované MA verze čeká na přejímku.
+
+Surová `event.data` a `current_media` se nepředávají, protože mohou obsahovat
+podepsané stream URL. U logů se navíc odstraní URL credentials, query i fragment.
+Povolené události obsahují čas, typ, objekt a omezený stav. Vypnutý buffer je
+`not_read`; prázdný aktivní buffer není důkaz absence starší události.
+Adaptér neprovádí stream síťový test a neslibuje rozlišení stream EOF jen podle
+textu podobné chyby.
+
+### ZHA a System Health P3
+
+ZHA používá nativní Core `subscribe_events` pouze pro `zha_event`; ping/pong
+udržuje dohledatelnou dobu sběru. Žurnál má vlastní schéma v existující SQLite,
+retenci 7 dní / 10 000 událostí, deduplikaci a explicitní mezery po restartu.
+Ukládá pouze identitu zařízení, příkaz, cluster/endpoint, čas a kontext; `args`
+a `params` neukládá. Model může číst jen zařízení doložené dříve načteným
+registrem nebo konfigurací automatizace případu. Není to retrospektivní čtení
+nezachycených událostí ani doklad fyzického stisku.
+
+System Health ověřen v Core `2026.11.0`, `components/system_health/__init__.py`,
+blob `f4177859ce21efe92c951c4d61fe00739a2179a4`: ACK, `initial.data` (přímo domény),
+`update`, `finish`. HADS skládá omezený stream; vypršení nebo limit zpráv zanechá
+`complete:false`. Úspěšný ACK sám není úspěšný diagnostický výsledek.
+Supervisor info/stats používají pozitivní výběr polí: celé aplikační `options`
+se nepředávají do databáze důkazů ani modelu. Živý Supervisor není dostupný.
+
 ## Hermes schopnosti a omezení
 
 [Hermes README](https://github.com/NousResearch/hermes-agent/blob/3e82260ba041b75cf9eb20abf13bec937bb32e27/README.md)

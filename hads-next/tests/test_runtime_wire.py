@@ -21,6 +21,23 @@ from hads_next.observability import CoreReader, CoreWSReader, NativeHTTP, Native
 
 
 class WireIntegration(unittest.TestCase):
+    def test_system_health_ack_initial_update_finish_uses_real_websocket(self):
+        def handler(ws):
+            ws.send(json.dumps({'type':'auth_required'}));ws.recv();ws.send(json.dumps({'type':'auth_ok'}))
+            command=json.loads(ws.recv());self.assertEqual(command['type'],'system_health/info')
+            for message in [
+                {'type':'result','success':True,'result':None},
+                {'type':'event','event':{'type':'initial','data':{'homeassistant':{'info':{'version':'2026.11.0','database':{'type':'pending'}}}}}},
+                {'type':'event','event':{'type':'update','domain':'homeassistant','key':'database','success':True,'data':'ok'}},
+                {'type':'event','event':{'type':'finish'}}]:ws.send(json.dumps(dict(message,id=1)))
+        with serve(handler,'127.0.0.1',0) as server:
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            transport=NativeWebSocket('ws://127.0.0.1:'+str(server.socket.getsockname()[1])+'/api/websocket','fixture',allow_loopback=True)
+            try:
+                value=CoreWSReader(transport).system_health()
+                self.assertTrue(value['complete']);self.assertEqual(value['domains']['homeassistant']['info']['database'],'ok')
+            finally:server.shutdown();thread.join()
+
     def test_ingress_enrollment_app_logs_and_radio_context_use_real_wire_clients(self):
         now=time.time(); calls=[]
         users=[{'id':'fixture-admin','is_owner':True,'is_active':True,'system_generated':False,'group_ids':[]}]

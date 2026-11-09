@@ -5,6 +5,8 @@ from .ai_provider import AIProvider,ProviderDisabled
 from .evidence_broker import EvidenceBroker
 from .hermes_runtime import run_investigation
 from .investigation_jobs import InvestigationJobs,JobBlocked
+from .zha_observer import ZHAJournal,ZHAObserver
+from .music_configuration import MusicConfiguration
 
 
 class InvestigationService:
@@ -13,7 +15,10 @@ class InvestigationService:
         self.provider=AIProvider(app.data_dir)
         self.jobs=InvestigationJobs(app.store)
         self.jobs.recover()
-        self.broker=EvidenceBroker(app.store,core=app.core,core_ws=app.core_ws,supervisor=app.supervisor,clock=app.clock)
+        self.zha=ZHAJournal(app.store,app.clock)
+        self.zha_observer=ZHAObserver(self.zha,getattr(app.core_ws,'transport',None))
+        self.music=MusicConfiguration(app.data_dir)
+        self.broker=EvidenceBroker(app.store,core=app.core,core_ws=app.core_ws,supervisor=app.supervisor,zha=self.zha,music=self.music.reader(),clock=app.clock)
         self.broker._lock=app._read_lock
         self._slot=threading.Lock()
         self._schedule_lock=threading.RLock()

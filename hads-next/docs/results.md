@@ -1,5 +1,33 @@
 # Výsledky HADS Next, 2026-11-09
 
+## P3: nativní zdroje a volitelný Music Assistant
+
+**OVĚŘENO PROTI SKUTEČNÉMU CORE V AMD64 BUILD KONTEJNERU:** vedle předchozí
+Hermes smyčky prošly System Health (včetně dokončení streamu), Repairs, System
+Log, Recorder REST historie, Action history a autentizovaný živý odběr
+`zha_event`. Virtuální rádiová entita reagovala na skutečnou službu
+`media_player.media_stop`; čtecí diagnostika spojila příkaz se změnou pomocí
+kontextu. Chybějící historický kontext smí doplnit pouze aktuální stav se stejnou
+entitou, hodnotou a přesným časem změny. Negativní test pozdější stav odmítá.
+
+Vložená ZHA událost skutečným Core event busem spustila skutečnou automatizaci;
+broker načetl událost, trace a nový stav virtuálního cíle. Je to softwarový
+řetězec; fyzický stisk, koordinátor ani rádiový stream test neobsahuje.
+Původní Hermes opět provedl šest čtení / sedm požadavků na skriptovaný HTTPS
+model / pět nových důkazů. Znovu prošel SIGKILL, obnovení bez opakování čtení
+a negativní shell/Python/write scénáře. [Úplný protokol a hashe vstupů](evidence/hermes-core-sources.json).
+
+**IMPLEMENTOVÁNO A KONTRAKTNĚ TESTOVÁNO:** volitelné FastMCP čtení MA přes
+pevný katalog a ověření read-only schémat, privátní konfigurace vlastníka,
+rozlišení vypnutého bufferu, redakce stream URL. ZHA žurnál má retenci,
+deduplikaci, detekci mezer a evidenci chyby připojení. Supervisor data jsou
+omezena výběrem polí; aplikační `options` se do důkazů nepředávají.
+
+**ČEKÁ:** skutečný Supervisor, Music Assistant server, fyzické ZHA/radio,
+autorizovaný reálný LLM, ARM64/RPi a HAOS. Není vydán nový instalační archiv.
+P4–P6 (výzkum, role, předávání opravných návrhů a finální instalační cesta)
+ještě nejsou dokončené. Historické checkpointy níže mají svůj vlastní rozsah.
+
 ## P0–P2: skutečný vyšetřovací broker a provozní controller
 
 **HOTOVO A PROKAZATELNĚ FUNGUJE, AMD64 build container:** originální Hermes
@@ -22,7 +50,7 @@ modelová konfigurace v souboru 0600 mimo worker, persistentní fronta, metering
 resume a webové ovládání. HAOS výchozí instalační cesta se ještě dokončuje;
 obecné produkční zápisy jsou vypnuté.
 
-**NEDOKONČENO / ČEKÁ:** P3 Music Assistant a ZHA sběr, P4 výzkum a specializace,
+**STAV TOHOTO HISTORICKÉHO P0–P2 CHECKPOINTU:** tehdy chyběl P3 Music Assistant a ZHA sběr, P4 výzkum a specializace,
 P5 úplné předávání návrhů, P6 ARM64/HAOS přejímka a instalační kandidát.
 Autorizovaný reálný modelový endpoint ani testovací HAOS nejsou v cloudu
 dostupné. Toto není výsledek autonomního úsudku reálného LLM ani živé domácnosti.

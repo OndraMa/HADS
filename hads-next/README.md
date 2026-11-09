@@ -1,5 +1,23 @@
 # HADS Next – izolovaný funkční základ
 
+## Aktuální vyšetřovací větev
+
+Aktuální zdroje jsou v `codex/hads-next-investigation`, navazující na ověřený
+`codex/hads-next-correction` (`5fb2ba17cf0b50d483128bc0ccb834cc126dee47`).
+[Kontrolovatelný návrh změn č. 6](https://github.com/OndraMa/HADS/pull/6)
+obsahuje původní izolovaný Hermes připojený k živým čtením brokeru, trvalé
+vyšetřování, bezpečný opt-in poskytovatele a nové čtecí adaptéry MA/ZHA.
+Prošly skutečné Core 2026.11.0 API testy v AMD64 kontejneru a 132 regresních
+testů. [Výsledky a zbývající práce](docs/results.md), [reprodukce](lab/README_CS.md).
+
+**Nový instalační kandidát zatím není vydán.** HAOS, ARM64/RPi, skutečný
+Supervisor, Music Assistant a autonomní úsudek skutečného LLM čekají na svou
+přejímku. Starý instalátor níže tento nový runtime neobsahuje a není kompletní
+HADS Next. Zdrojové soubory lze stáhnout na GitHubu z této větve pomocí
+**Code → Download ZIP**; pro soukromý repozitář je nutné přihlášení.
+
+## Historický balíček 0.1.0-dev1 (neobsahuje aktuální Hermes runtime)
+
 **Ke stažení ve Windows:** [GitHub vydání a kompletní ZIP](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1).
 Cloud není potřeba; pro soukromý repozitář se přihlas do GitHubu.
 [Průvodce stažením](docs/STAZENI_WINDOWS_CS.md) vysvětluje jednotlivé soubory.

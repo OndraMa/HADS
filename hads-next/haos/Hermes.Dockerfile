@@ -40,7 +40,12 @@ RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.t
       find /usr/local/lib/python3.14/site-packages/homeassistant -path '*/translations/*.json' -type f ! -name en.json ! -name cs.json -delete; \
     fi
 RUN --mount=type=bind,source=.,target=/source,readonly \
+    --mount=type=secret,id=proxy_ca,required=false \
     set -eu; \
+    if [ "$CORE_LAB" = 1 ]; then \
+      if [ -f /run/secrets/proxy_ca ]; then export SSL_CERT_FILE=/run/secrets/proxy_ca; fi; \
+      python /source/lab/install_frontend.py; \
+    fi; \
     cp -a /source/hads_next /app/hads_next; cp /source/run.sh /run.sh; \
     for file in __init__.py hermes_worker.py hermes_sandbox.py worker_protocol.py; do \
       cp /app/hads_next/"$file" /opt/hermes-root/app/hads_next/"$file"; done; \

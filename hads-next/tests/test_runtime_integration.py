@@ -53,6 +53,24 @@ class SetupAndPrivilegeTests(unittest.TestCase):
 
 
 class RuntimeSourceTests(unittest.TestCase):
+    def test_history_context_can_only_be_enriched_from_the_exact_native_state(self):
+        from datetime import datetime,timezone
+        at=1794153600.;iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        history=[{'entity_id':'media_player.radio','state':'playing','last_updated':iso(at-10)},
+            {'entity_id':'media_player.radio','state':'idle','last_updated':iso(at-1)}]
+        for matching in (True,False):
+            current={**history[-1],'last_updated':iso(at-1 if matching else at),'context':{'id':'stop-context'}}
+            def native(path):return [history] if '/history/' in path else current
+            with tempfile.TemporaryDirectory() as tmp:
+                app=Application(tmp,CoreReader(native),core_ws=CoreWSReader(lambda cmd:[{'domain':'media_player','service':'media_stop',
+                    'when':at-2,'context_id':'stop-context','service_data':{'entity_id':'media_player.radio'}}]),clock=lambda:at)
+                case=app.report_incident('Rádio se zastavilo.','media_player.radio','owner')
+                result=next(r['content'] for r in case['records'] if r['kind']=='deterministic_investigation')
+                self.assertEqual(result['category'],'commanded_stop' if matching else 'insufficient_evidence')
+                evidence_count=len(case['evidence'])
+                app.report_incident('Rádio se zastavilo.','media_player.radio','owner')
+                self.assertEqual(len(app.store.case(case['incident']['id'])['evidence']),evidence_count)
+
     def test_repeated_dashboard_reads_do_not_leak_database_descriptors(self):
         import gc
         descriptors=Path('/proc/self/fd')

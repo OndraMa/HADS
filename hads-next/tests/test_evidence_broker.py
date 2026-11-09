@@ -90,5 +90,12 @@ class BrokerTests(unittest.TestCase):
         result=self.broker.read(self.case,'hads_get_supervisor_status',{})
         self.assertEqual(result['status'],'read_failed');self.assertIsNone(result['data'])
 
+    def test_supervisor_options_never_cross_into_model_evidence(self):
+        self.broker.supervisor=SupervisorReader(lambda path:{'result':'ok','data':{
+            'slug':'music','state':'started','version':'1','options':{'unusual_field':'PRIVATE_APP_KEY'}}})
+        result=self.broker.read(self.case,'hads_get_addon_info',{'slug':'music'})
+        self.assertEqual(result['status'],'available')
+        self.assertNotIn('PRIVATE_APP_KEY',json.dumps(result)+self.store.export(self.case))
+
 
 if __name__=='__main__':unittest.main()

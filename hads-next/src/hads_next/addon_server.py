@@ -51,6 +51,10 @@ class Server(ThreadingHTTPServer):
         self._slots = threading.BoundedSemaphore(4)
         super().__init__(address, Handler)
 
+    def server_close(self):
+        self.app.investigations.zha_observer.close()
+        super().server_close()
+
     def verified_admin(self, user_id):
         if not user_id or self.app.core_ws is None:
             return False
@@ -126,6 +130,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(403, "Přístup je povolen pouze přes přihlášený Home Assistant ingress.")
         if path == "/api/status":
             return self.send_body(200, json.dumps(self.server.app.snapshot(), ensure_ascii=False), "application/json")
+        if path == '/setup/music':
+            settings=self.server.app.investigations.music.public_status()
+            return self.send_body(200,'<h1>Čtecí diagnostika Music Assistantu</h1><p>Volitelné FastMCP připojení. Povol pouze čtecí diagnostiku; přehrávání, hlasitost, reload a konfigurace nejsou dostupné nástroje HADS. Události existují pouze od zapnutí bufferu. Token zůstává v controlleru.</p>'
+                +'<form method="post" action="music"><input type="hidden" name="csrf" value="'+self.server.csrf+'">'
+                +'<label>HTTPS endpoint /mcp/v1<input name="endpoint" required value="'+escape(settings['endpoint'],quote=True)+'"></label>'
+                +'<label>Revokovatelný MA token<input type="password" name="token" maxlength="2048" autocomplete="new-password"></label>'
+                +'<label>Vazby přehrávačů v JSON: HA entity_id na MA player_id<textarea name="mapping" maxlength="4096">'+escape(json.dumps(settings['mapping'],ensure_ascii=False))+'</textarea></label>'
+                +'<label><input type="checkbox" name="enabled" value="yes" '+('checked' if settings['enabled'] else '')+'>Povolit cílená diagnostická čtení</label><button>Uložit připojení</button></form><a href="../setup">Zdroje</a>')
         if path == '/setup/ai':
             settings=self.server.app.investigations.provider.public_status()
             return self.send_body(200,'<h1>Poskytovatel AI pro Hermes</h1><p>Přístupový klíč zůstává v controlleru. Hermes dostává pouze redigované důkazy. Volání může být zpoplatněné; ChatGPT Plus není univerzální API přístup. OAuth zde není podporovaný.</p>'
@@ -138,6 +150,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/setup':
             sources = self.server.app.snapshot()['sources']
             rows = ''.join('<li>' + escape(k) + ': ' + ('Čtení proběhlo' if v['read_succeeded'] else 'Čtení není dostupné: ' + escape(str(v['status'].get('last_error')))) + '</li>' for k,v in sources.items())
+            rows+='<li><a href="setup/music">Nastavit volitelnou diagnostiku Music Assistantu</a></li>'
             if self.server.app.snapshot()['source_job']['state']=='running':
                 rows='<li>Kontrola právě probíhá. Obnov stránku pro průběžné výsledky.</li>'+rows
             runtime=self.server.app.investigations.status()
@@ -219,6 +232,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.investigations.provider.configure(endpoint=form.get('endpoint',[''])[0],model=form.get('model',[''])[0],
                     api_key=form.get('api_key',[''])[0],consent=form.get('consent')==['yes'],principal=self.headers['X-Remote-User-Id'])
                 self.send_response(303);self.send_header('Location','ai');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/music':
+                service=self.server.app.investigations
+                with self.server.app._read_lock:
+                    service.music.configure(endpoint=form.get('endpoint',[''])[0],token=form.get('token',[''])[0],
+                        mapping=json.loads(form.get('mapping',['{}'])[0]),enabled=form.get('enabled')==['yes'],principal=self.headers['X-Remote-User-Id'])
+                    service.broker.music=service.music.reader()
+                self.send_response(303);self.send_header('Location','music');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/investigate':
                 identity=form.get('incident_id',[''])[0]
                 self.server.app.investigations.start(identity,self.headers['X-Remote-User-Id'],ack_unknown=form.get('ack_unknown')==['yes'])
@@ -285,9 +305,11 @@ def main():
     ws = CoreWSReader(NativeWebSocket('ws://supervisor/core/websocket',token,supervisor_proxy=True)) if token else None
     supervisor = SupervisorReader(SupervisorTransport(token)) if token else None
     app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher)
+    if app.owner():app.investigations.zha_observer.start()
     threading.Thread(target=app.refresh, daemon=True).start()
     try:Server(("0.0.0.0", 8099), app, owner_user_id=owner).serve_forever()
     finally:
+        app.investigations.zha_observer.close()
         if launcher:launcher.close()
 
 
