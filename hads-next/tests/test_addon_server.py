@@ -9,12 +9,14 @@ import unittest
 
 from hads_next.addon_server import Server, SupervisorCoreTransport
 from hads_next.haos_application import Application
+from hads_next.observability import CoreWSReader
 
 
 class IngressTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.app = Application(Path(self.temp.name))
+        self.app.core_ws = CoreWSReader(lambda _: [{'id':'owner-id','is_active':True,'is_owner':True,'system_generated':False,'group_ids':[]}])
         self.server = Server(("127.0.0.1", 0), self.app, ingress_peer="127.0.0.1", owner_user_id="owner-id")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -49,7 +51,7 @@ class IngressTests(unittest.TestCase):
         self.server.owner_user_id = ""
         status, page = self.request("GET", "/")
         self.assertEqual(status, 200)
-        self.assertIn("owner-id", page)
+        self.assertIn("Vítej v HADS", page)
         self.assertNotIn("Načtených entit", page)
         self.assertEqual(self.request("GET", "/api/status")[0], 403)
 

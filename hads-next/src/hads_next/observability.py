@@ -116,7 +116,7 @@ class NativeHTTP:
         self._origin, self._token = base_url.rstrip("/"), token
         self._opener = build_opener(_NoRedirect)
 
-    def __call__(self, path):
+    def __call__(self, path, *, raw=False):
         if not path.startswith("/") or path.startswith("//") or "\\" in path:
             raise ReadFailure("invalid_path")
         request = Request(self._origin + path, headers={"Authorization": "Bearer " + self._token})
@@ -125,7 +125,7 @@ class NativeHTTP:
                 data = response.read(MAX_BYTES + 1)
                 if len(data) > MAX_BYTES:
                     raise ReadFailure("response_too_large")
-                return json.loads(data)
+                return data.decode('utf-8', errors='replace')[-65536:] if raw else json.loads(data)
         except HTTPError as exc:
             raise ReadFailure("http_error", exc.code) from None
         except ReadFailure:
@@ -141,9 +141,10 @@ class NativeWebSocket:
     Requires websockets>=16,<17, installed only for native WS use. No subscription,
     service call or arbitrary command is exposed by CoreReader.
     """
-    def __init__(self, url, token):
+    def __init__(self, url, token, *, supervisor_proxy=False):
         p = urlsplit(url)
-        if p.scheme != "wss" or p.path != "/api/websocket" or p.username or p.password or p.query or p.fragment:
+        internal = supervisor_proxy and url == 'ws://supervisor/core/websocket'
+        if (not internal and (p.scheme != "wss" or p.path != "/api/websocket")) or p.username or p.password or p.query or p.fragment:
             raise ValueError("explicit secure HA websocket URL required")
         self._url, self._token = url, token
 
@@ -240,6 +241,15 @@ class CoreWSReader(_Reader):
     def entity_registry(self):
         return self._read({"type": "config/entity_registry/list"})
 
+    def auth_users(self):
+        return self._read({"type": "config/auth/list"})
+
+    def repairs(self):
+        return self._read({"type": "repairs/list_issues"})
+
+    def system_log(self):
+        return self._read({"type": "system_log/list"})
+
     def device_registry(self):
         return self._read({"type": "config/device_registry/list"})
 
@@ -277,6 +287,17 @@ class SupervisorReader(_Reader):
 
     def apps(self):
         return self._supervised("/addons")
+
+    def info(self):
+        return self._supervised('/supervisor/info')
+
+    def os_info(self):
+        return self._supervised('/os/info')
+
+    def app_logs(self, slug):
+        if not re.fullmatch(r"[a-z0-9_]+", slug):
+            raise ValueError('invalid app slug')
+        return self._read(f'/addons/{slug}/logs')
 
     def app_info(self, slug):
         if not re.fullmatch(r"[a-z0-9_]+", slug):

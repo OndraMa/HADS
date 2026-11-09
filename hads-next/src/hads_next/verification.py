@@ -94,15 +94,17 @@ class FunctionalVerifier:
                 classification, status = "Není dostatek důkazů", "applied_verification_pending"
             else:
                 classification, status = "Oprava provedena, ověření čeká", "applied_verification_pending"
+            actual_core_lab = plan.document['operation'] == 'core_lab.replace_entity_reference' and not supplied_clock
             report = {
-                "language": "cs", "scope": "offline_isolated_fixture", "plan_id": plan.plan_id,
+                "language": "cs", "scope": "actual_core_container" if actual_core_lab else "offline_isolated_fixture", "plan_id": plan.plan_id,
                 "clock_mode": "caller_supplied_offline_clock" if supplied_clock else "system_utc",
                 "incident_id": plan.document["incident_id"], "execution_id": execution.execution_id,
                 "classification": classification, "created_at": now,
                 "summary": self._summary(classification),
                 "functional_successes": len(successes), "coverage_checkpoints": len(covered),
                 "recurrences": len(recurrences), "evidence": fresh,
-                "limitation": "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován."
+                "limitation": ("Ověřena je virtuální automatizace ve skutečném odpojeném HA Core. Živý HAOS ani fyzické zařízení nebyly testovány."
+                    if actual_core_lab else "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován.")
                     + (" Sledovací interval používá testovací hodiny; nedokládá skutečnou dobu sledování domácnosti." if supplied_clock else ""),
             }
             conn.execute("UPDATE repair_executions SET status=? WHERE id=?", (status, execution.execution_id))

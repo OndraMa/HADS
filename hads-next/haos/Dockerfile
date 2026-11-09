@@ -6,6 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
     HADS_DATA_DIR=/data/hads-next
 WORKDIR /app
+RUN --mount=type=secret,id=proxy_ca,required=false \
+    if [ -f /run/secrets/proxy_ca ]; then export PIP_CERT=/run/secrets/proxy_ca; fi; \
+    python -m pip install --no-cache-dir websockets==16.0
 COPY hads_next /app/hads_next
 COPY run.sh /run.sh
 RUN find /app/hads_next -type d -exec chmod 755 {} + && \

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from contextlib import contextmanager
 import json
 import math
 from pathlib import Path
@@ -99,11 +100,16 @@ class IncidentStore:
             if row is None:
                 db.execute("INSERT INTO evidence_schema VALUES (?)", (SCHEMA_VERSION,))
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
         db = sqlite3.connect(self.db_path, timeout=5)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
-        return db
+        try:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA foreign_keys=ON")
+            with db:
+                yield db
+        finally:
+            db.close()
 
     def open_incident(self, kind: str, symptom: str, components: list[str], at: float,
                       *, correlation_key: str | None = None, occurrence_id: str | None = None) -> dict:
@@ -207,28 +213,49 @@ class IncidentStore:
                 raise KeyError(incident_id)
 
     def mark_resolved(self, incident_id: str, report: dict) -> None:
-        """Trusted offline application API; never expose as an AI tool.
+        """Trusted isolated-test application API; never expose as an AI tool.
 
         FunctionalVerifier supplies the persisted report. This method validates
         its scope and outcome; it does not authenticate a HAOS collector or user.
+        Real Core lab reports must also match the persisted verifier report in
+        this same database. No production/live HAOS scope is accepted.
         Live resolution requires the pending live acceptance/authentication gate.
         """
         if (report.get("classification") != "Vyřešeno a ověřeno"
-                or report.get("scope") != "offline_isolated_fixture"
+                or report.get("scope") not in {"offline_isolated_fixture", "actual_core_container"}
                 or report.get("incident_id") != incident_id):
-            raise ValueError("Only a matching verified offline report can resolve this case")
+            raise ValueError("Only a matching verified isolated-test report can resolve this case")
         serialized = canonical(redact(report))
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            self._validate_core_lab_report(db, report, {"verified"})
             if not db.execute("UPDATE incidents SET status='resolved',archived_at=NULL WHERE id=?", (incident_id,)).rowcount:
                 raise KeyError(incident_id)
             db.execute("INSERT INTO case_records(incident_id,kind,recorded_at,content) VALUES(?, 'verified_resolution',?,?)",
                        (incident_id,time.time(),serialized))
 
+    @staticmethod
+    def _validate_core_lab_report(db, report, statuses):
+        if report.get('scope') != 'actual_core_container':
+            return
+        try:
+            row = db.execute('''SELECT r.document,e.status,p.document FROM repair_reports r
+                JOIN repair_executions e ON e.id=r.execution_id
+                JOIN repair_plans p ON p.id=e.plan_id
+                WHERE r.execution_id=? AND r.document=? ORDER BY r.id DESC LIMIT 1''',
+                (report.get('execution_id'), canonical(redact(report)))).fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        if row is None or row[1] not in statuses:
+            raise ValueError('Real Core report must match a persisted functional verification')
+        plan = json.loads(row[2])
+        if plan.get('incident_id') != report.get('incident_id') or plan.get('operation') != 'core_lab.replace_entity_reference':
+            raise ValueError('Report belongs to another case or operation')
+
     def reopen_for_report(self, incident_id: str, report: dict) -> None:
         """Trusted offline recurrence transition; dedup repeated verification."""
         if (report.get("classification") not in {"Oprava selhala", "Problém se opakoval"}
-                or report.get("scope") != "offline_isolated_fixture"
+                or report.get("scope") not in {"offline_isolated_fixture", "actual_core_container"}
                 or report.get("incident_id") != incident_id or not report.get("execution_id")):
             raise ValueError("Only a matching failed offline report can reopen this case")
         failures = [item for item in report.get("evidence", []) if item.get("kind") == "functional_failure"]
@@ -236,6 +263,7 @@ class IncidentStore:
             raise ValueError("Recurrence requires functional failure evidence")
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            self._validate_core_lab_report(db, report, {"failed", "recurred"})
             previous = db.execute("SELECT status FROM incidents WHERE id=?", (incident_id,)).fetchone()
             if previous is None:
                 raise KeyError(incident_id)
