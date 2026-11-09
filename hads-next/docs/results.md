@@ -1,5 +1,31 @@
 # Výsledky HADS Next, 2026-11-09
 
+## P4: řízené specializace a cílený výzkum
+
+**OVĚŘENO:** originální izolovaný Hermes předal vyšetřování z Automation
+Investigator na Root Cause Investigator nad skutečným Core. Předání i konečný
+výsledek mají citace a oddělené nejistoty. Sedm nástrojových kroků obsahovalo
+pět nativních Core čtení, místní načtení spisu a změnu role; modelový HTTPS
+backend obdržel osm požadavků. Je skriptovaný. Incident zůstal otevřený,
+žádná oprava se tím neprovedla. [Protokol a přesné vstupy](evidence/hermes-roles-core.json).
+
+Všech devět logických specializací má úkol, skutečně vynucený katalog čtení
+a strukturovaný výstup. Používají jeden proces/model; nepovolují nové typy zápisu.
+Role a předání přežijí restart; ani cache dřívějšího čtení neobchází oprávnění
+aktuální role. Neexistující citace jsou odmítnuté. Prošlo 140 regresních testů.
+
+Veřejný výzkum je standardně vypnutý. Po samostatném souhlasu umožňuje pevné
+GitHub repozitáře, Discourse JSON API a vybranou oficiální dokumentaci/release
+notes. Verze musí být nejprve doložená čtením Core/Supervisor/aplikace.
+Má šest nových veřejných požadavků denně, šestihodinovou cache a nevytváří
+další důkaz z totožného znovu staženého obsahu. Výsledky zůstávají nedůvěryhodné
+reference, nikoli příkazy nebo potvrzení příčiny.
+
+**SKUTEČNÉ VEŘEJNÉ API:** modul přečetl pět GitHub Issues a jednu forum shodu.
+Tento samostatný [veřejný test](evidence/research-public.json) používá fixture
+verze, žádný model ani HAOS. Nelze jej zaměnit za úsudek skutečného LLM.
+P5 a P6 ještě nejsou dokončené; živá přejímka níže zůstává čekající.
+
 ## P3: nativní zdroje a volitelný Music Assistant
 
 **OVĚŘENO PROTI SKUTEČNÉMU CORE V AMD64 BUILD KONTEJNERU:** vedle předchozí
@@ -25,8 +51,8 @@ omezena výběrem polí; aplikační `options` se do důkazů nepředávají.
 
 **ČEKÁ:** skutečný Supervisor, Music Assistant server, fyzické ZHA/radio,
 autorizovaný reálný LLM, ARM64/RPi a HAOS. Není vydán nový instalační archiv.
-P4–P6 (výzkum, role, předávání opravných návrhů a finální instalační cesta)
-ještě nejsou dokončené. Historické checkpointy níže mají svůj vlastní rozsah.
+V tomto historickém P3 checkpointu ještě nebyly dokončené P4–P6.
+Historické checkpointy níže mají svůj vlastní rozsah.
 
 ## P0–P2: skutečný vyšetřovací broker a provozní controller
 

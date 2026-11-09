@@ -59,4 +59,5 @@ async def exercise_negative(path,core,ws,launcher,user,endpoint,models):
         results.append({'scenario':label,'requested_tool':name,'model_requests':len(scenario.requests),
             'final_state':job['state'],'successful_reads':sum(r['result']['status']=='available' for r in job['reads']),
             'core_configuration_unchanged':True,'incident_open':True})
+        await asyncio.to_thread(app.investigations.zha_observer.close)
     return {'scope':'actual_confined_hermes_and_core_with_scripted_https_model','scenarios':results}

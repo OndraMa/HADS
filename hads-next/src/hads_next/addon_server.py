@@ -130,6 +130,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(403, "Přístup je povolen pouze přes přihlášený Home Assistant ingress.")
         if path == "/api/status":
             return self.send_body(200, json.dumps(self.server.app.snapshot(), ensure_ascii=False), "application/json")
+        if path == '/setup/research':
+            enabled=self.server.app.investigations.research.enabled()
+            return self.send_body(200,'<h1>Veřejný výzkum známých problémů</h1><p>Volitelné čtení GitHub Issues a vybrané oficiální dokumentace. Předává veřejnému serveru ověřenou verzi a vyhledávací slova. Neposílá celý spis ani přístupové klíče. Žádná placená vyhledávací služba se nezapíná. Nejvýše šest nových veřejných požadavků denně; výsledky jsou nedůvěryhodné podklady.</p>'
+                +'<form method="post" action="research"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if enabled else '')+'>Souhlasím s veřejnými dotazy z vyšetřování</label><button>Uložit souhlas s výzkumem</button></form><a href="../setup">Zdroje</a>')
         if path == '/setup/music':
             settings=self.server.app.investigations.music.public_status()
             return self.send_body(200,'<h1>Čtecí diagnostika Music Assistantu</h1><p>Volitelné FastMCP připojení. Povol pouze čtecí diagnostiku; přehrávání, hlasitost, reload a konfigurace nejsou dostupné nástroje HADS. Události existují pouze od zapnutí bufferu. Token zůstává v controlleru.</p>'
@@ -151,6 +155,7 @@ class Handler(BaseHTTPRequestHandler):
             sources = self.server.app.snapshot()['sources']
             rows = ''.join('<li>' + escape(k) + ': ' + ('Čtení proběhlo' if v['read_succeeded'] else 'Čtení není dostupné: ' + escape(str(v['status'].get('last_error')))) + '</li>' for k,v in sources.items())
             rows+='<li><a href="setup/music">Nastavit volitelnou diagnostiku Music Assistantu</a></li>'
+            rows+='<li><a href="setup/research">Nastavit veřejný výzkum</a></li>'
             if self.server.app.snapshot()['source_job']['state']=='running':
                 rows='<li>Kontrola právě probíhá. Obnov stránku pro průběžné výsledky.</li>'+rows
             runtime=self.server.app.investigations.status()
@@ -165,10 +170,14 @@ class Handler(BaseHTTPRequestHandler):
             jobs=self.server.app.investigations.for_case(case['incident']['id'])
             if jobs and jobs[0]['conclusion']:result=jobs[0]['conclusion']
             progress=''.join('<li>'+escape(step['reason'])+'</li>' for job in jobs[:1] for step in job['steps'])
+            from .investigator_roles import ROLE_LABELS
+            progress+=''.join('<li>'+escape(ROLE_LABELS.get(r['content'].get('role'),'Vyšetřování'))+': '+escape(r['content'].get('task',''))+'</li>'
+                for r in case['records'] if r['kind']=='investigator_selected' and jobs and r['content'].get('job_id')==jobs[0]['id'])
+            stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
             acknowledge='<label><input type="checkbox" name="ack_unknown" value="yes"> Povolím další pokus i v případě, že předchozí nedokončené modelové volání mohlo být účtováno.</label>' if jobs and jobs[0]['state']=='blocked' else ''
             return self.send_body(200,'<!doctype html><html lang="cs"><meta charset="utf-8"><h1>' + escape(case['incident']['symptom'])
-                +'</h1><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul><details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
+                +'</h1><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul>'+stop_form+'<details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
                 + '<h2>Pracovní závěr</h2><p>' + escape(result.get('summary_cs','Vyšetřování ještě nemá závěr.'))
                 + '</p><h2>Další potřebné důkazy</h2><ul>' + ''.join('<li>'+escape(str(x))+'</li>' for x in result.get('needed',[]))
                 + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p><p>Žádná oprava nebyla provedena a incident zůstává otevřený.</p><details><summary>Technické důkazy spisu</summary><pre>'
@@ -239,10 +248,18 @@ class Handler(BaseHTTPRequestHandler):
                         mapping=json.loads(form.get('mapping',['{}'])[0]),enabled=form.get('enabled')==['yes'],principal=self.headers['X-Remote-User-Id'])
                     service.broker.music=service.music.reader()
                 self.send_response(303);self.send_header('Location','music');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/research':
+                self.server.app.investigations.research.configure(form.get('enabled')==['yes'],self.headers['X-Remote-User-Id'],self.server.app.owner())
+                self.send_response(303);self.send_header('Location','research');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/investigate':
                 identity=form.get('incident_id',[''])[0]
                 self.server.app.investigations.start(identity,self.headers['X-Remote-User-Id'],ack_unknown=form.get('ack_unknown')==['yes'])
                 self.send_response(303);self.send_header('Location','case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/investigate/cancel':
+                service=self.server.app.investigations;job_id=form.get('job_id',[''])[0]
+                job=service.jobs.get(job_id)
+                service.cancel(job_id,self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','../case/'+job['incident_id']);self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/check':
                 self.server.app.request_source_check()
             elif path == '/incident/app':
@@ -261,7 +278,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.report_incident(form.get("symptom", [""])[0], form.get("entity_id", [""])[0], self.headers["X-Remote-User-Id"],occurred_at=stamp)
             else:
                 return self.send_body(404, "Tato operace není dostupná.")
-        except (ValueError, UnicodeError):
+        except (ValueError, KeyError, UnicodeError):
             return self.send_body(400, "Neplatné hlášení nebo dosažený limit. Zkontroluj popis a entity_id.")
         self.send_response(303)
         self.send_header("Location", "../" if path.count('/') > 1 else "./")

@@ -246,6 +246,26 @@ se nepředávají do databáze důkazů ani modelu. Živý Supervisor není dost
 
 ## Hermes schopnosti a omezení
 
+Aktuální runtime používá `investigator_roles.py`: devět sekvenčních rolí,
+controllerem vynucené nástroje, citované předání a perzistentní výstupy.
+Není to devět modelů ani devět názvů ve volném promptu. Research role má skutečné
+broker nástroje pro výzkum; jejich dostupnost se liší od souhlasu a úspěchu čtení.
+Přímé upstream web/shell/plugin nástroje Hermes nadále nedostává.
+
+Discourse kontrakt ověřen ve zdroji `discourse/discourse`:
+`config/routes.rb` blob `69b915a54dceaccda73fbf6b5cde2fa7155e5012`,
+`app/controllers/search_controller.rb` blob `588e73555726dc7b3147ead530cb2ec048899b3d`,
+`grouped_search_result_serializer.rb` blob `fe7afd55ea66b3f51d13750361379f9dae96341b`,
+`search_post_serializer.rb` blob `7046bfb229378327a4689851a624c1129cd8440f`.
+`GET /search.json?q=...&page=1` vrací posts/topics a metadata. Schéma bylo
+ověřeno skutečným anonymním čtením Home Assistant Community 2026-11-09;
+verze nasazeného serveru není známá. HADS odmítá změněné schéma, neobchází
+403/rate limit a nevytváří příspěvky nebo komentáře.
+GitHub používá dokumentované REST Search Issues, API verzi 2022-11-28,
+pouze pevné veřejné repozitáře. Vyhledávání nepřebírá URL nebo repozitář od modelu.
+Celý spis se neodesílá; verze a krátká obecná hledaná slova jsou veřejný dotaz
+se zvláštním souhlasem. Placené hledání se nepoužívá.
+
 [Hermes README](https://github.com/NousResearch/hermes-agent/blob/3e82260ba041b75cf9eb20abf13bec937bb32e27/README.md)
 potvrzuje MCP, skills, persistentní paměť a session search; skutečná agent loop
 musí být upstream runtime, nikoli přeznačený JSON wrapper. Memory/session/skills

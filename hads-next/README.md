@@ -8,7 +8,7 @@ Aktuální zdroje jsou v `codex/hads-next-investigation`, navazující na ověř
 obsahuje původní izolovaný Hermes připojený k živým čtením brokeru, trvalé
 vyšetřování, bezpečný opt-in poskytovatele a nové čtecí adaptéry MA/ZHA.
 Prošly skutečné Core 2026.11.0 API testy v AMD64 kontejneru a 132 regresních
-testů. [Výsledky a zbývající práce](docs/results.md), [reprodukce](lab/README_CS.md).
+testů P3; následně 140 testů rolí a výzkumu P4. [Výsledky a zbývající práce](docs/results.md), [reprodukce](lab/README_CS.md).
 
 **Nový instalační kandidát zatím není vydán.** HAOS, ARM64/RPi, skutečný
 Supervisor, Music Assistant a autonomní úsudek skutečného LLM čekají na svou

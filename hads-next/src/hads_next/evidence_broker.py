@@ -198,6 +198,12 @@ class EvidenceBroker:
                 rows=db.execute('SELECT id,kind,symptom,components,first_seen,last_seen,status FROM incidents WHERE id!=? AND kind=? ORDER BY last_seen DESC LIMIT 10',
                     (incident_id,case['incident']['kind'])).fetchall()
             value=[dict(row) for row in rows if set(json.loads(row['components'])) & set(case['incident']['components'])]
+            for related in value:
+                history=self.store.case(related['id'])
+                related['occurrence_count']=len(history['occurrences'])
+                findings=[r['content'] for r in history['records'] if r['kind'] in {'hermes_investigation','deterministic_investigation'}]
+                related['prior_findings']=[{'summary_cs':str(item.get('summary_cs',''))[:1000],
+                    'authority':'previous_assessment_requires_current_evidence'} for item in findings[-2:]]
         else:
             core={'hads_get_core_status':('config',()),'hads_get_entity_state':('states',(args.get('entity_id'),)),
                 'hads_get_entity_history':('history',(args.get('start'),args.get('entity_id'),args.get('end'))),
@@ -284,12 +290,13 @@ class EvidenceBroker:
     def _result(self, incident_id,name,source,status,value,now,detail,*,observed=None):
         evidence_ids=[]
         if status in {'available','no_relevant_data'} and value is not None and source!='hads_database':
-            identity=hashlib.sha256(canonical([name,status,value]).encode()).hexdigest()
+            identity_value={k:v for k,v in value.items() if k!='retrieved_at'} if source=='public_research' and isinstance(value,dict) else value
+            identity=hashlib.sha256(canonical([name,status,identity_value]).encode()).hexdigest()
             with self.store._connect() as db:
                 old=db.execute('SELECT observed_at FROM evidence WHERE source=? AND event_id=?',(source,identity)).fetchone()
             self.store.add_evidence(incident_id,{'source':source,'kind':name,'event_id':identity,
                 'observed_at':old[0] if old else observed if observed is not None else now,
-                'payload':{'data':value,'read_status':status,'time_basis':'source_timestamp' if observed is not None else 'read_snapshot_event_time_unknown'}})
+                'payload':{'data':identity_value,'read_status':status,'time_basis':'source_timestamp' if observed is not None else 'read_snapshot_event_time_unknown'}})
             evidence_ids=[hashlib.sha256(canonical([source,identity]).encode()).hexdigest()]
         result={'tool':name,'source':source,'status':status,'data':value,'evidence_ids':evidence_ids,'read_at':now,
                 'source_event_at':observed,'detail_cs':detail}

@@ -51,8 +51,14 @@ class ScriptedModel:
         elif turn==6:
             assert results[-1]['status']=='no_relevant_data' and results[-1]['data']['exists'] is False
             name,args='hads_get_entity_state',{'entity_id':'input_boolean.hads_lab_target'}
-        else:
+        elif turn==7:
             assert results[-1]['data']['state']=='off'
+            evidence=sorted({identity for row in results for identity in row['evidence_ids']})
+            name,args='hads_select_investigator',{'role':'root_cause','task':'Porovnej konfiguraci, trace a oba stavy; odděl chybějící cíl od neověřené příčiny.',
+                'handoff':{'summary_cs':'Konfigurace a trace byly načteny. Cíl reference nemá aktuální stav; virtuální testovací cíl zůstal vypnutý.',
+                    'evidence_ids':evidence,'uncertainties':['Chybí důkaz zamýšleného přemapování.']}}
+        else:
+            assert results[-1]['data']['role']=='root_cause'
             evidence=sorted({identity for row in results for identity in row['evidence_ids']})
             message={'role':'assistant','content':json.dumps({'summary_cs':'Automatizace se spustila, ale její cíl nemá aktuální stav v Core. Dostupný testovací cíl zůstal vypnutý.',
                 'hypotheses':[{'claim':'Neaktivní cíl automatizace; možná neplatná reference.','evidence_ids':evidence,'confidence':'supported_missing_current_state'}],
@@ -216,8 +222,11 @@ input_button:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()
                 names=[row['name'] for row in result['job']['reads']]
-                assert names==['hads_get_incident','hads_get_automation_config','hads_get_automation_traces','hads_get_automation_trace','hads_get_entity_state','hads_get_entity_state'],names
-                assert len(model.requests)==7
+                assert names==['hads_get_incident','hads_get_automation_config','hads_get_automation_traces','hads_get_automation_trace','hads_get_entity_state','hads_get_entity_state','hads_select_investigator'],names
+                assert len(model.requests)==8
+                role_findings=[r['content'] for r in store.case(incident['id'])['records'] if r['kind']=='investigator_finding']
+                assert {r['role'] for r in role_findings}=={'automation','root_cause'}
+                result['role_findings']=role_findings
                 assert len(store.case(incident['id'])['evidence'])==5
                 assert result['job']['state']=='hypothesis_ready'
                 assert store.case(incident['id'])['incident']['status']=='open'

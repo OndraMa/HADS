@@ -116,11 +116,17 @@ class InvestigationJobs:
     def read(self,identity,broker,name,args):
         job=self.get(identity)
         if job['state']!='investigating' or self.clock()>job['deadline']:raise JobBlocked('Čtecí vyšetřování není aktivní.')
+        authorize=getattr(broker,'authorize',None)
+        if authorize:authorize(job['incident_id'],name,args)
         key=hashlib.sha256(canonical([name,args]).encode()).hexdigest()
         with self.store._connect() as db:
             row=db.execute('SELECT result FROM investigation_reads WHERE job_id=? AND request_hash=?',(identity,key)).fetchone()
-            if row:return {**json.loads(row[0]),'cached':True}
-            if db.execute('SELECT count(*) FROM investigation_reads WHERE job_id=?',(identity,)).fetchone()[0]>=12:raise JobBlocked('Vyčerpán rozpočet diagnostických čtení.')
+            if not row and db.execute('SELECT count(*) FROM investigation_reads WHERE job_id=?',(identity,)).fetchone()[0]>=12:raise JobBlocked('Vyčerpán rozpočet diagnostických čtení.')
+        if row:
+            result={**json.loads(row[0]),'cached':True}
+            replay=getattr(broker,'on_cached_read',None)
+            if replay:replay(name,result)
+            return result
         result=broker.read(job['incident_id'],name,args)
         with self.store._connect() as db:
             db.execute('INSERT OR IGNORE INTO investigation_reads VALUES(?,?,?,?,?,?)',

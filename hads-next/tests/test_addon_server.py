@@ -85,6 +85,17 @@ class IngressTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 transport(path)
 
+    def test_public_research_consent_and_cancel_routes_require_owner_and_csrf(self):
+        self.app.enroll_owner('owner-id')
+        self.assertFalse(self.app.investigations.research.enabled())
+        form={'enabled':'yes','csrf':self.server.csrf}
+        self.assertEqual(self.request('POST','/setup/research',urlencode(form),owner='other')[0],403)
+        self.assertEqual(self.request('POST','/setup/research',urlencode(dict(form,csrf='invented')))[0],403)
+        self.assertFalse(self.app.investigations.research.enabled())
+        self.assertEqual(self.request('POST','/setup/research',urlencode(form))[0],303)
+        self.assertTrue(self.app.investigations.research.enabled())
+        self.assertEqual(self.request('POST','/investigate/cancel',urlencode({'csrf':self.server.csrf,'job_id':'unknown'}))[0],400)
+
 
 if __name__ == "__main__":
     unittest.main()

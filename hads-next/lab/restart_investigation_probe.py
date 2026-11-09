@@ -30,6 +30,7 @@ async def exercise_restart(path,core,ws,launcher,user,endpoint,models,scripted_c
     assert len(model.requests)==2
     evidence_before=app.store.case(case['id'])['evidence']
     assert len(evidence_before)==1
+    await asyncio.to_thread(app.investigations.zha_observer.close)
 
     class ResumeModel:
         def __init__(self):self.requests=[]
@@ -69,6 +70,7 @@ async def exercise_restart(path,core,ws,launcher,user,endpoint,models,scripted_c
     for _ in range(100):
         if not restarted.investigations.status()['worker_active']:break
         await asyncio.sleep(.05)
+    await asyncio.to_thread(restarted.investigations.zha_observer.close)
     return {'worker_actually_terminated':True,'controller_state_reconstructed':True,
         'terminated_worker_exit_status':attempt['exit_status'],
         'new_worker_resumed':True,'same_job_id':True,'evidence_retained':True,

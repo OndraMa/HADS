@@ -7,6 +7,7 @@ from .hermes_runtime import run_investigation
 from .investigation_jobs import InvestigationJobs,JobBlocked
 from .zha_observer import ZHAJournal,ZHAObserver
 from .music_configuration import MusicConfiguration
+from .research import ResearchReader
 
 
 class InvestigationService:
@@ -20,12 +21,14 @@ class InvestigationService:
         self.music=MusicConfiguration(app.data_dir)
         self.broker=EvidenceBroker(app.store,core=app.core,core_ws=app.core_ws,supervisor=app.supervisor,zha=self.zha,music=self.music.reader(),clock=app.clock)
         self.broker._lock=app._read_lock
+        self.research=ResearchReader(self.broker);self.research.install()
         self._slot=threading.Lock()
         self._schedule_lock=threading.RLock()
         self._active_job=None
 
     def status(self):
         return {'provider':self.provider.public_status(),'runtime_installed':self.launcher is not None,
+            'public_research_enabled':self.research.enabled(),
             'worker_active':self._slot.locked(),'execution_authority':'none',
             'real_model_acceptance':'pending','haos_acceptance':'pending'}
 
