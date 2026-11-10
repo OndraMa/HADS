@@ -33,6 +33,9 @@ async def exercise_managed(hass,core,ws,launcher,path,user,models,endpoint):
     ui='http://127.0.0.1:'+str(controller.server_port)
     try:
         app.enroll_owner(user.id)
+        model=ManagedModel();models['hads-managed-contract']=model
+        app.investigations.provider.configure(endpoint=endpoint,model='hads-managed-contract',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id)
+        app.detection.consent(True,user.id)
         app.detection.configure({'entity_id':TARGET,'kind':'response','trigger_entity':'input_button.hads_next_test_run','automation_entity':'automation.hads_next_reference_test','expected':'on','grace_seconds':1},user.id)
         for _ in range(100):
             if app.detection.health['state']=='listening':break
@@ -45,9 +48,6 @@ async def exercise_managed(hass,core,ws,launcher,path,user,models,endpoint):
             await asyncio.sleep(.1)
         assert cases,'Real state stream must detect the failed native automation response'
         incident=cases[0]['id'];assert hass.states.get(TARGET).state=='off'
-        model=ManagedModel();models['hads-managed-contract']=model
-        app.investigations.provider.configure(endpoint=endpoint,model='hads-managed-contract',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id)
-        app.investigations.start(incident,user.id)
         for _ in range(1800):
             jobs=app.investigations.for_case(incident)
             if jobs and jobs[0]['state'] in {'hypothesis_ready','blocked','failed'}:break
@@ -108,7 +108,7 @@ async def exercise_managed(hass,core,ws,launcher,path,user,models,endpoint):
         winner=command if isinstance(concurrent[0],dict) else competing
         assert await asyncio.to_thread(ws.transport,winner)==committed
         assert (await asyncio.to_thread(ws.transport,{'type':'hads_reference/read'}))['revision']==committed['revision']
-        return {'server_concurrent_CAS_one_winner':True,'server_idempotency_tombstone_survives_replay':True,'scope':'actual_Core_container_managed_reference' ,'live_haos':False,'model_kind':'scripted_protocol_test','detected_from_native_state_subscription':True,
+        return {'server_concurrent_CAS_one_winner':True,'server_idempotency_tombstone_survives_replay':True,'scope':'actual_Core_container_managed_reference' ,'live_haos':False,'model_kind':'scripted_protocol_test','detected_from_native_state_subscription':True,'investigation_started_automatically_after_owner_opt_in':True,
             'model_calls':len(model.requests),'additional_native_reads':len(jobs[0]['reads']),'suggestion':suggestion,'immutable_plan':plan,
             'csrf_forgery_denied':True,'approval_replay_denied':True,'stale_server_CAS_denied':True,'actual_functional_report':reports[-1],
             'rollback_restored_exact_reference':True,'recurrence_reopened_original_case':recurrence,'passed':recurrence}
