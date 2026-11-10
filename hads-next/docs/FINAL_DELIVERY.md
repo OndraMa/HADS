@@ -22,7 +22,7 @@ spouštění automatizace a funkční čas byly reálné**. Není to fyzický HA
 Finální zdroje navíc testují automatické spuštění Hermes po odděleném opt-in,
 dva souběžné CAS klienty a idempotentní serverový replay. Jejich konečný běh
 se zaznamená do trvalého `evidence/installation-1.0.0-rc1/ACCEPTANCE.json`.
-Počet offline regresí je 155; sám není důkaz funkčnosti produktu.
+Počet offline regresí je 157; sám není důkaz funkčnosti produktu.
 
 ## Přesný rozsah opravy
 

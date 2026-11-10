@@ -44,6 +44,19 @@ class ManagedExecutorTests(unittest.TestCase):
             self.assertEqual(state['revision'],1)
             rollback=engine.prepare_rollback(plan,['proof']);new_token=authority.approve(rollback,principal='owner');engine.execute(rollback,new_token,principal='owner')
             self.assertEqual(state['action']['target']['entity_id'],MISSING);self.assertEqual(state['revision'],2)
+    def test_no_state_without_native_404_cannot_prepare_a_plan(self):
+        from hads_next.observability import CoreReader,CoreWSReader
+        with tempfile.TemporaryDirectory() as tmp:
+            core=CoreReader(lambda _:None)
+            reference={'id':'hads_next_reference_test','revision':0,'scope':'integration_owned_virtual_test_reference','action':{'service':'input_boolean.turn_on','target':{'entity_id':MISSING}}}
+            app=Application(tmp,core,core_ws=CoreWSReader(lambda _:reference));app.enroll_owner('owner')
+            case=app.store.open_incident('functional_monitor','Chybí odezva',[TARGET],1)
+            app.store.add_evidence(case['id'],{'source':'offline_fixture','kind':'condition','observed_at':1,'payload':{'failed':True}})
+            app.repairs.configure(True,'owner')
+            with self.assertRaisesRegex(RepairBlocked,'chybějící'):app.repairs.prepare(case['id'],'owner')
+            self.assertEqual(app.repairs.plans(case['id']),[])
+            app.detection.close();app.repairs.close()
+
     def test_companion_scope_cannot_be_changed_to_physical_entities(self):
         with self.assertRaises(RepairBlocked):ManagedReferenceEngine._entity({'id':'hads_next_reference_test','revision':0,'scope':'integration_owned_virtual_test_reference','action':{'service':'light.turn_on','target':{'entity_id':'light.front_door'}}})
 

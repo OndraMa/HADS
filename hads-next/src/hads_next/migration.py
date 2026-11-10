@@ -4,9 +4,11 @@ from .evidence import canonical,normalize_evidence
 
 
 def import_case(store,document):
+    if not isinstance(document,dict):raise ValueError("Export musí být JSON objekt.")
     raw=canonical(document)
     if len(raw.encode())>512*1024 or document.get('schema_version')!=1:raise ValueError('Podporován je export spisu Next schema 1 do 512 KiB.')
     case=document.get('incident',{});events=document.get('evidence',[]);occurrences=document.get('occurrences',[])
+    if not isinstance(case,dict) or not isinstance(events,list) or not isinstance(occurrences,list):raise ValueError('Neplatné struktury exportu.')
     if not isinstance(case.get('id'),str) or not isinstance(case.get('components'),list) or len(case['components'])>64 or not all(isinstance(x,str) and len(x)<=200 for x in case['components']):raise ValueError('Neplatný spis.')
     if not events or len(events)>1000 or len(occurrences)>2000:raise ValueError('Chybí důkazy nebo je překročen limit.')
     # Import identity ignores decisions/analyses; source changes do not replace

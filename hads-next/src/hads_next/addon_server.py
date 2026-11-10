@@ -60,12 +60,12 @@ class Server(ThreadingHTTPServer):
         self.app.repairs.close()
         super().server_close()
 
-    def verified_admin(self, user_id):
+    def verified_admin(self, user_id, *, fresh=False):
         if not user_id or self.app.core_ws is None:
             return False
         with self._auth_lock:
             now = time.monotonic()
-            if self._auth_cache and self._auth_cache[0] == user_id and now-self._auth_cache[1] < 15:
+            if not fresh and self._auth_cache and self._auth_cache[0] == user_id and now-self._auth_cache[1] < 15:
                 return self._auth_cache[2]
             users = self.app.core_ws.auth_users()
             valid = isinstance(users,list) and len(users) <= 1000 and any(
@@ -191,7 +191,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/setup/history':
             return self.send_body(200,'<h1>Historie a migrace</h1><p>Export spisu je dostupný v jeho detailu. Import Next schema 1 přenese pouze historické incidenty, výskyty a redigované důkazy. Schválení, tokeny, rozpracované zásahy a tvrzení o vyřešení nezískají platnost. RC3 databáze se nemění; přímý import jejího neověřeného schématu není povolený.</p><form method="post" action="import"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>JSON export jednoho spisu Next<textarea name="document" required maxlength="500000"></textarea></label><button>Importovat neautorizující historii</button></form>')
         if path.startswith('/export/'):
-            document=self.server.app.store.export(path.removeprefix('/export/'))
+            try:document=self.server.app.store.export(path.removeprefix('/export/'))
+            except KeyError:return self.send_body(404,'Spis neexistuje.')
             return self.send_body(200,document,'application/json; charset=utf-8')
         if path.startswith("/case/"):
             try:
@@ -286,11 +287,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(303);self.send_header('Location','../setup');self.send_header('Content-Length','0');self.end_headers();return
         if not self.authorized():
             return self.send_body(403, "Chybí ověřený ingress uživatel.")
+        if urlsplit(self.path).path.startswith('/repair/') and not self.server.verified_admin(self.headers.get('X-Remote-User-Id'),fresh=True):
+            return self.send_body(403,'Aktuální oprávnění vlastníka nelze potvrdit.')
         if self.headers.get("Content-Type", "").split(";")[0] != "application/x-www-form-urlencoded":
             return self.send_body(415, "Nepodporovaný formát.")
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= (512*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
+            if not 0 < size <= (2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
                 raise ValueError()
             form = parse_qs(self.rfile.read(size).decode(), max_num_fields=8, strict_parsing=True)
             if form.get("csrf") != [self.server.csrf]:

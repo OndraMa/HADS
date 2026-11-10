@@ -57,12 +57,18 @@ class RepairService:
         return RepairPlan(row[0])
 
     def prepare(self,incident_id,principal):
+        # Preserve the status of each native read across concurrent diagnostics.
+        with self.app._read_lock:return self._prepare_locked(incident_id,principal)
+
+    def _prepare_locked(self,incident_id,principal):
         self.owner_only(principal);case=self.app.store.case(incident_id)
         ids=[e['evidence_id'] for e in case['evidence']]
         if not ids:raise RepairBlocked('Nejprve získej důkazy funkční poruchy.')
         # This independent validator supports one exact managed test resource.
         engine=self.engine();original=json.loads(engine._read(engine.FILENAME))
         if engine._entity(original)!=MISSING:raise RepairBlocked('Testovací reference již není chybná.')
+        old=self.app.core.states(MISSING) if self.app.core else None
+        if old is not None or self.app.core is None or self.app.core.status.last_response_status!=404:raise RepairBlocked('Původní reference není doložená jako chybějící. Chyba připojení nebo oprávnění není důkaz neexistence.')
         state=self.app.core.states(TARGET) if self.app.core else None
         if not isinstance(state,dict) or state.get('state') not in {'off','on'}:raise RepairBlocked('Virtuální cíl není čitelný.')
         if 'input_boolean.hads_next_test_target' not in case['incident']['components'] and 'automation.hads_next_reference_test' not in case['incident']['components']:raise RepairBlocked('Tento spis se netýká podporované testovací automatizace.')
