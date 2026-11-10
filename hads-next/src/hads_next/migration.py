@@ -1,5 +1,5 @@
 """Idempotent non-authorizing import of the supported Next evidence export."""
-import hashlib,json
+import hashlib,json,math
 from .evidence import canonical,normalize_evidence
 
 
@@ -17,9 +17,16 @@ def import_case(store,document):
         clean=normalize_evidence(event);clean['source']='import:'+source[:16]+':'+clean['source'][:150]
         clean['payload']={'imported_unverified':True,'original_source':event['source'],'data':clean['payload']}
         prepared.append(normalize_evidence(clean))
+    checked=[]
+    for occurrence in occurrences:
+        stamp=occurrence.get('observed_at');identity=occurrence.get('event_id')
+        if type(stamp) not in (float,int) or not math.isfinite(stamp) or not isinstance(identity,str) or not 0<len(identity)<=500:raise ValueError('Neplatný historický výskyt.')
+        checked.append((source+':'+hashlib.sha256(identity.encode()).hexdigest(),float(stamp)))
     # Validate everything before writing; import uses a separate correlation key.
     at=min(e['observed_at'] for e in prepared)
-    incident=store.open_incident('imported_history',str(case.get('symptom','Historický incident'))[:1000],case['components'],at,correlation_key='import:'+source,occurrence_id='import:'+source)
+    first_id,first_at=checked[0] if checked else ('import:'+source,at)
+    incident=store.open_incident('imported_history',str(case.get('symptom','Historický incident'))[:1000],case['components'],first_at,correlation_key='import:'+source,occurrence_id=first_id)
+    for identity,stamp in checked[1:]:store.open_incident('imported_history',str(case.get('symptom','Historický incident'))[:1000],case['components'],stamp,correlation_key='import:'+source,occurrence_id=identity)
     added=sum(store.add_evidence(incident['id'],e) for e in prepared)
     with store._connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS case_imports(source_id TEXT PRIMARY KEY,incident_id TEXT NOT NULL)')

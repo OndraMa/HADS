@@ -97,7 +97,18 @@ async def exercise_managed(hass,core,ws,launcher,path,user,models,endpoint):
             if app.store.case(incident)['incident']['status']=='open':break
             await asyncio.sleep(.1)
         recurrence=app.store.case(incident)['incident']['status']=='open'
-        return {'scope':'actual_Core_container_managed_reference','live_haos':False,'model_kind':'scripted_protocol_test','detected_from_native_state_subscription':True,
+        # Independent concurrent clients cannot both commit revision 2.
+        before=await asyncio.to_thread(ws.transport,{'type':'hads_reference/read'})
+        command={'type':'hads_reference/cas','expected_revision':before['revision'],'expected_entity':MISSING,'entity_id':TARGET,'operation_id':'c'*64}
+        competing={**command,'operation_id':'d'*64}
+        concurrent=await asyncio.gather(asyncio.to_thread(ws.transport,command),asyncio.to_thread(ws.transport,competing),return_exceptions=True)
+        assert sum(isinstance(r,dict) for r in concurrent)==1,concurrent
+        committed=await asyncio.to_thread(ws.transport,{'type':'hads_reference/read'})
+        assert committed['revision']==before['revision']+1
+        winner=command if isinstance(concurrent[0],dict) else competing
+        assert await asyncio.to_thread(ws.transport,winner)==committed
+        assert (await asyncio.to_thread(ws.transport,{'type':'hads_reference/read'}))['revision']==committed['revision']
+        return {'server_concurrent_CAS_one_winner':True,'server_idempotency_tombstone_survives_replay':True,'scope':'actual_Core_container_managed_reference' ,'live_haos':False,'model_kind':'scripted_protocol_test','detected_from_native_state_subscription':True,
             'model_calls':len(model.requests),'additional_native_reads':len(jobs[0]['reads']),'suggestion':suggestion,'immutable_plan':plan,
             'csrf_forgery_denied':True,'approval_replay_denied':True,'stale_server_CAS_denied':True,'actual_functional_report':reports[-1],
             'rollback_restored_exact_reference':True,'recurrence_reopened_original_case':recurrence,'passed':recurrence}

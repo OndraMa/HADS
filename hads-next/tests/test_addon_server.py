@@ -72,7 +72,7 @@ class IngressTests(unittest.TestCase):
         self.assertNotIn('<script>alert("x")</script>', page)
         self.assertIn("&lt;script&gt;", page)
         self.assertIn("Hermes vyžaduje izolovaný runtime", page)
-        self.assertIn("Živé opravy jsou vypnuté", page)
+        self.assertIn("Obecné zásahy jsou zakázané", page)
 
     def test_transport_is_a_fixed_read_catalog(self):
         transport = SupervisorCoreTransport("NOT_A_REAL_TOKEN")

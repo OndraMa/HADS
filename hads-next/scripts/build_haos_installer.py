@@ -158,6 +158,7 @@ def build_installer(output_dir: Path) -> dict:
     sources = {p.name: p for p in (ROOT / "haos").iterdir() if p.is_file()}
     sources["hermes-constraints.txt"]=ROOT/"docs/evidence/hermes-dependencies.txt"
     sources["lab/core-constraints.txt"]=ROOT/"lab/core-constraints.txt"
+    sources.update({"companion/"+str(p.relative_to(ROOT/"companion")):p for p in (ROOT/"companion").rglob("*") if p.is_file() and "__pycache__" not in p.parts and p.suffix!=".pyc"})
     sources.update({"hads_next/" + p.name: p for p in (ROOT / "src/hads_next").glob("*.py")})
     if any(path.is_symlink() for path in sources.values()):
         raise ValueError("Source symlinks are forbidden")

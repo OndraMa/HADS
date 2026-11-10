@@ -11,7 +11,7 @@ from .verification import FunctionalVerifier
 class RepairService:
     def __init__(self,app):
         self.app=app;self.root=app.data_dir/'managed-repair';self.root.mkdir(mode=0o700,exist_ok=True)
-        self.enabled=False;self.last_error=None;self.stop=threading.Event();self.thread=None
+        self.companion_checked_at=None;self.enabled=False;self.last_error=None;self.stop=threading.Event();self.thread=None
         self.observations=[];self.lock=threading.RLock();self.trigger_coverage=None;self.trigger_heartbeat=None
         with app.store._connect() as db:db.execute('CREATE TABLE IF NOT EXISTS managed_repair_settings(id INTEGER PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0)');db.execute('INSERT OR IGNORE INTO managed_repair_settings VALUES(1,0)')
         connect(app.store.db_path).close()
@@ -28,15 +28,17 @@ class RepairService:
         if type(enabled) is not bool:raise RepairBlocked('Neplatný souhlas.')
         if enabled:
             if self.app.core_ws is None:raise RepairBlocked('Core není dostupný.')
-            value=self.app.core_ws.transport({'type':'hads_reference/read'})
+            try:value=self.app.core_ws.transport({'type':'hads_reference/read'})
+            except Exception:raise RepairBlocked('Companion není dostupný nebo odmítl přístup. Katalog se nepovolil.') from None
             ManagedReferenceEngine._entity(value)
+            self.companion_checked_at=self.app.clock()
         with self.app.store._connect() as db:db.execute('UPDATE managed_repair_settings SET enabled=? WHERE id=1',(int(enabled),))
         if enabled:self.start()
 
     def status(self):
         with self.app.store._connect() as db:enabled=bool(db.execute('SELECT enabled FROM managed_repair_settings WHERE id=1').fetchone()[0])
         return {'enabled':enabled,'catalog':'integration_owned_virtual_test_reference','native_automation_writes':False,
-            'last_error':self.last_error,'backup':'Ověřený snapshot jediné reference; není to záloha HAOS/OneDrive.',
+            'last_error':self.last_error,'companion_checked_at':self.companion_checked_at,'backup':'Ověřený snapshot jediné reference; není to záloha HAOS/OneDrive.',
             'one_drive_risky_operations':'blocked_no_independent_restore_proof'}
 
     def plans(self,incident_id):

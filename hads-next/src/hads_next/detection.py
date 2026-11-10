@@ -13,7 +13,7 @@ ENTITY=re.compile(r'[a-z][a-z0-9_]*\.[a-z0-9_]+')
 class DetectionEngine:
     def __init__(self,app):
         self.app=app;self.stop=threading.Event();self.thread=None;self.poll_thread=None;self.lock=threading.RLock()
-        self.health={'state':'stopped','last_event_at':None,'last_error':None,'continuous_since':None,'heartbeat_at':None}
+        self.health={'state':'stopped','last_event_at':None,'last_error':None,'continuous_since':None,'heartbeat_at':None,'last_system_check_at':None}
         with app.store._connect() as db:
             db.executescript('''CREATE TABLE IF NOT EXISTS detection_rules(id TEXT PRIMARY KEY,document TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS detection_state(rule_id TEXT PRIMARY KEY,document TEXT NOT NULL);
@@ -117,6 +117,11 @@ class DetectionEngine:
     def _incident(self,rule,pending,now):
         text={'unavailable':'Zařízení zůstává nedostupné','state':'Monitorovaná funkce nedosáhla očekávaného stavu','playback':'Přehrávání skončilo během dohodnutého sledování','response':'Po spouštěcí události nenásledovala očekávaná odezva'}[rule['kind']]
         identity=hashlib.sha256(canonical([rule['id'],pending['since'],pending['event']]).encode()).hexdigest()
+        with self.app.store._connect() as db:
+            count=db.execute('SELECT count(*) FROM occurrences').fetchone()[0]
+        if count>=10000:
+            self.health['last_error']='Úložiště výskytů dosáhlo limitu; exportuj a archivuj historii. Nové důkazy se nesmějí tiše ztrácet.'
+            return
         incident=self.app.store.open_incident('functional_monitor',text,[x for x in (rule['entity_id'],rule.get('automation_entity',''),rule.get('trigger_entity','')) if x],now,correlation_key='monitor:'+rule['id'],occurrence_id=identity)
         self.app.store.add_evidence(incident['id'],{'source':'ha_core_state_events','kind':'functional_condition_failed','observed_at':now,'event_id':identity,'payload':{'rule':rule,'started_at':pending['since'],'last_state':pending['event'],'coverage_since':self.health['continuous_since'],'cause_proven':False}})
         repairs=getattr(self.app,'repairs',None)
@@ -140,6 +145,9 @@ class DetectionEngine:
             while not self.stop.wait(1):
                 try:
                     self.tick()
+                    now=self.app.clock()
+                    if now-(self.health['last_system_check_at'] or 0)>=300:
+                        self.app.request_source_check();self.health['last_system_check_at']=now
                     repairs=getattr(self.app,"repairs",None)
                     if repairs and repairs.status()["enabled"]:repairs.verify_pending()
                 except Exception:self.health['last_error']='Kontrola podmínek selhala; nelze potvrdit úplné pokrytí.'

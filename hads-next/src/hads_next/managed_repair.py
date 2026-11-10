@@ -32,7 +32,9 @@ class ManagedReferenceEngine(RepairEngine):
 
     def _read(self,filename):
         if filename!=self.FILENAME:raise RepairBlocked('Nepovolený cíl.')
-        value=self.transport({'type':'hads_reference/read'});self._entity(value)
+        try:value=self.transport({'type':'hads_reference/read'})
+        except Exception:raise RepairBlocked('Companion referenci se nepodařilo přečíst. Bez ověřeného čtení se oprava nepřipraví.') from None
+        self._entity(value)
         return canonical(value).encode()
 
     @classmethod
@@ -42,8 +44,9 @@ class ManagedReferenceEngine(RepairEngine):
 
     def _replace(self,filename,content):
         value=json.loads(content);target=self._entity(value)
-        result=self.transport({'type':'hads_reference/cas','expected_revision':value['revision']-1,
+        try:result=self.transport({'type':'hads_reference/cas','expected_revision':value['revision']-1,
             'expected_entity':MISSING if target==TARGET else TARGET,'entity_id':target,'operation_id':digest(content)})
+        except Exception:raise RepairBlocked('CAS nebylo potvrzené; další zápisy jsou zastavené. Neopakuj zásah bez vyhodnocení aktuálního stavu.') from None
         if result!=value:raise RepairBlocked('CAS nepotvrdilo přesně schválenou změnu. Žádný automatický retry.')
 
     def _manual_alternative(self,filename,expected_old,new_entity_id):
