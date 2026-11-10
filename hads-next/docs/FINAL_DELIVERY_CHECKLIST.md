@@ -15,3 +15,13 @@ Výchozí vzdálená i lokální revize ověřena 10. 11. 2026:
 | První spuštění | ověřený správce a dílčí kontroly | funkční stavy jednotlivých bran včetně oprav/záloh |
 | Distribuce | 0.2 se zachovává | nová identita a kandidát až po dostupných integračních branách |
 | Skutečný LLM / HAOS / hardware | nedostupné; žádné credentials | připravit přejímku, nikdy nepřeznačovat testy na live |
+
+## Uzavření implementační kontroly
+
+Finální souhrn a právě jeden stav každé oblasti jsou v `FINAL_DELIVERY.md`.
+Nativní AMD64 a ARM64 běh 42826723489 nad 0457f9c prošel úplným
+autonomním řetězcem se skutečným Core a původním Hermes (skriptovaný model),
+včetně schválení, CAS, skutečného funkčního intervalu, rollbacku a recidivy.
+157 regresí na každé architektuře. Obecné native config zápisy a rizikové
+operace zůstaly zablokované; vlastní virtuální CAS je konkrétní alternativa.
+HAOS, reálný model, skutečný Supervisor/MA a hardware mají čekající přejímku.

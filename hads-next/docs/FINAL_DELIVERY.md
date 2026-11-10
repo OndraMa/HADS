@@ -19,9 +19,10 @@ referenci a další skutečné funkční selhání znovu otevřelo původní spi
 
 Model byl skriptovaný; **skutečný agent, Core, SQLite, HTTP/WebSocket, CAS,
 spouštění automatizace a funkční čas byly reálné**. Není to fyzický HAOS test.
-Finální zdroje navíc testují automatické spuštění Hermes po odděleném opt-in,
-dva souběžné CAS klienty a idempotentní serverový replay. Jejich konečný běh
-se zaznamená do trvalého `evidence/installation-1.0.0-rc1/ACCEPTANCE.json`.
+Finální [běh 42826723489](https://github.com/OndraMa/HADS/actions/runs/42826723489)
+nad revizí `0457f9c0887f309bcfe197cc9aa2764b85e9e012` prošel na obou
+architekturách včetně automatického spuštění Hermes po opt-in, dvou souběžných
+CAS klientů a idempotentního serverového replay. Trvalý [úplný protokol](evidence/installation-1.0.0-rc1/ACCEPTANCE.json) obsahuje hashe všech zdrojů a výsledků.
 Počet offline regresí je 157; sám není důkaz funkčnosti produktu.
 
 ## Přesný rozsah opravy
@@ -81,3 +82,12 @@ Základní deterministické funkce nepotřebují AI. Neznámá očekávání se 
 pravidlem; HADS netvrdí, že z logů automaticky zná záměr každého zařízení.
 Žádná další vývojová verze se nemá označit jako dokončený produkt jen podle
 počtu tříd nebo testů. Přejímkový kandidát musí odpovídat testovaným bajtům.
+
+## Přesný instalační kandidát
+
+Instalátor SHA-256: `ff70a3f2177df001e131ec9724d5857292da0197dc80e1eb87e5cd88fd74ef31`. Obě architektury vytvořily
+stejné bajty. Všech 44 payload souborů odpovídá přesné přijaté revizi.
+[Ke stažení včetně zdrojů a českých návodů](../../KE_STAZENI/HADS_Next_1.0.0-rc1/).
+CI změnilo pouze vlastní testovací účtenku; příznak dirty v manifestu zůstává
+přiznaný. Apt repozitáře nejsou zmrazené, takže budoucí image může mít jiný
+digest; nový image musí projít vlastní přejímkou.

@@ -53,7 +53,9 @@ def build(ref, package, output, version=VERSION):
         companion=io.BytesIO()
         with tarfile.open(fileobj=io.BytesIO(assets[source]),mode="r:gz") as archive,zipfile.ZipFile(companion,"w",compression=zipfile.ZIP_DEFLATED) as target:
             for member in archive:
-                if member.name.startswith('companion/') and member.isfile():target.writestr(member.name.removeprefix('companion/'),archive.extractfile(member).read())
+                if member.name.startswith('companion/') and member.isfile():
+                    entry=zipfile.ZipInfo(member.name.removeprefix('companion/'),(1980,1,1,0,0,0));entry.compress_type=zipfile.ZIP_DEFLATED;entry.external_attr=0o100644<<16
+                    target.writestr(entry,archive.extractfile(member).read())
         assets['HADS_companion_'+VERSION+'.zip']=companion.getvalue()
     assets["AKCEPTACE_HAOS_CS.md"] = blob("hads-next/docs/haos-acceptance.md")
     assets["ACCEPTANCE.json"] = json.dumps(accepted, indent=2).encode() + b"\n"

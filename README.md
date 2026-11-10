@@ -1,25 +1,20 @@
-# HADS — stažení a návody
+# HADS Next — souhrnné dodání
 
-Aktuální vývojová větev je **codex/hads-next-investigation**.
-Ve Windows otevři přímo [složku ke stažení HADS Next 0.2.0-dev1](https://github.com/OndraMa/HADS/tree/codex/hads-next-investigation/KE_STAZENI/HADS_Next_0.2.0-dev1).
-Kompletní ZIP obsahuje instalátor, český návod, kontrolní součty, testovací
-protokoly a verzované zdroje. Cloudový panel ChatGPT není potřeba.
+Aktuální práce je v [PR 7](https://github.com/OndraMa/HADS/pull/7), větev
+**codex/hads-next-final-delivery**. RC3 a staré archivy se nepřepisují.
 
-- [Stažení ve Windows](hads-next/docs/STAZENI_WINDOWS_CS.md)
-- [První nastavení a instalace](hads-next/haos/DOCS.md)
-- [Výsledky a čekající schopnosti](hads-next/docs/results.md)
-- [Kontrolovatelný návrh změn č. 6](https://github.com/OndraMa/HADS/pull/6)
-- [Úspěšné AMD64 i ARM64 testy](https://github.com/OndraMa/HADS/actions/runs/42678100603)
+- [Jeden souhrnný výsledek, přesné stavy funkcí a omezení](hads-next/docs/FINAL_DELIVERY.md)
+- [Instalační kandidát, kompletní ZIP a české návody](KE_STAZENI/HADS_Next_1.0.0-rc1/)
+- [Instalace a první nastavení](hads-next/haos/DOCS.md)
+- [Čekající živá HAOS přejímka](hads-next/docs/haos-acceptance.md)
 
-Kandidát obsahuje skutečný původní Hermes, oddělený čtecí broker a kontrolu
-připravenosti bez modelu. Obě architektury prošly testy se skutečným Core a
-instalačním image. Modelový endpoint byl skriptovaný. **Živý HAOS, skutečný LLM,
-fyzická zařízení a RPi zatím přijaté nejsou; produkční zápisy jsou vypnuté.**
-Používej oddělený testovací HAOS. Stažení není pokyn k zásahu v domácnosti.
+Ve Windows otevři tuto větev v přihlášeném GitHubu a použij Download raw file
+u kompletního ZIPu. Cloudový panel ChatGPT není potřeba. Výchozí main může
+nadále obsahovat starý HADS 4.6.3; není zdrojem aktuálního HADS Next.
 
-Výchozí main může dál ukazovat starý HADS 4.6.3. Přepni větev nad seznamem
-souborů nebo použij přímé odkazy výše. RC3 zůstává ve větvi
-`hermes-2-rc2-cloud-verification`; vydané archivy se nepřepisují.
-
-Historický [balíček 0.1.0-dev1](KE_STAZENI/HADS_Next_0.1.0-dev1/) nový Hermes
-runtime neobsahuje. Nepoužívej jej jako aktuální instalátor.
+Nový systém propojuje vybrané funkční monitory, původní Hermes a broker,
+schválení, atomickou vlastní virtuální referenci, funkční ověření a report.
+**Obecné automatizace domácnosti se nepřepisují.** Plný nativní Core řetězec
+prošel na AMD64 a ARM64 se skriptovaným modelem. Reálný LLM, živý HAOS,
+Supervisor/MA server, fyzická zařízení a RPi 4 / 2 GB stále vyžadují přejímku.
+Nejde o produkčně ověřené vydání. Kandidát je pro oddělený testovací HAOS.
