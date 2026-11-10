@@ -79,7 +79,7 @@
     "src/hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
     "src/hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
     "src/hads_next/music_assistant.py": "cb201cc61fd10266775aa661c5c6383f16bb373adc260ca93c9db9b35ce9a98a",
-    "src/hads_next/command_center.py": "e753a8c3e576b7228a4d2eb4e6731607070e4b31e8d81ec3a8319baf5f5b4e82",
+    "src/hads_next/command_center.py": "50be837b4a86a77f90f436c84ff71b8399104305380fa5dc7b776d60e0a80769",
     "src/hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
     "src/hads_next/migration.py": "080bdea688947b438ab1463163f088b9250234fd996a73d404d5780cc42443c2",
     "src/hads_next/live_acceptance.py": "d5fdd80650c0a0df99ef91357a829b21304978c4a785ef8aa2e4165936c47c3d",
@@ -98,6 +98,6 @@
     "src/hads_next/ai_provider.py": "4bf71d379a672f79624dab1557e6bc19e0aebae18be7f45eda4f120a23d434e7",
     "src/hads_next/investigator_roles.py": "da83e0614e883183972b6aef196a72a0f2300916fe16705b1715cea4dcbf5191",
     "src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
-    "scripts/practical_browser.py": "38a5948aab114669f0bf2efe7868443787582a39bf9da9066f3a98d8a17ff413"
+    "scripts/practical_browser.py": "d78ff48415bf048e8f10c300a37d2d7425370606d0dca493e0348c1d0a374ae7"
   }
 }

@@ -29,6 +29,7 @@ def main():
                     for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/case/'+case['incident']['id']]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
+                        assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'
                         assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0],'passed':True})
                     page.goto(origin+'/acceptance');page.locator('input[name=isolated]').check();page.get_by_role('button',name='Založit přejímkový protokol').click();page.wait_for_url('**/acceptance?session=*')
                     assert page.get_by_role('button',name='Provést tento test').count()==12
