@@ -1,14 +1,12 @@
-# Test J: budoucí přejímka na izolovaném HAOS
+# Test J: přejímka na odděleném HAOS
 
-Stav protokolu k **2026-11-08 UTC: ČEKÁ – NEPROVEDENO**.
+Stav k **2026-11-09 UTC: ČEKÁ – ŽIVÝ HAOS NEPROVEDEN**. Uživatel nemá
+testovací HAOS. Kontejnerové a offline výsledky níže tuto přejímku nenahrazují.
 
-Současný balík `hads-next` obsahuje izolovanou JSON fixture a nově samostatnou
-instalovatelnou HAOS vývojovou aplikaci 0.1.0-dev1; není to HAOS Release Candidate. Nemá živý
-zapisovací adaptér, ověřenou HAOS schvalovací identitu ani hotovou izolaci
-produkčního workeru. **Nasazení do produkční domácnosti je blokované.**
-Container smoke, testy na syntetických datech a historické účtenky RC3 nejsou
-náhradou tohoto protokolu. Instalace omezeného read-only preview je popsána
-v [haos/DOCS.md](../haos/DOCS.md); tím se nesplní gates plné platformy níže.
+Kandidát 0.2.0-dev1 obsahuje původní izolovaný Hermes, ověření HA správce,
+trvalé vyšetřování a opt-in modelu. Produkční zapisovací adaptér není
+zpřístupněný. Návod je v [haos/DOCS.md](../haos/DOCS.md); přejímka čtecího
+kandidátu může pokračovat nezávisle na blokované zapisovací části.
 
 ## Rozsah, role a evidence
 
@@ -45,8 +43,8 @@ zapisovací část, zaznamenat blocker a pokračovat pouze nezávislým čtením
 1. Existuje zkontrolovaný kandidát HAOS aplikace s manifestem, přesnými verzemi,
    minimálními oprávněními, dokumentovaným instalačním i odinstalačním postupem
    a hashem/image digestem. Balení nesmí přepsat RC3, jeho adresář ani DB.
-   Vývojový read-only balík již existuje; kandidát s bezpečným živým workerem
-   a vykonavatelem zatím chybí.
+   Čtecí kandidát s původním workerem existuje; jeho HAOS izolace a skutečné
+   zdroje čekají na tuto přejímku. Produkční vykonavatel není zpřístupněný.
 2. M0–M4 mají vlastní reprodukovatelné protokoly; bezpečnostní negativní testy
    musí platit pro přesně tentýž commit/image, ne starý tag nebo image před opravou.
 3. Ověřená identita schvalovatele přichází z autentizovaného důvěryhodného
@@ -182,8 +180,9 @@ Nepoužívat skutečné alarm kódy. Redakční test nevyžaduje volat alarm slu
 ## J4 – první živá oprava, až po splnění J0
 
 Současná implementace opravuje pouze jeden odkaz v izolovaném JSON souboru.
-Tato část je **BLOCKED**, dokud nevznikne podporovaný živý HA adaptér a pravá
-schvalovací identita. Žádný níže popsaný krok nyní nespouštět náhradním shellem.
+Tato část je **BLOCKED**, dokud není zpřístupněný a přezkoušený produkční HA
+adaptér a schvalovací vazba na přesný plán. Ověření vlastníka čtecího UI již
+existuje; samo neposkytuje oprávnění k opravě. Žádný níže popsaný krok nyní nespouštět náhradním shellem.
 
 1. V čistém laboratorním HA vytvořit samostatnou bezpečnou automatizaci pro
    testovací lampu a záměrně chybný entity odkaz. Zapsat původní konfiguraci,

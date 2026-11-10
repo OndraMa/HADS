@@ -10,6 +10,17 @@ from hads_next.observability import (
 
 
 class ReadContractTests(unittest.TestCase):
+    def test_admin_identity_read_cannot_overwrite_diagnostic_error_status(self):
+        def transport(command):
+            if command['type']=='config/auth/list':return [{'id':'owner','is_owner':True}]
+            raise ReadFailure('forbidden',403)
+        reader=CoreWSReader(transport)
+        self.assertIsNone(reader.traces('automation','fixture'))
+        self.assertEqual(reader.status.last_response_status,403)
+        self.assertTrue(reader.auth_users())
+        self.assertEqual(reader.status.last_response_status,403)
+        self.assertFalse(reader.status.read_succeeded)
+
     def test_native_contracts_and_redaction(self):
         calls = []
         def read(request):

@@ -1,20 +1,15 @@
-# HADS Next 0.1.0-dev1 pro HAOS
+# HADS Next 0.2.0-dev1 — vývojová přejímka
 
-Samostatná místní aplikace pro **vývojovou přejímku** vedle HADS Hermes RC3.
-Není to hotová náhrada RC3 ani produkčně ověřený Release Candidate.
+Samostatná HAOS aplikace s původním připnutým NousResearch Hermes, čtecími
+adaptéry, trvalými incidenty a českým přehledem. AI je ve výchozím stavu vypnutá.
+Skutečný test připravenosti Hermes nepotřebuje model ani klíč.
 
-Balík používá `slug: hads_next_dev`, v Supervisoru tedy
-`local_hads_next_dev`. Nezapisuje do konfigurace Home Assistantu a nepřebírá
-databázi, čekající plány ani schválení starého HADS. Vlastní spisy ukládá
-do `/data/hads-next` uvnitř svého kontejneru.
+Kandidát je určen pro oddělený testovací HAOS. Živý HAOS, fyzické rádio/Zigbee,
+Raspberry Pi 4 a skutečný jazykový model nemají dokončenou přejímku.
+Produkční zapisovací opravy nejsou zpřístupněné. Návrh lze posoudit,
+odmítnout nebo provést ručně; laboratorní oprava není produkční oprávnění.
 
-Instalátor vytváří novou složku v již připojeném adresáři místních aplikací
-(`/local_apps`, případně starší `/addons`). Existující cílovou instalaci musí
-odmítnout přepsat. Docker image se staví na zařízení; vyžaduje internet pro
-stažení připnutého základního Python image. Při běhu nevolá placené AI API.
-
-Připravená architektura balíčku je `amd64` a `aarch64`; přítomnost architektury
-v `config.yaml` **nedokládá** úspěšný ARM64 build, provoz na Raspberry Pi ani
-živou HAOS instalaci. Skutečné výsledky jsou uvedeny v přiložené testovací účtence.
-
-Podrobnosti instalace, oprávnění a přejímky: [DOCS.md](DOCS.md).
+Nový slug `local_hads_next_investigation` zachovává RC3 i starý Next. Výchozí
+balík neobsahuje testovací Core ani laboratorní zapisovací server. Nevyžaduje
+Docker socket, mount konfigurace, vypnutí AppArmor ani další privilegované
+capabilities. Postup a přesné hranice jsou v [DOCS.md](DOCS.md).

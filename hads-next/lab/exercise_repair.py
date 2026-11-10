@@ -11,7 +11,7 @@ from hads_next.verification import FunctionalVerifier
 from core_repair import CoreLabRepairEngine
 
 
-async def exercise(hass, path, nonce, token, user, client, trace):
+async def exercise(hass, path, nonce, token, user, client, trace, **readers):
     base = 'http://127.0.0.1:8123'
     root = Path(path) / 'hads-authority'
     root.mkdir(mode=0o700)

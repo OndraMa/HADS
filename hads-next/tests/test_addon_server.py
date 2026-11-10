@@ -71,7 +71,8 @@ class IngressTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertNotIn('<script>alert("x")</script>', page)
         self.assertIn("&lt;script&gt;", page)
-        self.assertIn("Hermes a živé opravy nejsou aktivní", page)
+        self.assertIn("Hermes vyžaduje izolovaný runtime", page)
+        self.assertIn("Živé opravy jsou vypnuté", page)
 
     def test_transport_is_a_fixed_read_catalog(self):
         transport = SupervisorCoreTransport("NOT_A_REAL_TOKEN")
@@ -83,6 +84,34 @@ class IngressTests(unittest.TestCase):
         for path in ("/api/services", "https://external.invalid", "/addons", "/api/config/core/check_config"):
             with self.assertRaises(ValueError):
                 transport(path)
+
+    def test_public_research_consent_and_cancel_routes_require_owner_and_csrf(self):
+        self.app.enroll_owner('owner-id')
+        self.assertFalse(self.app.investigations.research.enabled())
+        form={'enabled':'yes','csrf':self.server.csrf}
+        self.assertEqual(self.request('POST','/setup/research',urlencode(form),owner='other')[0],403)
+        self.assertEqual(self.request('POST','/setup/research',urlencode(dict(form,csrf='invented')))[0],403)
+        self.assertFalse(self.app.investigations.research.enabled())
+        self.assertEqual(self.request('POST','/setup/research',urlencode(form))[0],303)
+        self.assertTrue(self.app.investigations.research.enabled())
+        self.assertEqual(self.request('POST','/investigate/cancel',urlencode({'csrf':self.server.csrf,'job_id':'unknown'}))[0],409)
+
+    def test_manual_preference_is_bound_to_draft_and_never_approves_a_write(self):
+        self.app.enroll_owner('owner-id')
+        case=self.app.store.open_incident('automation_reference','Nefunkční odkaz.',['automation.fixture'],1)
+        service=self.app.investigations;identity=service.jobs.enqueue(case['id']);service.jobs.claim(identity)
+        suggestion={'suggestion_id':'a'*64,'summary_cs':'Je potřeba ruční kontrola.','manual_steps_cs':['Ověř zamýšlený cíl.']}
+        service.jobs.transition(identity,'hypothesis_ready','Offline route fixture.',conclusion={'summary_cs':'Pracovní návrh.','repair_suggestion':suggestion})
+        data={'csrf':self.server.csrf,'incident_id':case['id'],'decision':'manual','suggestion_id':'b'*64}
+        self.assertEqual(self.request('POST','/repair/preference',urlencode(data))[0],400)
+        data['suggestion_id']=suggestion['suggestion_id']
+        self.assertEqual(self.request('POST','/repair/preference',urlencode(data))[0],303)
+        stored=self.app.store.case(case['id'])
+        decision=next(r['content'] for r in stored['records'] if r['kind']=='repair_suggestion_decision')
+        self.assertFalse(decision['approval_granted']);self.assertEqual(decision['functional_result'],'not_verified')
+        self.assertEqual(stored['incident']['status'],'open')
+        page=self.request('GET','/case/'+case['id'])[1]
+        self.assertIn('Zvolil jsi ruční kontrolu',page);self.assertNotIn('Schválit opravu',page)
 
 
 if __name__ == "__main__":

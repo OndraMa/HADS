@@ -1,0 +1,94 @@
+{
+  "scope": "container_with_fake_supervisor",
+  "live_haos": false,
+  "arm64_tested": false,
+  "installer_sha256": "ea0c569b03f669d54f2ba5f709821601aad3b45236122c392c86bfe0a09fcb9c",
+  "native_runtime_readiness": {
+    "scope": "isolated_container_native_Hermes_readiness",
+    "live_haos": false,
+    "ha_connected": false,
+    "model_provider_configured": false,
+    "controller_uid": 65532,
+    "result": {
+      "completed": true,
+      "probe_only": true,
+      "engine": "NousResearch/hermes-agent",
+      "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "native_agent_loaded": true,
+      "model_calls": 0,
+      "isolation_verified": true,
+      "uid": 65534,
+      "peak_rss_bytes": 140824576,
+      "execution_authority": "none",
+      "broker_requests_rejected": 0
+    },
+    "passed": true
+  },
+  "memory_admission_refused_without_model": {
+    "scope": "isolated_container_native_Hermes_readiness",
+    "live_haos": false,
+    "ha_connected": false,
+    "model_provider_configured": false,
+    "controller_uid": 65532,
+    "result": {
+      "completed": false,
+      "error": "insufficient_memory_reserve",
+      "required_reserve_bytes": 603979776,
+      "broker_requests_rejected": 0
+    },
+    "passed": false
+  },
+  "runtime": {
+    "health": {
+      "service": "hads-next",
+      "version": "0.2.0-dev1",
+      "mode": "read_only_development"
+    },
+    "runtime_uid": 65532,
+    "capabilities": 0,
+    "direct_data_access": 403
+  },
+  "case_persisted_after_container_restart": true,
+  "image": {
+    "Id": "sha256:e7bbd0ac5fb3fc6d0a414dfbc7dc9e3d7e148b85ab4e0504aac7f11d4cca2bdd",
+    "Architecture": "amd64",
+    "Os": "linux",
+    "Size": 582054191
+  },
+  "raspberry_pi_tested": false,
+  "install": {
+    "fake_supervisor_only": true,
+    "commands": [
+      [
+        "apps",
+        "--help"
+      ],
+      [
+        "apps",
+        "--raw-json"
+      ],
+      [
+        "store",
+        "reload"
+      ],
+      [
+        "apps",
+        "install",
+        "local_hads_next_investigation"
+      ],
+      [
+        "apps",
+        "start",
+        "local_hads_next_investigation"
+      ],
+      [
+        "apps",
+        "info",
+        "local_hads_next_investigation",
+        "--raw-json"
+      ]
+    ],
+    "reinstallation_refused": true
+  },
+  "passed": true
+}

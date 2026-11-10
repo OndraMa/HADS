@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from typing import Callable
 from urllib.error import HTTPError
@@ -19,6 +20,24 @@ _SECRET = re.compile(r"token|password|secret|authorization|api[-_]?key|access[-_
 _BEARER = re.compile(r"Bearer\s+[^\s\"']+", re.I)
 _ASSIGNMENT = re.compile(r"((?:token|password|secret|api[-_]?key|access[-_]?key|authorization)\s*[=:]\s*)[^\s&\"'<>]+", re.I)
 _URL_CREDENTIAL = re.compile(r"(https?://)[^/@\s]+:[^/@\s]+@", re.I)
+
+SUPERVISOR_FIELDS={
+    'info':('version','version_latest','update_available','healthy','supported','arch','channel'),
+    'os_info':('version','version_latest','update_available','board','boot','data_disk'),
+    'app_info':('slug','name','version','version_latest','state','update_available','boot','startup','watchdog','healthy','available','arch'),
+    'app_stats':('cpu_percent','memory_usage','memory_limit','memory_percent','network_tx','network_rx','blk_read','blk_write'),
+}
+
+
+def project_supervisor_read(kind,value):
+    """Shared positive projection; never persist an application's options."""
+    import math
+    if kind not in SUPERVISOR_FIELDS or not isinstance(value,dict):raise ValueError('invalid_supervisor_contract')
+    result={key:value[key] for key in SUPERVISOR_FIELDS[kind] if key in value}
+    if not result:raise ValueError('missing_supervisor_fields')
+    if kind=='app_stats' and any(type(x) not in {int,float} or not math.isfinite(x) or x<0 for x in result.values()):
+        raise ValueError('invalid_supervisor_statistics')
+    return redact(result)
 
 
 def redact(value):
@@ -83,6 +102,7 @@ class SourceStatus:
     last_error: str | None = None
     last_read_at: float | None = None
     last_evidence_at: float | None = None
+    last_response_status: int | None = None
 
     def snapshot(self, now=None):
         result = asdict(self)
@@ -95,6 +115,26 @@ class ReadFailure(RuntimeError):
     def __init__(self, code, status=None):
         super().__init__(code)
         self.status = status
+
+
+def bounded_chunks(response,limit,seconds):
+    """HTTPResponse.read1 returns available data; a trickle cannot reset budget.
+
+    A socket read may still take the configured transport timeout. The wall
+    budget is checked between reads, independently of per-socket inactivity.
+    """
+    deadline=time.monotonic()+seconds;size=0
+    while True:
+        if time.monotonic()>deadline:raise ReadFailure('response_time_budget')
+        chunk=response.read1(min(16384,limit+1-size))
+        if not chunk:return
+        size+=len(chunk)
+        if size>limit:raise ReadFailure('response_too_large')
+        yield chunk
+
+
+def bounded_body(response,limit,seconds=10):
+    return b''.join(bounded_chunks(response,limit,seconds))
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -122,9 +162,7 @@ class NativeHTTP:
         request = Request(self._origin + path, headers={"Authorization": "Bearer " + self._token})
         try:
             with self._opener.open(request, timeout=10) as response:
-                data = response.read(MAX_BYTES + 1)
-                if len(data) > MAX_BYTES:
-                    raise ReadFailure("response_too_large")
+                data = bounded_body(response,MAX_BYTES)
                 return data.decode('utf-8', errors='replace')[-65536:] if raw else json.loads(data)
         except HTTPError as exc:
             raise ReadFailure("http_error", exc.code) from None
@@ -138,17 +176,19 @@ class NativeHTTP:
 class NativeWebSocket:
     """Optional real websocket transport; opens one bounded authenticated read.
 
-    Requires websockets>=16,<17, installed only for native WS use. No subscription,
-    service call or arbitrary command is exposed by CoreReader.
+    Requires websockets>=16,<17. The only event subscription is zha_event;
+    no service calls or general subscriptions are exposed to investigators.
     """
-    def __init__(self, url, token, *, supervisor_proxy=False):
+    def __init__(self, url, token, *, supervisor_proxy=False, allow_loopback=False):
         p = urlsplit(url)
         internal = supervisor_proxy and url == 'ws://supervisor/core/websocket'
-        if (not internal and (p.scheme != "wss" or p.path != "/api/websocket")) or p.username or p.password or p.query or p.fragment:
+        local = allow_loopback and p.scheme=='ws' and p.hostname=='127.0.0.1' and p.path=='/api/websocket'
+        if (not internal and not local and (p.scheme != "wss" or p.path != "/api/websocket")) or p.username or p.password or p.query or p.fragment:
             raise ValueError("explicit secure HA websocket URL required")
         self._url, self._token = url, token
 
-    def __call__(self, command):
+    @contextmanager
+    def _connection(self):
         from websockets.sync.client import connect
         try:
             with connect(self._url, open_timeout=10, close_timeout=2, max_size=MAX_BYTES) as ws:
@@ -157,19 +197,65 @@ class NativeWebSocket:
                 ws.send(json.dumps({"type": "auth", "access_token": self._token}))
                 if json.loads(ws.recv(timeout=10)).get("type") != "auth_ok":
                     raise ReadFailure("authentication_failed", 401)
-                ws.send(json.dumps({**command, "id": 1}))
-                # system_health/info uses subscription messages; intentionally not
-                # exposed here until a streaming transport is integration-tested.
-                result = json.loads(ws.recv(timeout=10))
-                if result.get("id") != 1 or result.get("type") != "result":
-                    raise ReadFailure("unexpected_result")
-                if not result.get("success"):
-                    raise ReadFailure("command_rejected")
-                return result.get("result")
+                yield ws
         except ReadFailure:
             raise
         except Exception:
             raise ReadFailure("websocket_read_failed") from None
+
+    def __call__(self, command):
+        with self._connection() as ws:
+            ws.send(json.dumps({**command, 'id': 1}))
+            result = json.loads(ws.recv(timeout=10))
+            if result.get('id') != 1 or result.get('type') != 'result':
+                raise ReadFailure('unexpected_result')
+            if not result.get('success'):
+                error=result.get('error',{}).get('code')
+                raise ReadFailure('command_rejected',403 if error in {'unauthorized','auth_required'} else None)
+            if command.get('type') != 'system_health/info':
+                return result.get('result')
+            domains={}; size=0; deadline=time.monotonic()+15
+            for _ in range(128):
+                remaining=deadline-time.monotonic()
+                if remaining<=0:break
+                try:message=ws.recv(timeout=remaining)
+                except TimeoutError:break
+                size+=len(message)
+                if size>MAX_BYTES:raise ReadFailure('response_too_large')
+                message=json.loads(message)
+                if message.get('id')!=1 or message.get('type')!='event':raise ReadFailure('unexpected_health_event')
+                event=message.get('event',{})
+                if event.get('type')=='initial':
+                    domains=event.get('data')
+                    if not isinstance(domains,dict):raise ReadFailure('invalid_health_initial')
+                elif event.get('type')=='update':
+                    domain=domains.get(event.get('domain'))
+                    if isinstance(domain,dict):
+                        domain.setdefault('info',{})[event['key']]=event.get('data') if event.get('success') else {'error':event.get('error')}
+                elif event.get('type')=='finish':return {'domains':domains,'complete':True}
+            return {'domains':domains,'complete':False,'limitation':'health_stream_incomplete'}
+
+    def zha_events(self, stop, on_event, on_ready, on_heartbeat):
+        """Trusted collector only. No model parameters, credentials in transport."""
+        with self._connection() as ws:
+            ws.send(json.dumps({'id':1,'type':'subscribe_events','event_type':'zha_event'}))
+            ack=json.loads(ws.recv(timeout=10))
+            if ack.get('id')!=1 or ack.get('type')!='result' or not ack.get('success'):
+                raise ReadFailure('zha_subscription_rejected',403 if ack.get('error',{}).get('code')=='unauthorized' else None)
+            on_ready(); next_ping=time.monotonic()+5; ping_id=1; awaiting=None
+            while not stop.is_set():
+                try:message=json.loads(ws.recv(timeout=1))
+                except TimeoutError:message={}
+                if message.get('id')==1 and message.get('type')=='event':
+                    event=message.get('event',{})
+                    if event.get('event_type')!='zha_event':raise ReadFailure('unexpected_zha_event')
+                    on_event(event);on_heartbeat()
+                elif awaiting is not None and message.get('id')==awaiting and message.get('type')=='pong':
+                    awaiting=None;on_heartbeat()
+                if time.monotonic()>=next_ping:
+                    if awaiting is not None:raise ReadFailure('zha_heartbeat_timeout')
+                    ping_id+=1;awaiting=ping_id
+                    ws.send(json.dumps({'id':ping_id,'type':'ping'}));next_ping=time.monotonic()+5
 
 
 class _Reader:
@@ -189,9 +275,11 @@ class _Reader:
             # A fresh read of an old event must never rejuvenate its evidence.
             self.status.last_evidence_at = evidence_time(result) if evidence_time else None
             self.status.last_error = None
+            self.status.last_response_status = None
             return redact(result)
         except Exception as exc:
             status = exc.status if isinstance(exc, ReadFailure) else None
+            self.status.last_response_status = status
             if status in {401, 403}:
                 self.status.authenticated = False
                 self.status.interface_available = True
@@ -207,6 +295,11 @@ class CoreReader(_Reader):
 
     def config(self):
         return self._read("/api/config")
+
+    def automation_config(self, automation_id):
+        if not isinstance(automation_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', automation_id):
+            raise ValueError('invalid automation ID')
+        return self._read('/api/config/automation/config/' + automation_id)
 
     def states(self, entity_id=None):
         if entity_id is not None and not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id):
@@ -237,18 +330,24 @@ class CoreReader(_Reader):
 class CoreWSReader(_Reader):
     def __init__(self, transport):
         super().__init__("ha_core_ws", transport)
+        self._auth_reader=_Reader('ha_admin_identity',transport)
 
     def entity_registry(self):
         return self._read({"type": "config/entity_registry/list"})
 
     def auth_users(self):
-        return self._read({"type": "config/auth/list"})
+        # Ingress identity checks may overlap a diagnostic read. Their status
+        # must not overwrite a trace/registry failure in the shared reader.
+        return self._auth_reader._read({"type": "config/auth/list"})
 
     def repairs(self):
         return self._read({"type": "repairs/list_issues"})
 
     def system_log(self):
         return self._read({"type": "system_log/list"})
+
+    def system_health(self):
+        return self._read({'type':'system_health/info'})
 
     def device_registry(self):
         return self._read({"type": "config/device_registry/list"})

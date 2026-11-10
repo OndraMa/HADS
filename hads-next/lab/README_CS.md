@@ -1,5 +1,35 @@
 # Skutečný Home Assistant Core bez testovacího HAOS
 
+## Nový běh P0–P3: původní Hermes a skutečná diagnostická API
+
+`haos/Dockerfile` s `CORE_LAB=1` nyní navíc spouští
+`core_hermes_probe.py`: provozní controller, zabezpečené první nastavení,
+skutečný izolovaný Hermes, živé dotazy Evidence Brokeru a místní skriptovaný
+HTTPS model. `source_contract_probe.py` doplňuje Recorder, Activity/Action
+history, System Health, virtuální rádio a vloženou ZHA událost s nativní trace.
+Přehled a hashe: [hermes-core-sources.json](../docs/evidence/hermes-core-sources.json).
+Nejde o reálný LLM úsudek, Music Assistant, Supervisor nebo fyzický HAOS test.
+
+Reprodukce z adresáře `hads-next` (nové výstupní adresáře, žádné živé HA tokeny):
+
+```bash
+python scripts/investigation_context.py --receipt .test-tmp/investigation-context
+docker build --build-arg CORE_LAB=1 --target receipt \
+  --output type=local,dest=.test-tmp/investigation-result \
+  .test-tmp/investigation-context
+```
+
+V cloud prostředí s TLS proxy je nutné doplnit BuildKit secret
+`--secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt`. Ověřování TLS
+zůstává zapnuté. Pro běh je potřeba dostatek prostoru pro Python/Core/Hermes;
+VFS Docker driver dělá úplné kopie vrstev. Laboratoř vynechává pouze nepoužívané
+UI překlady a JS source mapy z oficiálního frontend wheelu (verze 20261028.4,
+SHA-256 `e5e59b82e63b288323d35886272f2e490ee62f6c7aaa2c56e7ef45e300d44757`).
+Python kód Core/frontend ani diagnostické API nejsou nahrazené nebo upravené.
+Virtuální platforma `hads_lab_player` je pouze řízený testovací přehrávač.
+
+## Původní samostatný laboratorní test oprav
+
 Tato laboratoř spouští skutečný balíček `homeassistant==2026.11.0` z PyPI
 s nativními komponentami, validací, autentizací, automatizacemi a event bus.
 HA objekty ani HTTP handlery nejsou nahrazené fixtures nebo mocky.
@@ -76,3 +106,28 @@ v produkci. HAOS zapisovač zůstává vypnutý.
 Hermes není součástí tohoto konkrétního běhu. Supervisor, skutečný Ingress,
 HAOS, ARM64/RPi, Music Assistant, ZHA a fyzické výsledky dosud neprošly touto
 zkouškou. Jejich dostupnost tento protokol netvrdí.
+
+## Přesný instalační kandidát a prohlížeč
+
+Nativní AMD64 i ARM64 běh: GitHub Actions 42678100603, commit
+`7b3df242cd3aa056d76d64a478f122dca4fed6e9`. Protokoly zůstávají v
+`docs/evidence/installation-0.2.0-dev1/`. Model je skriptovaný, fyzický HAOS není součástí testu.
+
+Výchozí image z již ověřeného instalátoru (Linux, nové cílové adresáře):
+
+```sh
+bash /cesta/HADS_Next_install_0.2.0-dev1.sh --verify
+bash /cesta/HADS_Next_install_0.2.0-dev1.sh --extract-only "$PWD/.test-tmp/installable-source"
+docker build -t hads-next-haos:0.2.0-dev1 .test-tmp/installable-source
+python scripts/haos_smoke.py --installer /cesta/HADS_Next_install_0.2.0-dev1.sh
+```
+
+Smoke používá skutečný upstream runtime a kontejnerový restart, ale pouze náhradu
+HA CLI pro instalační posloupnost. Nesahá na Supervisor domácnosti. Na VFS může
+být nutná vícegigabajtová rezerva; místní cloudový běh narazil na disk ještě před
+startem kontejneru, nezávislé GitHub běhy obou architektur prošly.
+
+`python lab/browser_probe.py` ověřuje skutečný prohlížeč nad náhradním ingressem
+a offline spisem. Vyžaduje Playwright a systémový `/usr/bin/chromium`; nic
+neinstaluje, nevytváří živé HA uživatele a nevolá model. Připravenost runtime má
+samostatný nativní protokol, do tohoto testu se nepředstírá launcher.

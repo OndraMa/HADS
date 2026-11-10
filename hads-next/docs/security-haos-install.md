@@ -1,6 +1,6 @@
 # Bezpečnost instalačního souboru HAOS development preview
 
-Tento dokument se vztahuje pouze k nové samostatné aplikaci `hads_next_dev`.
+Tento dokument se vztahuje pouze k nové samostatné aplikaci `hads_next_investigation`.
 Nejde o aktualizaci RC3, migraci jeho databáze ani schválení oprav domácnosti.
 Živé změny entit, automatizací, integrací, záloh, zařízení a historie nejsou
 v katalogu této aplikace. Originální HADS a jeho data se instalací nemění.
@@ -47,10 +47,14 @@ API nečiní token read-only: omezení zajišťuje úzký katalog podporovaných
 čtení a absence write rozhraní v aplikaci. Není to token s odděleným oprávněním
 na straně Home Assistantu.
 
-Externí model ani Hermes produkční worker se automaticky nezapíná. Kontejnerový
-Hermes test ze staršího milníku není dokladem izolace skutečného HAOS workeru.
-Dokud nebude broker/worker a jeho identita samostatně přijatá na HAOS, musí být
-produkční AI a všechny opravné zápisy blokované.
+Původní Hermes je součástí kandidátu 0.2.0-dev1. Model je opt-in; kontrola
+připravenosti bez modelu načte skutečného agenta a ověří izolaci. Kořenový
+pomocník se spouští před snížením UID controlleru, má pevný protokol a nezná
+HA/model credentials. Worker má UID 65534, vlastní chroot, seccomp allowlist,
+zákaz socketů/fork/exec a po načtení agenta také zákaz zápisů. Controller má UID
+65532, nulové efektivní capabilities a no-new-privileges. Jediný zděděný broker
+FD přenáší délkově omezené JSON; obecná HTTP/MCP/Python/shell cesta neexistuje.
+Zápisový laboratorní server není součástí výchozího image ani schvalovací UI.
 
 Povolení ingress v konfiguraci také není samo o sobě test identity. Před živou
 přejímkou musí být ověřeno, že nepřímý přístup k portu z jiné aplikace nemůže
@@ -68,3 +72,26 @@ architektuře, nikoli instalaci na živém HAOS nebo fyzický výsledek v domác
 ARM64, Raspberry Pi 4/2 GB, skutečný ingress, Core API autorizace, stav po restartu
 HAOS a zachování RC3 musí mít samostatné live účtenky. Do té doby zůstávají v
 přejímacím protokolu jako čekající.
+
+## Podklad kompatibility Supervisoru a dosud neověřená hranice
+
+Kontrola upstream `home-assistant/supervisor` 2026.11.0:
+`supervisor/docker/app.py` blob `4dcb3c53feeddc6f433e458db44db7ca9134d6b6`,
+`docker/const.py` blob `7b2406ba700a60b1f8a5205eeb0307722bbcdbc7` a
+`apps/build.py` blob `1e0ddb73db3170b86d0ab110c203bdafde730f58`.
+Výchozí kontejnerové capabilities obsahují CHOWN, SETUID, SETGID, SYS_CHROOT;
+reduced-capability režim této verze odebírá AUDIT_WRITE, MKNOD, SETFCAP.
+Aplikace proto nepožaduje další `privileged` položky ani vypnutí AppArmor.
+Build používá podporovaný BuildKit. Tyto zdrojové důkazy nejsou živá přejímka
+konkrétního profilu HAOS: případné selhání musí zablokovat AI, nikoli vést k
+obcházení protection mode. ARM64 a AMD64 runtime skutečně prošly kontejnerovým
+seccomp/chroot testem; skutečný AppArmor profil a ingress čekají na HAOS.
+
+Supervisor role `manager` a Core proxy poskytují i zapisovací oprávnění.
+Vynucená hranice je procesové oddělení a úzký čtecí katalog, nikoli falešný
+slib read-only tokenu. Kompromitace důvěryhodného controlleru není pokrytá
+pouhým promptem analytika; audit a další HAOS přejímka zůstávají nutné.
+
+Trvalé výsledky obou nativních architektur jsou v
+`evidence/installation-0.2.0-dev1/ACCEPTANCE.json`. RPi, živý Supervisor,
+OneDrive restore a produkční vykonavatel nebyly tímto během přijaty.

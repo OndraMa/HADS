@@ -4,6 +4,7 @@ No existing HA URL, token, configuration directory or host port is accepted.
 Only public test source is staged; private checkout permissions are preserved.
 """
 from datetime import datetime, timezone
+import argparse
 import hashlib
 import json
 import os
@@ -19,6 +20,10 @@ IMAGE = "hads-next-core-lab:2026.11.0"
 
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--probe',choices=['core_contract_probe','core_broker_probe'],default='core_contract_probe')
+    parser.add_argument('--output',type=Path,default=ROOT/'docs/evidence/core-lab.json')
+    args=parser.parse_args()
     env = dict(os.environ)
     for key in ("DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_TLS", "DOCKER_TLS_VERIFY", "DOCKER_CERT_PATH"):
         env.pop(key, None)
@@ -32,7 +37,7 @@ def main():
 
     image = json.loads(docker("image", "inspect", IMAGE, "--format", "{{json .}}").stdout)
     name = "hads-core-lab-" + uuid.uuid4().hex[:12]
-    inputs = [ROOT / "lab" / name for name in ("Core.Dockerfile", "core-constraints.txt", "core_contract_probe.py", "core_repair.py", "exercise_repair.py", "run_core_lab.py")]
+    inputs = [ROOT / "lab" / name for name in ("Core.Dockerfile", "core-constraints.txt")]+sorted((ROOT/'lab').glob('*.py'))
     inputs += sorted((ROOT / "src" / "hads_next").glob("*.py"))
     inputs.append(ROOT / 'docs/evidence/core-lab-dependencies.txt')
     started = time.monotonic()
@@ -56,7 +61,7 @@ def main():
                 "--memory", "768m", "--memory-swap", "768m", "--cpus", "1", "--pids-limit", "96",
                 "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
                 "--mount", f"type=bind,src={stage},dst=/work,readonly", "-e", "PYTHONPATH=/work/src",
-                image["Id"], "/work/lab/core_contract_probe.py")
+                image["Id"], "/work/lab/"+args.probe+".py")
             records = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
             if not records or not records[-1].get("passed"):
                 raise RuntimeError("Core probe nevytvořil úspěšný výsledek.")
@@ -69,7 +74,7 @@ def main():
             if any(hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != checksum
                    for name, checksum in source_hashes.items()):
                 raise RuntimeError("Zdroj se během běhu změnil; výsledek se nepublikuje jako aktuální.")
-            output = ROOT / "docs/evidence/core-lab.json"
+            output = args.output
             output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
             print(json.dumps(report, ensure_ascii=False, indent=2))
         finally:

@@ -22,7 +22,7 @@ from hads_next.observability import CoreReader, CoreWSReader, NativeHTTP
 from exercise_repair import exercise
 
 
-async def main():
+async def main(exercise_case=exercise):
     assert version('homeassistant') == '2026.11.0'
     inventory = Path(__file__).resolve().parents[1] / 'docs/evidence/core-lab-dependencies.txt'
     actual_dependencies = '\n'.join(sorted(item.metadata['Name']+'=='+item.version for item in distributions())) + '\n'
@@ -124,12 +124,13 @@ input_button:
                 assert traces, ws_reader.status.last_error
                 trace = await asyncio.to_thread(ws_reader.trace, 'automation', 'hads_lab_reference', traces[0]['run_id'])
                 assert isinstance(trace, dict), ws_reader.status.last_error
-                repair = await exercise(hass, path, nonce, token, user, client, trace)
+                repair = await exercise_case(hass, path, nonce, token, user, client, trace,
+                                             core_reader=reader, ws_reader=ws_reader)
             async with aiohttp.ClientSession() as anonymous:
                 async with anonymous.get(base+'/api/config') as r:
                     assert r.status==401
             print(json.dumps({'scope':'actual_core_container','core_version':version('homeassistant'),
-                'live_haos':False,'supervisor_tested':False,'approved_repair':True,
+                'live_haos':False,'supervisor_tested':False,'approved_repair':repair.get('actual_automation_service_executed',False),
                 'native_api_authentication':True,'automation_config_read':True,
                 'invalid_config_rejected_without_write':True,'broken_automation_does_not_operate_target':True,
                 'actual_core_auth_list_and_registries':True,'actual_automation_trace':True,

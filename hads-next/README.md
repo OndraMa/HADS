@@ -1,42 +1,28 @@
-# HADS Next – izolovaný funkční základ
+# HADS Next — skutečný vyšetřovací runtime
 
-**Ke stažení ve Windows:** [GitHub vydání a kompletní ZIP](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1).
-Cloud není potřeba; pro soukromý repozitář se přihlas do GitHubu.
-[Průvodce stažením](docs/STAZENI_WINDOWS_CS.md) vysvětluje jednotlivé soubory.
+Aktuální větev je **codex/hads-next-investigation**, navazuje na ověřený
+commit `5fb2ba17cf0b50d483128bc0ccb834cc126dee47`.
+[Kontrolovatelný návrh změn č. 6](https://github.com/OndraMa/HADS/pull/6).
 
-Vývojová větev `codex/hads-next` vychází přesně z Hermes RC3
-`c491893bd433fa0e17dcd852a3eaa610eb3148ad`. RC3, vydané archivy i jeho
-bezpečnostní kontroly zůstávají zachované. Toto **není produkční Release Candidate**.
-Nový [HAOS instalační soubor](releases/0.1.0-dev1/HADS_Next_install_0.1.0-dev1.sh)
-přidá samostatnou vývojovou aplikaci vedle RC3. Nepřepisuje existující HADS.
+Původní připnutý NousResearch Hermes nyní čte skutečná Core API přes oddělený
+broker, ukládá vícekrokové vyšetřování a připravuje nezávisle validované návrhy.
+Vlastník ověřený přes HA spravuje poskytovatele, jednotlivé případy a souhlasy.
+AI i veřejný výzkum jsou standardně vypnuté. Produkční zápisy nejsou zpřístupněné.
 
-## Instalace vývojové aplikace do testovacího HAOS
+Instalační kandidát **0.2.0-dev1 prošel nativními kontejnerovými testy AMD64 i ARM64**. Obsahuje skutečný runtime
+a kontrolu jeho připravenosti bez modelu. [Instalační návod a první spuštění](haos/DOCS.md),
+[stažení ve Windows](docs/STAZENI_WINDOWS_CS.md), [výsledky](docs/results.md),
+[reprodukce](lab/README_CS.md), [živá přejímka](docs/haos-acceptance.md).
+V prohlížeči vyber tuto větev a **Code → Download ZIP**; cloudový panel není potřeba.
 
-Stáhni instalační soubor a [SHA-256 manifest](releases/0.1.0-dev1/SHA256SUMS).
-V Terminálu/SSH s `ha`, `bash` a `python3` spusť:
+Na obou architekturách prošlo 150 offline testů, skutečný Core 2026.11.0 +
+původní Hermes i výchozí instalační image. Model byl skriptovaný HTTPS endpoint, takže autonomní úsudek skutečného
+LLM není prokázaný. Živý HAOS, Supervisor, MA server, fyzické rádio/Zigbee a
+RPi 4 / 2 GB čekají na přejímku. Tyto hranice se neskrývají počtem testů.
 
-```sh
-bash HADS_Next_install_0.1.0-dev1.sh --verify
-bash HADS_Next_install_0.1.0-dev1.sh --install-dev
-```
-
-Aplikace má vlastní slug `local_hads_next_dev` a český ingress. Umožňuje číst
-Core, nahlásit incident, získat cílenou historii a uchovat spis. Vlastníka
-nastaví správce podle ID na úvodní stránce do volby `owner_user_id`.
-**Hermes a živé opravy nejsou v této instalační verzi aktivní.** Původní agentní
-smyčka je nadále samostatně ověřená offline. Živá HAOS a ARM64 přejímka čekají.
-Podrobný postup, oprávnění a omezení jsou v [instalačním návodu](haos/DOCS.md).
-
-První scénář: incident testovací automatizace → trvalé důkazy → originální
-Hermes přečte automatizaci a následně trace → přesný plán jediné změny odkazu →
-výslovné místní schválení → bezpečný zápis do fixture → vykonání testovací
-automatizace → ověření cílového stavu a sledování → český report a přehled.
-
-Modelový endpoint je lokální skriptovaný fixture bez poplatků. Prokazuje skutečné
-řízení nástrojů upstream Hermes, nikoli inteligenci modelu nebo vyřešení závady
-domácnosti. Čas funkčního fixture testu je simulovaný; neprokazuje skutečnou dobu
-sledování rádia. Při živém nasazení se tato hranice musí nahradit důvěryhodným
-sběračem a reálnými hodinami.
+Historický balíček 0.1.0-dev1 původní runtime neobsahuje. Zůstává zachovaný
+v původních archivech; není doporučený aktuální instalátor. RC3, main a vydané
+archivy se nepřepisují. Nová aplikace má vlastní slug a data.
 
 ## Spuštění a testy
 

@@ -11,9 +11,9 @@ import time
 
 from .diagnostics import investigate_radio
 from .evidence import IncidentStore
-from .observability import redact
+from .observability import redact,project_supervisor_read
 
-VERSION = "0.1.0-dev1"
+VERSION = "0.2.0-dev1"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -28,12 +28,13 @@ def project_state(row):
 
 
 class Application:
-    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time):
+    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time, launcher=None,runtime_error=None):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.store = IncidentStore(self.data_dir / "incidents.sqlite")
         self.core, self.clock = core, clock
         self.core_ws, self.supervisor = core_ws, supervisor
+        self.runtime_error=runtime_error
         with self.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS application_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
         self._lock = threading.RLock()
@@ -47,6 +48,8 @@ class Application:
         self._apps = []
         self._timezone='UTC'
         self._source_job={'state':'idle','completed_at':None,'last_error':None}
+        from .investigation_service import InvestigationService
+        self.investigations=InvestigationService(self,launcher)
 
     def request_source_check(self):
         with self._lock:
@@ -74,6 +77,7 @@ class Application:
             if row and row[0] != user_id:
                 raise ValueError('Vlastník již byl nastaven jiným uživatelem.')
             db.execute("INSERT OR IGNORE INTO application_settings VALUES('owner',?)", (user_id,))
+        self.investigations.zha_observer.start()
 
     def check_sources(self):
         """Execute actual supported reads, preserving per-read success/errors."""
@@ -83,7 +87,8 @@ class Application:
                  ('applications', self.supervisor, 'apps'),
                  ('entity_registry', self.core_ws, 'entity_registry'),
                  ('device_registry', self.core_ws, 'device_registry'),
-                 ('repairs', self.core_ws, 'repairs'), ('system_log', self.core_ws, 'system_log')]
+                 ('repairs', self.core_ws, 'repairs'), ('system_log', self.core_ws, 'system_log'),
+                 ('system_health', self.core_ws, 'system_health')]
         with self._read_lock:
             for name, reader, method in reads:
                 value = getattr(reader, method)() if reader else None
@@ -100,6 +105,8 @@ class Application:
                     valid=isinstance(value,list) and all(isinstance(row,dict) for row in value)
                 elif name=='repairs':
                     valid=isinstance(value,dict) and isinstance(value.get('issues'),list)
+                elif name=='system_health':
+                    valid=isinstance(value,dict) and isinstance(value.get('domains'),dict) and value.get('complete') is True
                 sources[name] = {'read_succeeded': valid,
                     'status': reader.status.snapshot(self.clock()) if reader else {'last_error': 'Zdroj není připojen.'},
                     'item_count': len(value) if isinstance(value, (list, dict)) else None}
@@ -122,9 +129,14 @@ class Application:
             now = self.clock()
             incident = self.store.open_incident('application_failure', redact(symptom), [slug], now,
                 correlation_key='app:' + slug + ':' + hashlib.sha256(symptom.encode()).hexdigest())
-            for kind, value in [('app_info', info), ('app_stats', self.supervisor.app_stats(slug)),
-                                ('app_logs', self.supervisor.app_logs(slug))]:
+            for kind, read in [('app_info',lambda:info),('app_stats',lambda:self.supervisor.app_stats(slug)),
+                               ('app_logs',lambda:self.supervisor.app_logs(slug))]:
+                value=read()
                 status = self.supervisor.status.snapshot(self.clock())
+                if value is not None and kind in {'app_info','app_stats'}:
+                    try:value=project_supervisor_read(kind,value)
+                    except (ValueError,TypeError,OverflowError):
+                        value=None;status={**status,'read_succeeded':False,'last_error':'Zdroj vrátil neočekávaný diagnostický formát.'}
                 if value is not None:
                     if isinstance(value,str): value=value[-16000:]
                     payload = {'data': value}
@@ -188,12 +200,13 @@ class Application:
         with self._lock:
             return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
                     "entities": list(self._entities), "cases": cases,
-                    "hermes_enabled": False, "live_repairs_enabled": False,
+                    "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": False,
+                    'investigation_service':self.investigations.status(),
                     'sources': dict(self._sources),
                     'applications': list(self._apps),
                     'source_job': dict(self._source_job),
                     'timezone': self._timezone,
-                    "limitations_cs": "Vývojová přejímka: Hermes a živé opravy nejsou aktivní. Nedostupnost entity sama nedokazuje příčinu závady."}
+                    "limitations_cs": "Živé opravy nejsou aktivní. AI vyžaduje izolovaný runtime a výslovný souhlas s poskytovatelem. Nedostupnost entity sama nedokazuje příčinu závady."}
 
     def report_incident(self, symptom, entity_id, principal, *, occurred_at=None):
         symptom = " ".join(str(symptom).split())
@@ -222,6 +235,10 @@ class Application:
                 history = self.core.history(iso(incident_at - 600), entity_id, iso(min(now,incident_at+120)))
             if isinstance(history, list):
                 rows = [row for group in history if isinstance(group, list) for row in group]
+                # Recorder REST history may omit context. A current state is
+                # usable only for the exact same source timestamp and value;
+                # never attach a later action's context to an earlier event.
+                current=project_state(self.core.states(entity_id)) if self.core else None
                 if len(rows) > 1000:
                     rows = []
                 previous = None
@@ -238,10 +255,13 @@ class Application:
                         continue
                     if not incident_at - 600 <= observed <= min(now,incident_at+120):
                         continue
+                    source_identity=hashlib.sha256(json.dumps(state,sort_keys=True).encode()).hexdigest()
+                    if current and not state['context'] and current['entity_id']==state['entity_id'] and current['state']==state['state'] and current['last_updated']==state['last_updated']:
+                        state={**state,'context':current['context'],'context_source':'core_current_state_exact_timestamp_match'}
                     payload = {**state, "from": previous["state"] if previous else None, "to": state["state"]}
                     event = {"source": "ha_core_history", "kind": "player_state" if entity_id.startswith("media_player.") else "entity_state",
                              "observed_at": observed, "payload": payload,
-                             "event_id": hashlib.sha256(json.dumps(state, sort_keys=True).encode()).hexdigest()}
+                             "event_id": source_identity}
                     # Persist the source state, whose identity does not change
                     # when a later history window begins with a different row.
                     self.store.add_evidence(incident_id, {**event, "kind": "entity_state", "payload": state})
@@ -270,5 +290,5 @@ class Application:
             "needed": ["Doplnit související události a funkční test."]}
         self.store.record(incident_id, "deterministic_investigation", {**conclusion,
             "source_status": read_status, "scope": "haos_read_only_preview",
-            "limitation": "Hermes, traces a Music Assistant ještě nejsou v provozním vyšetřování propojené. Žádná oprava nebyla provedena."})
+            "limitation": "Toto je deterministický rozbor historie HA. Další čtení může vyžádat samostatné vyšetřování Hermes; Music Assistant vyžaduje nastavené připojení. Žádná oprava nebyla provedena."})
         return self.store.case(incident_id)
