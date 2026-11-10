@@ -95,8 +95,9 @@ class FunctionalVerifier:
             else:
                 classification, status = "Oprava provedena, ověření čeká", "applied_verification_pending"
             actual_core_lab = plan.document['operation'] == 'core_lab.replace_entity_reference' and not supplied_clock
+            managed_core = plan.document['operation'] == 'core_managed.replace_entity_reference' and not supplied_clock
             report = {
-                "language": "cs", "scope": "actual_core_container" if actual_core_lab else "offline_isolated_fixture", "plan_id": plan.plan_id,
+                "language": "cs", "scope": "actual_core_managed_reference" if managed_core else "actual_core_container" if actual_core_lab else "offline_isolated_fixture", "plan_id": plan.plan_id,
                 "clock_mode": "caller_supplied_offline_clock" if supplied_clock else "system_utc",
                 "incident_id": plan.document["incident_id"], "execution_id": execution.execution_id,
                 "classification": classification, "created_at": now,

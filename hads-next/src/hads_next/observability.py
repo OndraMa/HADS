@@ -236,9 +236,18 @@ class NativeWebSocket:
             return {'domains':domains,'complete':False,'limitation':'health_stream_incomplete'}
 
     def zha_events(self, stop, on_event, on_ready, on_heartbeat):
+        return self._events("zha_event",stop,on_event,on_ready,on_heartbeat)
+
+    def state_events(self,stop,on_event,on_ready,on_heartbeat):
+        return self._events("state_changed",stop,on_event,on_ready,on_heartbeat)
+
+    def automation_events(self,stop,on_event,on_ready,on_heartbeat):
+        return self._events("automation_triggered",stop,on_event,on_ready,on_heartbeat)
+
+    def _events(self,event_type,stop,on_event,on_ready,on_heartbeat):
         """Trusted collector only. No model parameters, credentials in transport."""
         with self._connection() as ws:
-            ws.send(json.dumps({'id':1,'type':'subscribe_events','event_type':'zha_event'}))
+            ws.send(json.dumps({'id':1,'type':'subscribe_events','event_type':event_type}))
             ack=json.loads(ws.recv(timeout=10))
             if ack.get('id')!=1 or ack.get('type')!='result' or not ack.get('success'):
                 raise ReadFailure('zha_subscription_rejected',403 if ack.get('error',{}).get('code')=='unauthorized' else None)
@@ -248,7 +257,7 @@ class NativeWebSocket:
                 except TimeoutError:message={}
                 if message.get('id')==1 and message.get('type')=='event':
                     event=message.get('event',{})
-                    if event.get('event_type')!='zha_event':raise ReadFailure('unexpected_zha_event')
+                    if event.get('event_type')!=event_type:raise ReadFailure('unexpected_zha_event')
                     on_event(event);on_heartbeat()
                 elif awaiting is not None and message.get('id')==awaiting and message.get('type')=='pong':
                     awaiting=None;on_heartbeat()
@@ -339,6 +348,9 @@ class CoreWSReader(_Reader):
         # Ingress identity checks may overlap a diagnostic read. Their status
         # must not overwrite a trace/registry failure in the shared reader.
         return self._auth_reader._read({"type": "config/auth/list"})
+
+    def owned_reference(self):
+        return self._read({"type":"hads_reference/read"})
 
     def repairs(self):
         return self._read({"type": "repairs/list_issues"})

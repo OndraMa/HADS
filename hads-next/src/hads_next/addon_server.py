@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlsplit
 from .haos_application import Application, VERSION
 from .observability import CoreReader, CoreWSReader, NativeHTTP, NativeWebSocket, SupervisorReader
 from .investigation_jobs import JobBlocked
+from .repair import RepairBlocked
 
 
 class SupervisorTransport:
@@ -55,6 +56,8 @@ class Server(ThreadingHTTPServer):
 
     def server_close(self):
         self.app.investigations.zha_observer.close()
+        self.app.detection.close()
+        self.app.repairs.close()
         super().server_close()
 
     def verified_admin(self, user_id):
@@ -98,6 +101,9 @@ class Handler(BaseHTTPRequestHandler):
         pass  # URLs and form content can contain private household information.
 
     def send_body(self, status, body, kind="text/html; charset=utf-8"):
+        if kind.startswith("text/html"):
+            from .command_center import page
+            body=page(body,urlsplit(self.path).path)
         data = body.encode()
         self.send_response(status)
         self.send_header("Content-Type", kind)
@@ -152,7 +158,7 @@ class Handler(BaseHTTPRequestHandler):
                 +'<label>Model<input name="model" required maxlength="128" value="'+escape(settings['model'],quote=True)+'"></label>'
                 +'<label>API klíč<input type="password" name="api_key" maxlength="2048" autocomplete="new-password" placeholder="Při zachování endpointu a modelu lze existující klíč ponechat prázdný."></label>'
                 +'<label><input type="checkbox" name="consent" value="yes" '+('checked' if settings['enabled'] else '')+'> Výslovně povoluji modelová volání a předání redigovaných diagnostických údajů tomuto poskytovateli.</label>'
-                +'<p>Nejvýše 8 požadavků na případ, 12 denně, 1024 výstupních tokenů na požadavek. Změna nastavení sama vyšetřování nespouští.</p><button>Uložit nastavení AI</button></form><a href="../../">Přehled</a>')
+                +'<p>Nejvýše 8 požadavků na případ, 12 denně, 1024 výstupních tokenů na požadavek. Změna nastavení sama vyšetřování nespouští.</p><button>Uložit nastavení AI</button></form><a href="../">Přehled</a>')
         if path == '/setup':
             sources = self.server.app.snapshot()['sources']
             rows = ''.join('<li>' + escape(k) + ': ' + ('Čtení proběhlo' if v['read_succeeded'] else 'Čtení není dostupné: ' + escape(str(v['status'].get('last_error')))) + '</li>' for k,v in sources.items())
@@ -162,6 +168,18 @@ class Handler(BaseHTTPRequestHandler):
                 rows='<li>Kontrola právě probíhá. Obnov stránku pro průběžné výsledky.</li>'+rows
             runtime=self.server.app.investigations.status()
             return self.send_body(200,'<h1>Průvodce připraveností</h1><ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Živé opravy jsou vypnuté.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
+        if path == '/setup/monitors':
+            monitor=self.server.app.detection.snapshot()
+            rows=''.join('<li>'+escape(r['entity_id'])+' — '+escape(r['kind'])+'; očekáváno '+escape(r['expected'])+'; '+str(r['grace_seconds'])+' s</li>' for r in monitor['rules'])
+            return self.send_body(200,'<h1>Sledované funkce</h1><p>Pravidlo popisuje očekávání uživatele. Chyba v logu sama incident nevytváří. Přehrávání sleduji až po skutečném přechodu z hraní; při mezeře v odběru začíná pokrytí znovu.</p><p>'+escape(monitor['last_error'] or ('Odběr funguje.' if monitor['state']=='listening' else 'Odběr dosud není potvrzený.'))+'</p><ul>'+rows+'</ul><form method="post" action="monitors"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>Entita<input name="entity_id" required></label><label>Podmínka<select name="kind"><option value="unavailable">Zůstává nedostupná</option><option value="state">Nedosáhne očekávaného stavu</option><option value="playback">Přehrávání se zastaví</option><option value="response">Po spouštěcí události chybí odezva</option></select></label><label>Očekávaný stav<input name="expected" value="on" required></label><label>Doba v sekundách<input type="number" name="grace_seconds" value="30" min="1" max="3600"></label><label>Spouštěcí entita pro odezvu<input name="trigger_entity"></label><button>Uložit monitorovací pravidlo</button></form><form method="post" action="autonomy"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if monitor['autonomous_ai'] else '')+'>Povoluji automaticky zahájit AI vyšetřování nových funkčních incidentů v rámci limitu poskytovatele. Může být zpoplatněné.</label><button>Uložit souhlas s autonomním vyšetřováním</button></form>')
+        if path == '/setup/repair':
+            state=self.server.app.repairs.status()
+            return self.send_body(200,'<h1>Bezpečně podporované opravy</h1><p>Jediná zapisovací operace mění vlastní referenci izolované virtuální testovací automatizace přes atomické CAS companion integrace. Běžné automatizace se nepřepisují. Companion musí být zvlášť instalovaný na testovacím HA.</p><p>'+escape(state['backup'])+'</p><p>Rizikové zásahy a OneDrive restore: nepodporované, blokované.</p><form method="post" action="repair"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if state['enabled'] else '')+'>Potvrzuji oddělené virtuální testovací prostředí a povoluji tento úzký katalog. Každá změna stále vyžaduje zvláštní schválení.</label><button>Ověřit companion a uložit katalog</button></form><details><summary>Technický stav</summary><pre>'+escape(json.dumps(state,ensure_ascii=False,indent=2))+'</pre></details>')
+        if path == '/setup/history':
+            return self.send_body(200,'<h1>Historie a migrace</h1><p>Export spisu je dostupný v jeho detailu. Import Next schema 1 přenese pouze historické incidenty, výskyty a redigované důkazy. Schválení, tokeny, rozpracované zásahy a tvrzení o vyřešení nezískají platnost. RC3 databáze se nemění; přímý import jejího neověřeného schématu není povolený.</p><form method="post" action="import"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>JSON export jednoho spisu Next<textarea name="document" required maxlength="500000"></textarea></label><button>Importovat neautorizující historii</button></form>')
+        if path.startswith('/export/'):
+            document=self.server.app.store.export(path.removeprefix('/export/'))
+            return self.send_body(200,document,'application/json; charset=utf-8')
         if path.startswith("/case/"):
             try:
                 case = self.server.app.store.case(path.removeprefix("/case/"))
@@ -188,6 +206,11 @@ class Handler(BaseHTTPRequestHandler):
             from .investigator_roles import ROLE_LABELS
             progress+=''.join('<li>'+escape(ROLE_LABELS.get(r['content'].get('role'),'Vyšetřování'))+': '+escape(r['content'].get('task',''))+'</li>'
                 for r in case['records'] if r['kind']=='investigator_selected' and jobs and r['content'].get('job_id')==jobs[0]['id'])
+            from .command_center import repair_cards
+            suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
+            if self.server.app.repairs.status()['enabled']:
+                suggestion_html+='<form method="post" action="../repair/prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><button>Připravit přesnou opravu vlastní testovací reference</button></form>'
+            suggestion_html+='<a href="../export/'+case['incident']['id']+'">Exportovat spis JSON</a>'
             stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
             acknowledge='<label><input type="checkbox" name="ack_unknown" value="yes"> Povolím další pokus i v případě, že předchozí nedokončené modelové volání mohlo být účtováno.</label>' if jobs and jobs[0]['state']=='blocked' else ''
@@ -244,7 +267,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(415, "Nepodporovaný formát.")
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= 8192:
+            if not 0 < size <= (512*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
                 raise ValueError()
             form = parse_qs(self.rfile.read(size).decode(), max_num_fields=8, strict_parsing=True)
             if form.get("csrf") != [self.server.csrf]:
@@ -284,6 +307,26 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.store.record(identity,'repair_suggestion_decision',{'job_id':jobs[0]['id'],'suggestion_id':proposal['suggestion_id'],
                     'decision':choice,'principal':self.headers['X-Remote-User-Id'],'approval_granted':False,'functional_result':'not_verified'})
                 self.send_response(303);self.send_header('Location','../case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/monitors':
+                self.server.app.detection.configure({'entity_id':form.get('entity_id',[''])[0],'kind':form.get('kind',[''])[0],
+                    'expected':form.get('expected',['on'])[0],'grace_seconds':int(form.get('grace_seconds',['30'])[0]),'trigger_entity':form.get('trigger_entity',[''])[0]},self.headers['X-Remote-User-Id'])
+                self.server.app.detection.start()
+                self.send_response(303);self.send_header('Location','monitors');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/autonomy':
+                self.server.app.detection.consent(form.get('enabled')==['yes'],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','monitors');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/repair':
+                self.server.app.repairs.configure(form.get('enabled')==['yes'],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','repair');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/import':
+                from .migration import import_case
+                value=json.loads(form.get('document',[''])[0]);import_case(self.server.app.store,value)
+            elif path == '/repair/prepare':
+                self.server.app.repairs.prepare(form.get('incident_id',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/repair/decide':
+                self.server.app.repairs.decide(form.get('plan_id',[''])[0],form.get('decision',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/repair/rollback':
+                self.server.app.repairs.rollback(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
             elif path == '/setup/check':
                 self.server.app.request_source_check()
             elif path == '/setup/runtime':
@@ -305,7 +348,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.report_incident(form.get("symptom", [""])[0], form.get("entity_id", [""])[0], self.headers["X-Remote-User-Id"],occurred_at=stamp)
             else:
                 return self.send_body(404, "Tato operace není dostupná.")
-        except JobBlocked as error:
+        except (JobBlocked,RepairBlocked) as error:
             return self.send_body(409,escape(str(error)))
         except (ValueError, KeyError, UnicodeError):
             return self.send_body(400, "Neplatné hlášení nebo dosažený limit. Zkontroluj popis a entity_id.")
@@ -354,11 +397,14 @@ def main():
     ws = CoreWSReader(NativeWebSocket('ws://supervisor/core/websocket',token,supervisor_proxy=True)) if token else None
     supervisor = SupervisorReader(SupervisorTransport(token)) if token else None
     app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher,runtime_error=runtime_error)
-    if app.owner():app.investigations.zha_observer.start()
+    if app.owner():
+        app.investigations.zha_observer.start();app.detection.start()
+        if app.repairs.status()['enabled']:app.repairs.start()
     threading.Thread(target=app.refresh, daemon=True).start()
     try:Server(("0.0.0.0", 8099), app, owner_user_id=owner).serve_forever()
     finally:
         app.investigations.zha_observer.close()
+        app.detection.close();app.repairs.close()
         if launcher:launcher.close()
 
 

@@ -14,7 +14,7 @@ from .observability import redact
 
 
 def supported_catalog():
-    return {'production_operations':[],
+    return {'production_operations':[],'managed_test_operations':[{'operation':'replace_managed_reference','scope':'integration_owned_virtual_test_reference','server_atomic_CAS':True,'approval_required':True,'companion_required':True}],
         'laboratory_operations':[{'operation':'replace_entity_reference','scope':'isolated_fixture_or_disconnected_virtual_Core_only',
             'approval_required':True,'backup':'verified_single_object_snapshot','functional_verification_required':True,
             'rollback':'single_object_with_separate_approval'}],
@@ -42,7 +42,8 @@ def interpret_proposal(proposal,case):
     if not isinstance(proposal,dict) or not {'target','change','reason','evidence_ids'}<=set(proposal) or set(proposal)-{
         'operation','target','change','reason','evidence_ids','risk','backup','preconditions','verification','rollback','manual_alternative'}:
         return fallback('Návrh má nepodporovaný nebo neúplný formát. Pokračuj diagnostickým testem.')
-    if proposal.get('operation','replace_entity_reference')!='replace_entity_reference':return fallback('Tento typ opravy není v ověřeném katalogu. Potřebuje ruční kontrolu nebo další test.')
+    managed=proposal.get('operation')=='replace_managed_reference'
+    if proposal.get('operation','replace_entity_reference') not in {'replace_entity_reference','replace_managed_reference'}:return fallback('Tento typ opravy není v ověřeném katalogu. Potřebuje ruční kontrolu nebo další test.')
     target,change,reason,cited=proposal['target'],proposal['change'],proposal['reason'],proposal['evidence_ids']
     if not isinstance(target,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}',target) or not isinstance(change,dict) or set(change)!={'from','to'}:
         return fallback('Chybí přesný cíl a jediná změna reference.')
@@ -55,9 +56,18 @@ def interpret_proposal(proposal,case):
     def data(row):
         value=row.get('payload',{}).get('data')
         return value if isinstance(value,dict) and row.get('source')=='ha_core' else {}
-    configs=[x for x in evidence if x['kind']=='hads_get_automation_config' and data(x).get('id')==target]
-    if not configs:return fallback('Před návrhem načti skutečnou konfiguraci automatizace.')
-    config=configs[-1];actions=config['payload']['data'].get('actions',[])
+    if managed:
+        from .managed_repair import MISSING,TARGET,ManagedReferenceEngine
+        configs=[x for x in evidence if x['kind']=='hads_get_owned_reference' and x.get('source')=='ha_core_ws']
+        if not configs or target!='hads_next_reference_test' or change!={'from':MISSING,'to':TARGET}:return fallback('Nepodporovaná vlastní reference.')
+        config=configs[-1]
+        try:ManagedReferenceEngine._entity(config['payload']['data'])
+        except ValueError:return fallback('Neplatná companion reference.')
+        actions=[{'action':'input_boolean.turn_on','target':{'entity_id':[config['payload']['data']['action']['target']['entity_id']]}}]
+    else:
+        configs=[x for x in evidence if x['kind']=='hads_get_automation_config' and data(x).get('id')==target]
+        if not configs:return fallback('Před návrhem načti skutečnou konfiguraci automatizace.')
+        config=configs[-1];actions=config['payload']['data'].get('actions',[])
     if len(actions)!=1 or actions[0].get('target',{}).get('entity_id')!=[change['from']] or actions[0].get('omitted_fields'):
         return fallback('Konfigurace není jednoduchá podpořená změna jediného odkazu. Potřebuje kontrolu v editoru automatizace.')
     action=actions[0].get('action',actions[0].get('service',''))
@@ -69,7 +79,7 @@ def interpret_proposal(proposal,case):
     if not missing or not existing or data(missing[-1]).get('exists') is not False or data(existing[-1]).get('state') not in {'on','off'}:
         return fallback('Nejdříve ověř chybějící původní stav a dostupnost navržené cílové entity. Samotný název entity nestačí.')
     supporting=sorted(set(cited)|{config['evidence_id'],missing[-1]['evidence_id'],existing[-1]['evidence_id']})
-    document={**base,'status':'supported_lab_candidate','catalog_operation':'replace_entity_reference','target':target,
+    document={**base,'status':'supported_managed_candidate' if managed else 'supported_lab_candidate','catalog_operation':'replace_managed_reference' if managed else 'replace_entity_reference','target':target,
         'original':{'entity_id':change['from']},'change':dict(change),'reason':redact(reason),'evidence_ids':supporting,
         'summary_cs':'Je připravený kontrolovatelný návrh jediné reference. Zamýšlený nový cíl musí potvrdit vlastník.',
         'preconditions':['fresh_full_configuration_read','exact_original_sha256','single_supported_reference',
@@ -93,9 +103,10 @@ def prepare_reference_plan(suggestion,planner,filename,*,watch_seconds=30):
     from .repair import RepairBlocked,RepairEngine
     if not isinstance(suggestion,RepairSuggestion) or not isinstance(planner,RepairEngine):raise RepairBlocked('Neplatné předání plánovači.')
     document=suggestion.document
-    if document.get('status')!='supported_lab_candidate' or document.get('production_executable') is not False or planner._operation not in {
-        'fixture.replace_entity_reference','core_lab.replace_entity_reference'}:raise RepairBlocked('Tento návrh nebo vykonavatel není podporovaný.')
+    if document.get('status') not in {'supported_lab_candidate','supported_managed_candidate'} or document.get('production_executable') is not False or planner._operation not in {
+        'fixture.replace_entity_reference','core_lab.replace_entity_reference','core_managed.replace_entity_reference'}:raise RepairBlocked('Tento návrh nebo vykonavatel není podporovaný.')
     if not isinstance(watch_seconds,(int,float)) or isinstance(watch_seconds,bool) or not 1<=watch_seconds<=3600:raise RepairBlocked('Neplatná sledovací doba.')
+    if (document['status']=='supported_managed_candidate') != (planner._operation=='core_managed.replace_entity_reference'):raise RepairBlocked('Návrh a katalog se neshodují.')
     fresh=json.loads(planner._read(filename))
     if fresh.get('id')!=document['target']:raise RepairBlocked('Cíl plánovače neodpovídá konkrétnímu návrhu.')
     return planner.prepare_entity_reference(document['incident_id'],filename,document['change']['from'],document['change']['to'],

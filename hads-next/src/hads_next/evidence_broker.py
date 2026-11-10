@@ -97,7 +97,7 @@ _PARAMS={
     'hads_get_supervisor_status':{},'hads_get_haos_status':{},'hads_get_applications':{},
     'hads_get_addon_info':{'slug':'slug'},'hads_get_addon_stats':{'slug':'slug'},
     'hads_get_addon_logs':{'slug':'slug'}, 'hads_get_integration_repairs':{},
-    'hads_get_system_log':{}, 'hads_get_system_health':{},
+    'hads_get_system_log':{}, 'hads_get_system_health':{}, 'hads_get_owned_reference':{},
     'hads_get_zha_events':{'device_id':'id','start':'time','end':'time'},
     'hads_get_music_assistant_diagnostics':{'entity_id':'entity','section':'section','start':'time','end':'time'},
 }
@@ -150,6 +150,10 @@ class EvidenceBroker:
             # Newly discovered references may extend the investigation, never
             # an arbitrary entity mentioned in untrusted logs/model output.
             for row in case['evidence']:
+                if row['kind']=='hads_get_owned_reference' and row['source']=='ha_core_ws':
+                    from .managed_repair import ManagedReferenceEngine
+                    try:permitted.add(ManagedReferenceEngine._entity(row['payload']['data']))
+                    except ValueError:pass
                 if row['kind']=='hads_get_automation_config':
                     for step in row['payload'].get('data',{}).get('actions',[]):
                         permitted.update(step.get('target',{}).get('entity_id',[]))
@@ -190,6 +194,8 @@ class EvidenceBroker:
             status='available' if value['events'] else 'no_relevant_data' if value['capture_covers_window'] else 'not_read'
             observed=max((datetime.fromisoformat(x['time_fired']).timestamp() for x in value['events']),default=None)
             return self._result(incident_id,name,'zha_event',status,value,now,value['limitation_cs'],observed=observed)
+        elif name=='hads_get_owned_reference' and not set(case['incident']['components']) & {'automation.hads_next_reference_test','input_boolean.hads_next_test_target'}:
+            raise BrokerDenied('Spis se netýká vlastní testovací reference.')
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()
@@ -216,7 +222,7 @@ class EvidenceBroker:
                 'hads_get_automation_traces':('traces',('automation',args.get('automation_id'))),
                 'hads_get_automation_trace':('trace',('automation',args.get('automation_id'),args.get('run_id'))),
                 'hads_get_integration_repairs':('repairs',()),'hads_get_system_log':('system_log',()),
-                'hads_get_system_health':('system_health',())}
+                'hads_get_system_health':('system_health',()),'hads_get_owned_reference':('owned_reference',())}
             supervisor={'hads_get_supervisor_status':('info',()),'hads_get_haos_status':('os_info',()),
                 'hads_get_applications':('apps',()),'hads_get_addon_info':('app_info',(args.get('slug'),)),
                 'hads_get_addon_stats':('app_stats',(args.get('slug'),)),'hads_get_addon_logs':('app_logs',(args.get('slug'),))}
@@ -240,6 +246,11 @@ class EvidenceBroker:
                 return self._result(incident_id,name,source,'read_failed',None,now,'Zdroj vrátil neočekávané schéma; nejde o prázdný úspěšný výsledek.')
             if name=='hads_get_automation_config':projection=project_automation
             elif name=='hads_get_automation_trace':projection=project_trace
+            elif name=='hads_get_owned_reference':
+                def projection(value):
+                    from .managed_repair import ManagedReferenceEngine
+                    ManagedReferenceEngine._entity(value)
+                    return value
             elif name=='hads_get_core_status':
                 projection=lambda value:{k:value[k] for k in ('version','state','time_zone','components') if k in value}
             elif name in {'hads_get_entity_state','hads_get_entity_history'}:
