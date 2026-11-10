@@ -16,7 +16,7 @@ class SystemDiagnostics:
         with self.app.store._connect() as db:
             active=db.execute('SELECT count(*) FROM health_episodes WHERE active=1').fetchone()[0]
             sample=db.execute('SELECT document FROM resource_samples ORDER BY at DESC LIMIT 1').fetchone()
-        return {'last_check_at':self.last,'last_error':self.last_error,'capabilities':dict(self.capabilities),'core_read_latency_ms':getattr(self,'core_latency_ms',None),'active_findings':active,'resources':json.loads(sample[0]) if sample else None,'ai_required':False,'restart_proof':'Only explicit supported source evidence; a disconnected socket is not a restart.'}
+        return {'last_check_at':self.last,'last_error':self.last_error,'capabilities':dict(self.capabilities),'core_read_latency_ms':getattr(self,'core_latency_ms',None),'active_findings':active,'resources':json.loads(sample[0]) if sample else None,'host_metrics':getattr(self,'host_metrics',None),'ai_required':False,'restart_proof':'Only explicit supported source evidence; a disconnected socket is not a restart.'}
     def _finding(self,key,kind,symptom,components,data,*,active=True):
         now=self.app.clock();serialized=canonical(data);fingerprint=hashlib.sha256(serialized.encode()).hexdigest()
         with self.app.store._connect() as db:
@@ -36,6 +36,9 @@ class SystemDiagnostics:
             db.execute('INSERT OR REPLACE INTO health_episodes VALUES(?,1,?,?)',(key,episode,incident['id']))
         self.app.store.add_evidence(incident['id'],{'source':'native_system_health','kind':kind,'event_id':event_id,'observed_at':old[0] if old else now,'payload':data})
         self.app.store.record(incident['id'],'deterministic_investigation',{'summary_cs':symptom+' Příčinu je potřeba ověřit cíleným čtením.','root_cause_proven':False})
+        with self.app.store._connect() as db:update=db.execute("SELECT document,changed_at FROM health_observations WHERE key='last-update'").fetchone()
+        if update and 0<=now-update[1]<=86400:
+            self.app.store.record(incident['id'],'version_correlation',{'version_change':json.loads(update[0]),'changed_at':update[1],'causality_proven':False})
         if kind not in {'automation_reference','source_unavailable'} and self.app.detection.snapshot()['autonomous_ai']:
             try:self.app.investigations.start(incident['id'],self.app.owner())
             except ValueError:pass
@@ -56,7 +59,9 @@ class SystemDiagnostics:
             db.execute('DELETE FROM resource_samples WHERE at IN (SELECT at FROM resource_samples ORDER BY at DESC LIMIT -1 OFFSET 240)')
         return data
     def inspect(self):
-        now=self.app.clock();self.sample_resources();deadline=time.monotonic()+25
+        now=self.app.clock();resources=self.sample_resources();deadline=time.monotonic()+25
+        available=resources['available_bytes']
+        if type(available) is int:self._finding('memory-reserve','system_resource_pressure','Zbývá méně paměti než bezpečná rezerva pro Hermes. AI se nespustí; základní diagnostika pokračuje.',['hads_runtime'],{'worker_admission':'insufficient_memory_reserve','reserve_bytes':resources['worker_reserve_bytes']},active=available<resources['worker_reserve_bytes'])
         if self.app.core is None:
             self.last=now;self.last_error='Core není nakonfigurovaný; funkční poruchu z toho nelze dovodit.';return
         with self.app._read_lock:
@@ -77,6 +82,14 @@ class SystemDiagnostics:
                 info=self.app.supervisor.info()
                 if not isinstance(info,dict):failures.append('supervisor_info')
                 self.capabilities['supervisor_info']='read' if isinstance(info,dict) else 'read_failed'
+                host=self.app.supervisor.host_info() if hasattr(self.app.supervisor,'host_info') else None
+                self.capabilities['host_metrics']='read' if isinstance(host,dict) else 'unavailable'
+                if isinstance(host,dict):
+                    import math
+                    self.host_metrics={key:host[key] for key in ('disk_free','disk_total','disk_used') if type(host.get(key)) in {int,float} and math.isfinite(host[key]) and host[key]>=0}
+                    self.host_metrics['unit']='GiB'
+                    free,total=host.get('disk_free'),host.get('disk_total')
+                    if type(free) in {int,float} and type(total) in {int,float} and math.isfinite(free) and math.isfinite(total) and 0<=free<=total and total>0:self._finding('disk-pressure','system_resource_pressure','Datový disk má méně než 1 GiB nebo 5 % volného místa.',['supervisor','recorder'],{'low_disk_space':True,'unit':'GiB'},active=free<1 or free/total<.05)
                 apps=self.app.supervisor.apps()
                 if isinstance(apps,dict) and isinstance(apps.get('addons'),list):
                     for item in apps['addons'][:64]:

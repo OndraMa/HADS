@@ -14,11 +14,11 @@ from .observability import redact
 
 
 def supported_catalog():
-    return {'production_operations':[],'managed_test_operations':[{'operation':'replace_managed_reference','scope':'integration_owned_virtual_test_reference','server_atomic_CAS':True,'approval_required':True,'companion_required':True}],
+    return {'production_operations':[],'native_operations':[{'operation':'enable_lighting_automation','scope':'owner_selected_single_light_state_automation','approval_required':True,'physical_confirmation_required':True,'native_config_write':False,'atomic_CAS':False,'exclusive_editor_confirmation_required':True,'rollback':'disable_future_triggers_only','trigger':'binary_sensor_to_on_or_input_button','action':'light.turn_on_on_one_explicit_light'}],'managed_test_operations':[{'operation':'replace_managed_reference','scope':'integration_owned_virtual_test_reference','server_atomic_CAS':True,'approval_required':True,'companion_required':True}],
         'laboratory_operations':[{'operation':'replace_entity_reference','scope':'isolated_fixture_or_disconnected_virtual_Core_only',
             'approval_required':True,'backup':'verified_single_object_snapshot','functional_verification_required':True,
             'rollback':'single_object_with_separate_approval'}],
-        'production_limitation_cs':'V provozní HAOS aplikaci není aktivní žádný zapisovací opravný adaptér. Nepodporované opravy mají ruční postup nebo další test.'}
+        'production_limitation_cs':'Dostupná je pouze vlastní CAS testovací reference a zvlášť povolené nativní zapnutí jednoduché světelné automatizace. Obecné konfigurační a rizikové zásahy jsou zakázané; živá přejímka čeká.'}
 
 
 @dataclass(frozen=True)

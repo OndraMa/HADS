@@ -25,7 +25,7 @@ class SupervisorTransport:
 
     def __call__(self, path):
         import re
-        if path not in {'/supervisor/info','/os/info','/addons'} and not re.fullmatch(r'/addons/[a-z0-9_]+/(info|stats|logs)',path):
+        if path not in {'/supervisor/info','/os/info','/host/info','/addons'} and not re.fullmatch(r'/addons/[a-z0-9_]+/(info|stats|logs)',path):
             raise ValueError('Unsupported Supervisor read')
         return self._http(path, raw=path.endswith('/logs'))
 
@@ -169,7 +169,7 @@ class Handler(BaseHTTPRequestHandler):
             runtime=self.server.app.investigations.status()
             from .readiness import checklist
             gates=''.join('<article><h3>'+escape(g['label'])+' — '+('Ověřeno' if g['passed'] else 'Čeká / omezeno')+'</h3><p>'+escape(g['detail'])+'</p></article>' for g in checklist(self.server.app))
-            return self.send_body(200,'<h1>Průvodce připraveností</h1>'+gates+'<ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Obecné zásahy jsou zakázané; dostupný je jen zvlášť povolený testovací katalog.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
+            return self.send_body(200,'<h1>Průvodce připraveností</h1>'+gates+'<ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Obecné zásahy jsou zakázané. Dostupný je vlastní CAS test a zvlášť povolená jednoduchá světelná aktivace.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
         if path == '/setup/lighting':
             entities=[s for s in self.server.app.snapshot()['entities'] if s['entity_id'].startswith('automation.')]
             options=''.join('<option value="'+escape(s['entity_id'],quote=True)+'">'+escape(s.get('name',s['entity_id']))+' — '+escape(s['state'])+'</option>' for s in entities)
@@ -178,7 +178,9 @@ class Handler(BaseHTTPRequestHandler):
             identity=__import__('urllib.parse',fromlist=['parse_qs']).parse_qs(urlsplit(self.path).query).get('session',[''])[0]
             if not identity:
                 return self.send_body(200,'<h1>Živá přejímka krok za krokem</h1><p>Tento režim sám neoznačuje HAOS za ověřený. Zaznamená skutečná čtení, zásah a funkční výsledek. Modelový komunikační test má zvláštní souhlas a nejvýše jedno volání na tuto přejímku.</p><form method="post" action="acceptance/create"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="isolated" value="yes" required>Pracuji v odděleném bezpečném testovacím prostředí.</label><button>Založit přejímkový protokol</button></form>')
-            acceptance=self.server.app.acceptance.session(identity);rows=''
+            try:acceptance=self.server.app.acceptance.session(identity)
+            except RepairBlocked:return self.send_body(404,'Přejímka neexistuje. Vytvoř nový protokol přes Živou přejímku.')
+            rows=''
             status_names={'passed':'Prošlo','failed':'Selhalo','unavailable':'Nedostupné','pending':'Čeká na test'}
             choices=''.join('<option value="'+c['id']+'">'+escape(c['symptom'])+'</option>' for c in self.server.app.snapshot()['cases'])
             apps=''.join('<option value="'+escape(a['slug'],quote=True)+'">'+escape(a['name'])+'</option>' for a in self.server.app.snapshot()['applications'])
@@ -191,7 +193,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200,'<h1>Živá přejímka</h1><p>Průběh obnovíš znovunačtením stránky. Reálný Hermes se testuje samostatným vyšetřováním vybraného skutečného incidentu.</p>'+rows+'<a download="HADS-anonymized-acceptance.json" href="acceptance/export?session='+identity+'">Stáhnout anonymizovaný report</a>')
         if path == '/acceptance/export':
             identity=__import__('urllib.parse',fromlist=['parse_qs']).parse_qs(urlsplit(self.path).query).get('session',[''])[0]
-            return self.send_body(200,json.dumps(self.server.app.acceptance.export(identity),ensure_ascii=False,indent=2),'application/json; charset=utf-8')
+            try:value=self.server.app.acceptance.export(identity)
+            except RepairBlocked:return self.send_body(404,'Přejímka neexistuje. Otevři svůj protokol.')
+            return self.send_body(200,json.dumps(value,ensure_ascii=False,indent=2),'application/json; charset=utf-8')
         if path == '/setup/monitors':
             monitor=self.server.app.detection.snapshot()
             rows=''.join('<li>'+escape(r['entity_id'])+' — '+escape(r['kind'])+'; očekáváno '+escape(r['expected'])+'; '+str(r['grace_seconds'])+' s</li>' for r in monitor['rules'])
@@ -231,7 +235,7 @@ class Handler(BaseHTTPRequestHandler):
                 suggestion_html='<h2>Návrh dalšího postupu</h2><p>'+escape(suggestion['summary_cs'])+'</p>'
                 if suggestion.get('change'):
                     suggestion_html+='<p>Automatizace '+escape(suggestion['target'])+': '+escape(suggestion['change']['from'])+' → '+escape(suggestion['change']['to'])+'.</p>'
-                suggestion_html+='<p>Tuto změnu zde HADS zatím nevykonává. Můžeš podle postupu zkontrolovat nastavení ručně.</p><ol>'+''.join('<li>'+escape(x)+'</li>' for x in suggestion['manual_steps_cs'])+'</ol>'
+                suggestion_html+='<p>'+('Přesný plán připrav samostatným tlačítkem níže. Návrh modelu sám nic nemění.' if suggestion.get('status')=='supported_native_candidate' else 'Podle postupu zkontroluj nastavení ručně. Návrh sám nic nemění.')+'</p><ol>'+''.join('<li>'+escape(x)+'</li>' for x in suggestion['manual_steps_cs'])+'</ol>'
                 decisions=[r['content'] for r in case['records'] if r['kind']=='repair_suggestion_decision' and r['content'].get('suggestion_id')==suggestion['suggestion_id']]
                 if decisions:
                     suggestion_html+='<p>'+('Tento návrh jsi zamítl. HADS nic neprovedl.' if decisions[-1]['decision']=='reject' else 'Zvolil jsi ruční kontrolu. Ověření výsledku stále čeká.')+'</p>'

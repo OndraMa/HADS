@@ -147,7 +147,11 @@ class RepairService:
         case=self.app.store.case(plan.document['incident_id']);evidence=[e['evidence_id'] for e in case['evidence']]
         if plan.document['operation']=='core.enable_lighting_automation':
             engine=self.native_engine(plan)
-            with self.app._read_lock:rollback=engine.prepare_enable(plan.document['incident_id'],evidence,rollback_of=plan.plan_id)
+            execution=engine.execution(identity)
+            if not execution or execution.status not in {'applied_verification_pending','verified','failed','recurred'}:raise RepairBlocked('Návrat vyžaduje doložený původní zásah bez neznámého výsledku.')
+            with self.app._read_lock:
+                if not engine._readback_matches(plan.document['proposed'],json.loads(engine._read(engine.filename))):raise RepairBlocked('Stav se od zásahu změnil; automatický návrat není připravený.')
+                rollback=engine.prepare_enable(plan.document['incident_id'],evidence,rollback_of=plan.plan_id)
         else:rollback=self.engine().prepare_rollback(plan,evidence)
         self.app.store.record(plan.document['incident_id'],'rollback_prepared',{'plan_id':rollback.plan_id,'summary_cs':'Návrat aktivace vypne příjem dalších triggerů. Již rozsvícené světlo nevrací. Potřebuje nové schválení; neobnovuje HAOS.' if plan.document['operation']=='core.enable_lighting_automation' else 'Návrat vlastní reference vyžaduje samostatné nové schválení. Neobnovuje HAOS.'})
         return rollback

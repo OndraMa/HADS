@@ -132,5 +132,5 @@ class LiveAcceptance:
         opaque=lambda v:hmac.new(key,str(v).encode(),hashlib.sha256).hexdigest()[:16]
         # No raw logs, prompts, summaries, endpoints, entities, user IDs or settings.
         steps=[{'step':r['step'],'status':r['status'],'reason_code':r['reason'],'explanation_cs':r['explanation'],'at':r['at']} for r in session['steps']]
-        resources=self.app.system.status()['resources']
-        return {'schema':1,'scope':session['session']['operator_scope'],'independent_live_HAOS_proof':False,'session':opaque(identity),'steps':steps,'resources':resources,'core_read_latency_ms':self.app.system.status().get('core_read_latency_ms'),'model_test_proves':'connectivity_only','real_model_investigation':'requires_actual_case_and_citation_review','all_steps_passed':all(s['status']=='passed' for s in steps),'tokens_or_raw_household_content_included':False}
+        resources=self.app.system.sample_resources()
+        return {'schema':1,'scope':session['session']['operator_scope'],'independent_live_HAOS_proof':False,'session':opaque(identity),'steps':steps,'resources':resources,'host_metrics':self.app.system.status().get('host_metrics'),'core_read_latency_ms':self.app.system.status().get('core_read_latency_ms'),'model_test_proves':'connectivity_only','real_model_investigation':'requires_actual_case_and_citation_review','all_steps_passed':all(s['status']=='passed' for s in steps),'tokens_or_raw_household_content_included':False}

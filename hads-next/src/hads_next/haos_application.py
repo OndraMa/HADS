@@ -13,7 +13,7 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read
 
-VERSION = "1.0.0-rc1"
+VERSION = "1.0.0-rc2"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 

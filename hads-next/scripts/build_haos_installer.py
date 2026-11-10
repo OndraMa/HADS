@@ -12,8 +12,8 @@ import tarfile
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.0.0-rc1"
-SLUG = "hads_next_acceptance"
+VERSION = "1.0.0-rc2"
+SLUG = "hads_next_practical"
 
 EXTRACTOR = r'''
 import hashlib, json, os, pathlib, sys, tarfile
@@ -152,7 +152,7 @@ echo 'Úspěšné spuštění není dokladem živé přejímky ani plné funkčn
 def build_installer(output_dir: Path) -> dict:
     output_dir = Path(output_dir)
     resolved=output_dir.resolve()
-    if resolved.is_relative_to(ROOT/"releases") or any(resolved.is_relative_to(ROOT.parent/"KE_STAZENI"/name) for name in ("HADS_Next_0.1.0-dev1","HADS_Next_0.2.0-dev1")):
+    if resolved.is_relative_to(ROOT/"releases") or resolved.is_relative_to(ROOT.parent/"KE_STAZENI"):
         raise ValueError("Existing published archives are immutable; build into a new candidate directory")
     output_dir.mkdir(parents=True, exist_ok=True)
     sources = {p.name: p for p in (ROOT / "haos").iterdir() if p.is_file()}
@@ -167,11 +167,11 @@ def build_installer(output_dir: Path) -> dict:
         revision=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()
         dirty=bool(subprocess.check_output(["git","status","--porcelain"],cwd=ROOT,text=True).strip())
     except (OSError,subprocess.CalledProcessError):revision=None;dirty=None
-    manifest = {"version": VERSION, "slug": SLUG, "scope": "haos_read_only_development_preview",
+    manifest = {"version": VERSION, "slug": SLUG, "scope": "haos_practical_repair_acceptance_candidate",
                 "development_base_commit": "5fb2ba17cf0b50d483128bc0ccb834cc126dee47",
                 "source_revision_at_build":revision,"worktree_modified_at_build":dirty,
                 "hermes_upstream_revision":"d923a5eb487a17c0a68801bba9ef0f56c81040a8",
-                "live_haos_verified":False,"production_writes_enabled":False,"owned_virtual_reference_CAS_available":True,
+                "live_haos_verified":False,"production_writes_enabled":False,"owned_virtual_reference_CAS_available":True,"selected_native_lighting_enable_available":True,"native_config_writes_enabled":False,
                 "files": {name: {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
                                    "source": str(sources[name].relative_to(ROOT))} for name, data in sorted(contents.items())}}
     contents["PACKAGE_MANIFEST.json"] = (json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode()

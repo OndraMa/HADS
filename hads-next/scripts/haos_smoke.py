@@ -9,7 +9,7 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-IMAGE = "hads-next-haos:1.0.0-rc1"
+IMAGE = "hads-next-haos:1.0.0-rc2"
 
 
 def main():
@@ -75,6 +75,8 @@ print(json.dumps({'health':body,'runtime_uid':65532,'capabilities':0,'direct_dat
         read = "from hads_next.haos_application import Application; a=Application('/data/hads-next'); assert a.snapshot()['cases'][0]['id']==" + repr(case_id)
         docker("exec", "--user", "65532", name, "python", "-c", read)
         report["case_persisted_after_container_restart"] = True
+        report["container_resource_snapshot"]=json.loads(docker("stats","--no-stream","--format","{{json .}}",name).stdout)
+        report["controller_pid1_memory_status"]=docker("exec","--user","65532",name,"python","-c","from pathlib import Path;print(\"\\n\".join(x for x in Path(\"/proc/1/status\").read_text().splitlines() if x.startswith((\"VmRSS:\",\"VmHWM:\"))))").stdout
         report["image"] = json.loads(docker("image", "inspect", image, "--format", "{{json .}}").stdout)
         report["image"] = {k: report["image"][k] for k in ("Id", "Architecture", "Os", "Size")}
         report["arm64_tested"]=report["image"]["Architecture"]=="arm64"
@@ -86,13 +88,13 @@ import json,sys
 args=sys.argv[1:]
 with open('/tmp/ha-calls.jsonl','a') as f:f.write(json.dumps(args)+'\\n')
 if args==['apps','--raw-json']:print(json.dumps({'result':'ok','data':{'addons':[]}}))
-elif args==['apps','info','local_hads_next_acceptance','--raw-json']:print(json.dumps({'data':{'version':'1.0.0-rc1','state':'started'}}))
-elif args not in [['apps','--help'],['store','reload'],['apps','install','local_hads_next_acceptance'],['apps','start','local_hads_next_acceptance']]:sys.exit(91)
+elif args==['apps','info','local_hads_next_practical','--raw-json']:print(json.dumps({'data':{'version':'1.0.0-rc2','state':'started'}}))
+elif args not in [['apps','--help'],['store','reload'],['apps','install','local_hads_next_practical'],['apps','start','local_hads_next_practical']]:sys.exit(91)
 ''')
             fake.chmod(0o755)
             assertion = '''import json,subprocess,pathlib
 calls=[json.loads(x) for x in pathlib.Path('/tmp/ha-calls.jsonl').read_text().splitlines()]
-assert calls==[['apps','--help'],['apps','--raw-json'],['store','reload'],['apps','install','local_hads_next_acceptance'],['apps','start','local_hads_next_acceptance'],['apps','info','local_hads_next_acceptance','--raw-json']],calls
+assert calls==[['apps','--help'],['apps','--raw-json'],['store','reload'],['apps','install','local_hads_next_practical'],['apps','start','local_hads_next_practical'],['apps','info','local_hads_next_practical','--raw-json']],calls
 again=subprocess.run(['bash','/installer.sh','--install-dev'],capture_output=True)
 assert again.returncode!=0
 assert len(pathlib.Path('/tmp/ha-calls.jsonl').read_text().splitlines())==len(calls)
