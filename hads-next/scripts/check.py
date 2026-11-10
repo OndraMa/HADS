@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 
 def main():
-    files = sorted(p for folder in ("src", "tests", "scripts") for p in (ROOT / folder).rglob("*.py"))
+    files = sorted(p for folder in ("src", "tests", "scripts", "companion") for p in (ROOT / folder).rglob("*.py"))
     inputs = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.discover(str(ROOT / "tests")))
     receipt = {

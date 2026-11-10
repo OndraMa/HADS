@@ -89,12 +89,15 @@ async def main():
             path=Path(directory)
             from source_contract_probe import prepare_fixture
             prepare_fixture(path)
+            import shutil
+            shutil.copytree(Path(__file__).resolve().parents[1]/"companion/custom_components/hads_reference",path/"custom_components/hads_reference")
             automation={'id':'hads_lab_reference','triggers':[{'trigger':'state','entity_id':'input_button.hads_lab_run'}],
                 'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':'input_boolean.hads_lab_missing'}}]}
             zha={'id':'hads_zha_chain','alias':'HADS ZHA chain','triggers':[{'trigger':'event','event_type':'zha_event',
                 'event_data':{'device_id':'11111111111111111111111111111111','command':'toggle'}}],
                 'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':'input_boolean.hads_zha_target'}}]}
-            (path/'automations.yaml').write_text(yaml.safe_dump([automation,zha]))
+            managed={'id':'hads_next_reference_test','alias':'HADS Next reference test','triggers':[{'trigger':'state','entity_id':'input_button.hads_next_test_run'}],'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':"{{ states('sensor.hads_next_test_reference') }}"}}]}
+            (path/'automations.yaml').write_text(yaml.safe_dump([automation,zha,managed]))
             (path/'configuration.yaml').write_text('''homeassistant:
   name: HADS native investigation lab
   latitude: 0
@@ -119,12 +122,16 @@ repairs:
 media_player:
   - platform: hads_lab_player
 automation: !include automations.yaml
+hads_reference:
 input_boolean:
+  hads_next_test_target:
+    initial: false
   hads_lab_target:
     initial: false
   hads_zha_target:
     initial: false
 input_button:
+  hads_next_test_run:
   hads_lab_run:
 ''')
             hass=HomeAssistant(directory);loader.async_setup(hass);hass.config.skip_pip=True
@@ -136,7 +143,7 @@ input_button:
                 await core_config.async_process_ha_core_config(hass,config['homeassistant'])
                 from homeassistant.helpers.recorder import async_initialize_recorder
                 async_initialize_recorder(hass)
-                for domain in ('homeassistant','http','websocket_api','api','config','recorder','history','logbook','system_health','system_log','repairs','input_boolean','input_button','media_player','automation'):
+                for domain in ('homeassistant','http','websocket_api','api','config','recorder','history','logbook','system_health','system_log','repairs','input_boolean','input_button','media_player','hads_reference','automation'):
                     assert await async_setup_component(hass,domain,config),domain
                 user=await hass.auth.async_create_user('Native lab admin',group_ids=['system-admin'])
                 refresh=await hass.auth.async_create_refresh_token(user,client_id='https://hads-lab.invalid/')
@@ -231,6 +238,9 @@ input_button:
                         'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions',models)
                     from source_contract_probe import exercise_sources
                     result['source_contracts']=await exercise_sources(hass,app)
+                    from managed_delivery_probe import exercise_managed
+                    result['final_delivery']=await exercise_managed(hass,core,ws,launcher,path,user,models,'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions')
+                    assert result['final_delivery']['passed']
                 finally:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()
@@ -256,4 +266,4 @@ input_button:
     finally:launcher.close()
 
 
-if __name__=='__main__':asyncio.run(asyncio.wait_for(main(),timeout=360))
+if __name__=='__main__':asyncio.run(asyncio.wait_for(main(),timeout=600))

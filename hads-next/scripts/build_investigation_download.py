@@ -20,7 +20,8 @@ def git(*args):
     return subprocess.check_output(["git", "-C", str(ROOT), *args])
 
 
-def build(ref, package, output):
+def build(ref, package, output, version=VERSION):
+    VERSION=version
     commit = git("rev-parse", "--verify", ref + "^{commit}").decode().strip()
     def blob(path):
         return git("show", commit + ":" + path)
@@ -47,7 +48,15 @@ def build(ref, package, output):
             if data != original or hashlib.sha256(data).hexdigest() != metadata["sha256"]:
                 raise ValueError("Payload source mismatch: " + name)
         assets["HADS_Next_" + VERSION + "-navod-CS.md"] = archive.extractfile("DOCS.md").read()
-    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/results.md")
+    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
+    if VERSION=="1.0.0-rc1":
+        companion=io.BytesIO()
+        with tarfile.open(fileobj=io.BytesIO(assets[source]),mode="r:gz") as archive,zipfile.ZipFile(companion,"w",compression=zipfile.ZIP_DEFLATED) as target:
+            for member in archive:
+                if member.name.startswith('companion/') and member.isfile():
+                    entry=zipfile.ZipInfo(member.name.removeprefix('companion/'),(1980,1,1,0,0,0));entry.compress_type=zipfile.ZIP_DEFLATED;entry.external_attr=0o100644<<16
+                    target.writestr(entry,archive.extractfile(member).read())
+        assets['HADS_companion_'+VERSION+'.zip']=companion.getvalue()
     assets["AKCEPTACE_HAOS_CS.md"] = blob("hads-next/docs/haos-acceptance.md")
     assets["ACCEPTANCE.json"] = json.dumps(accepted, indent=2).encode() + b"\n"
     quick = ("HADS Next " + VERSION + " — kandidát pro oddělený testovací HAOS\n\n"
@@ -65,6 +74,7 @@ def build(ref, package, output):
         "Commit dokumentace a verzovaného repozitáře v tomto ZIPu: " + commit + "\n"
         "Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.\n"
         "Návody a stav přejímky čti nejprve v kořeni tohoto balíčku.\n")
+    if VERSION=="1.0.0-rc1":quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné produkční zápisy jsou zakázané.");quick+="\nJediná podporovaná zapisovací oprava mění vlastní virtuální referenci přes companion CAS. Potřebuje instalaci přiložené integrace a zvláštní schválení každého plánu. Nativní automatizace se obecně nepřepisují.\n"
     assets["CTI_ME_NEJDRIVE_CS.txt"] = quick.encode("utf-8-sig")
     files = dict(assets)
     with zipfile.ZipFile(io.BytesIO(git("archive", "--format=zip", "--prefix=zdrojovy-repozitar/", commit))) as archive:
@@ -100,7 +110,8 @@ def build(ref, package, output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ref", default="HEAD")
+    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1"])
     parser.add_argument("--package-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(build(args.ref, args.package_dir, args.output_dir), indent=2))
+    print(json.dumps(build(args.ref, args.package_dir, args.output_dir,args.version), indent=2))

@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlsplit
 from .haos_application import Application, VERSION
 from .observability import CoreReader, CoreWSReader, NativeHTTP, NativeWebSocket, SupervisorReader
 from .investigation_jobs import JobBlocked
+from .repair import RepairBlocked
 
 
 class SupervisorTransport:
@@ -55,14 +56,16 @@ class Server(ThreadingHTTPServer):
 
     def server_close(self):
         self.app.investigations.zha_observer.close()
+        self.app.detection.close()
+        self.app.repairs.close()
         super().server_close()
 
-    def verified_admin(self, user_id):
+    def verified_admin(self, user_id, *, fresh=False):
         if not user_id or self.app.core_ws is None:
             return False
         with self._auth_lock:
             now = time.monotonic()
-            if self._auth_cache and self._auth_cache[0] == user_id and now-self._auth_cache[1] < 15:
+            if not fresh and self._auth_cache and self._auth_cache[0] == user_id and now-self._auth_cache[1] < 15:
                 return self._auth_cache[2]
             users = self.app.core_ws.auth_users()
             valid = isinstance(users,list) and len(users) <= 1000 and any(
@@ -98,7 +101,10 @@ class Handler(BaseHTTPRequestHandler):
         pass  # URLs and form content can contain private household information.
 
     def send_body(self, status, body, kind="text/html; charset=utf-8"):
-        data = body.encode()
+        if kind.startswith("text/html"):
+            from .command_center import page
+            body=page(body,urlsplit(self.path).path)
+        data = body if isinstance(body,bytes) else body.encode()
         self.send_response(status)
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
@@ -152,7 +158,7 @@ class Handler(BaseHTTPRequestHandler):
                 +'<label>Model<input name="model" required maxlength="128" value="'+escape(settings['model'],quote=True)+'"></label>'
                 +'<label>API klíč<input type="password" name="api_key" maxlength="2048" autocomplete="new-password" placeholder="Při zachování endpointu a modelu lze existující klíč ponechat prázdný."></label>'
                 +'<label><input type="checkbox" name="consent" value="yes" '+('checked' if settings['enabled'] else '')+'> Výslovně povoluji modelová volání a předání redigovaných diagnostických údajů tomuto poskytovateli.</label>'
-                +'<p>Nejvýše 8 požadavků na případ, 12 denně, 1024 výstupních tokenů na požadavek. Změna nastavení sama vyšetřování nespouští.</p><button>Uložit nastavení AI</button></form><a href="../../">Přehled</a>')
+                +'<p>Nejvýše 8 požadavků na případ, 12 denně, 1024 výstupních tokenů na požadavek. Změna nastavení sama vyšetřování nespouští.</p><button>Uložit nastavení AI</button></form><a href="../">Přehled</a>')
         if path == '/setup':
             sources = self.server.app.snapshot()['sources']
             rows = ''.join('<li>' + escape(k) + ': ' + ('Čtení proběhlo' if v['read_succeeded'] else 'Čtení není dostupné: ' + escape(str(v['status'].get('last_error')))) + '</li>' for k,v in sources.items())
@@ -161,7 +167,33 @@ class Handler(BaseHTTPRequestHandler):
             if self.server.app.snapshot()['source_job']['state']=='running':
                 rows='<li>Kontrola právě probíhá. Obnov stránku pro průběžné výsledky.</li>'+rows
             runtime=self.server.app.investigations.status()
-            return self.send_body(200,'<h1>Průvodce připraveností</h1><ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Živé opravy jsou vypnuté.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
+            from .readiness import checklist
+            gates=''.join('<article><h3>'+escape(g['label'])+' — '+('Ověřeno' if g['passed'] else 'Čeká / omezeno')+'</h3><p>'+escape(g['detail'])+'</p></article>' for g in checklist(self.server.app))
+            return self.send_body(200,'<h1>Průvodce připraveností</h1>'+gates+'<ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Obecné zásahy jsou zakázané; dostupný je jen zvlášť povolený testovací katalog.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
+        if path == '/setup/monitors':
+            monitor=self.server.app.detection.snapshot()
+            rows=''.join('<li>'+escape(r['entity_id'])+' — '+escape(r['kind'])+'; očekáváno '+escape(r['expected'])+'; '+str(r['grace_seconds'])+' s</li>' for r in monitor['rules'])
+            return self.send_body(200,'<h1>Sledované funkce</h1><p>Pravidlo popisuje očekávání uživatele. Chyba v logu sama incident nevytváří. Přehrávání sleduji až po skutečném přechodu z hraní; při mezeře v odběru začíná pokrytí znovu.</p><p>'+escape(monitor['last_error'] or ('Odběr funguje.' if monitor['state']=='listening' else 'Odběr dosud není potvrzený.'))+'</p><ul>'+rows+'</ul><form method="post" action="monitors"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>Entita<input name="entity_id" required></label><label>Podmínka<select name="kind"><option value="unavailable">Zůstává nedostupná</option><option value="state">Nedosáhne očekávaného stavu</option><option value="playback">Přehrávání se zastaví</option><option value="response">Po spouštěcí události chybí odezva</option></select></label><label>Očekávaný stav<input name="expected" value="on" required></label><label>Doba v sekundách<input type="number" name="grace_seconds" value="30" min="1" max="3600"></label><label>Spouštěcí entita pro odezvu<input name="trigger_entity"></label><label>Související automatizace (volitelné)<input name="automation_entity" placeholder="automation.hads_next_reference_test"></label><button>Uložit monitorovací pravidlo</button></form><form method="post" action="autonomy"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if monitor['autonomous_ai'] else '')+'>Povoluji automaticky zahájit AI vyšetřování nových funkčních incidentů v rámci limitu poskytovatele. Může být zpoplatněné.</label><button>Uložit souhlas s autonomním vyšetřováním</button></form>')
+        if path == '/download/companion':
+            import io,zipfile
+            root=Path('/app/companion')
+            if not root.is_dir():return self.send_body(404,'Companion balíček není v tomto image dostupný.')
+            stream=io.BytesIO()
+            with zipfile.ZipFile(stream,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+                for name in ('custom_components/hads_reference/__init__.py','custom_components/hads_reference/manifest.json','test-automation.yaml','README_CS.md'):
+                    content=(root/name).read_bytes()
+                    if len(content)>65536:raise ValueError('Neplatný companion balíček.')
+                    archive.writestr(name,content)
+            return self.send_body(200,stream.getvalue(),'application/zip')
+        if path == '/setup/repair':
+            state=self.server.app.repairs.status()
+            return self.send_body(200,'<h1>Bezpečně podporované opravy</h1><p><a href="../download/companion" download="HADS_companion.zip">Stáhnout integraci, testovací YAML a přesný postup</a></p><p>Jediná zapisovací operace mění vlastní referenci izolované virtuální testovací automatizace přes atomické CAS companion integrace. Běžné automatizace se nepřepisují. Companion musí být zvlášť instalovaný na testovacím HA.</p><p>'+escape(state['backup'])+'</p><p>Rizikové zásahy a OneDrive restore: nepodporované, blokované.</p><form method="post" action="repair"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if state['enabled'] else '')+'>Potvrzuji oddělené virtuální testovací prostředí a povoluji tento úzký katalog. Každá změna stále vyžaduje zvláštní schválení.</label><button>Ověřit companion a uložit katalog</button></form><details><summary>Technický stav</summary><pre>'+escape(json.dumps(state,ensure_ascii=False,indent=2))+'</pre></details>')
+        if path == '/setup/history':
+            return self.send_body(200,'<h1>Historie a migrace</h1><p>Export spisu je dostupný v jeho detailu. Import Next schema 1 přenese pouze historické incidenty, výskyty a redigované důkazy. Schválení, tokeny, rozpracované zásahy a tvrzení o vyřešení nezískají platnost. RC3 databáze se nemění; přímý import jejího neověřeného schématu není povolený.</p><form method="post" action="import"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>JSON export jednoho spisu Next<textarea name="document" required maxlength="500000"></textarea></label><button>Importovat neautorizující historii</button></form>')
+        if path.startswith('/export/'):
+            try:document=self.server.app.store.export(path.removeprefix('/export/'))
+            except KeyError:return self.send_body(404,'Spis neexistuje.')
+            return self.send_body(200,document,'application/json; charset=utf-8')
         if path.startswith("/case/"):
             try:
                 case = self.server.app.store.case(path.removeprefix("/case/"))
@@ -188,6 +220,11 @@ class Handler(BaseHTTPRequestHandler):
             from .investigator_roles import ROLE_LABELS
             progress+=''.join('<li>'+escape(ROLE_LABELS.get(r['content'].get('role'),'Vyšetřování'))+': '+escape(r['content'].get('task',''))+'</li>'
                 for r in case['records'] if r['kind']=='investigator_selected' and jobs and r['content'].get('job_id')==jobs[0]['id'])
+            from .command_center import repair_cards
+            suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
+            if self.server.app.repairs.status()['enabled']:
+                suggestion_html+='<form method="post" action="../repair/prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><button>Připravit přesnou opravu vlastní testovací reference</button></form>'
+            suggestion_html+='<a href="../export/'+case['incident']['id']+'">Exportovat spis JSON</a>'
             stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
             acknowledge='<label><input type="checkbox" name="ack_unknown" value="yes"> Povolím další pokus i v případě, že předchozí nedokončené modelové volání mohlo být účtováno.</label>' if jobs and jobs[0]['state']=='blocked' else ''
@@ -195,7 +232,7 @@ class Handler(BaseHTTPRequestHandler):
                 +'</h1><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul>'+stop_form+'<details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
                 + '<h2>Pracovní závěr</h2><p>' + escape(result.get('summary_cs','Vyšetřování ještě nemá závěr.'))
                 + '</p><h2>Další potřebné důkazy</h2><ul>' + ''.join('<li>'+escape(str(x))+'</li>' for x in result.get('needed',[]))
-                + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p>'+suggestion_html+'<p>HADS v domácnosti nic nezměnil. Případ čeká na funkční ověření.</p><details><summary>Technické důkazy spisu</summary><pre>'
+                + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p>'+suggestion_html+'<p>'+('Funkční podmínka byla ověřena; report je v historii.' if case['incident']['status']=='resolved' else 'Případ zůstává otevřený do ověření funkční podmínky.')+'</p><details><summary>Technické důkazy spisu</summary><pre>'
                 + escape(json.dumps(case,ensure_ascii=False,indent=2)) + '</pre></details></html>')
         if path not in {"/", "/index.html"}:
             return self.send_body(404, "Stránka nebyla nalezena.")
@@ -203,12 +240,22 @@ class Handler(BaseHTTPRequestHandler):
         core = value["core"]
         text = "Čtení Core funguje." if core["available"] else core["last_error"] or "Čtení Core čeká."
         cases = "".join('<article><h3>' + escape(c["symptom"]) + '</h3><p>Výskytů: ' + str(c["occurrence_count"]) +
-            '</p><a href="case/' + escape(c["id"], quote=True) + '">Otevřít důkazy spisu</a></article>' for c in value["cases"])
+            '</p><a href="case/' + escape(c["id"], quote=True) + '">Otevřít důkazy spisu</a></article>' for c in value["cases"] if c["status"]=="open")
+        def case_cards(rows):
+            return ''.join('<article><h3>'+escape(c['symptom'])+'</h3><p>Výskytů: '+str(c['occurrence_count'])+'</p><a href="case/'+c['id']+'">Otevřít spis a reporty</a></article>' for c in rows)
+        resolved=case_cards([c for c in value['cases'] if c['status']=='resolved'])
+        recurring=case_cards([c for c in value['cases'] if c['occurrence_count']>1])
+        waiting=[]
+        for c in value['cases']:
+            plans=self.server.app.repairs.plans(c['id'])
+            jobs=self.server.app.investigations.for_case(c['id'])
+            if any(p['status'] is None or p['status']=='applied_verification_pending' for p in plans) or (jobs and jobs[0]['state'] in {'waiting_for_user','blocked','waiting_for_source'}):waiting.append(c)
+        waiting_html=case_cards(waiting)
         options = "".join('<option value="' + escape(e["entity_id"], quote=True) + '"></option>' for e in value["entities"])
         applications = ''.join('<option value="' + escape(a['slug'],quote=True) + '">' + escape(a['name']) + '</option>' for a in value['applications'])
         body = '''<!doctype html><html lang="cs"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HADS Next</title><style>body{font:17px/1.6 system-ui;margin:2rem auto;padding:0 1rem;max-width:960px;color:#182638;background:#f3f5f7}article,form{background:white;padding:1rem;margin:1rem 0;border:1px solid #ccd6df;border-radius:6px}input,textarea,button{font:inherit;padding:.5rem;box-sizing:border-box;max-width:100%}input,textarea{width:100%}button{background:#12695f;color:white;border:0;border-radius:4px;cursor:pointer}.notice{border-left:4px solid #b36b12;padding:1rem;background:#fff7e8}a{color:#12695f}</style>
-<h1>HADS Next</h1><p class="notice">Vývojová verze ''' + VERSION + '''. Hermes vyžaduje izolovaný runtime a výslovně povoleného poskytovatele AI. Živé opravy jsou vypnuté; HAOS přejímka čeká.</p>
+<h1>HADS Next</h1><p class="notice">Vývojová verze ''' + VERSION + '''. Hermes vyžaduje izolovaný runtime a výslovně povoleného poskytovatele AI. Obecné zásahy jsou zakázané. Katalog vlastní testovací reference má samostatné schvalování; HAOS přejímka čeká.</p>
 <nav><a href="./">Moje domácnost</a> · <a href="#investigation">Vyšetřování</a> · <a href="#waiting">Čeká na mě</a> · <a href="#resolved">Opraveno</a> · <a href="#recurring">Opakující se problémy</a> · <a href="setup">Agenti a zdroje</a> · <a href="#investigation">Historie</a></nav>
 <h2>Co je dostupné</h2><p>''' + escape(text) + '</p><p>Načtených entit: ' + str(core["entity_count"]) + ". Samotná nedostupnost entity neurčuje příčinu závady.</p>" + '''
 <form method="post" action="read"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''"><button>Obnovit čtení Core</button><p>Nejvýše jednou za minutu.</p></form>
@@ -218,9 +265,9 @@ class Handler(BaseHTTPRequestHandler):
 <label>Kdy se to stalo? Časové pásmo ''' + escape(value['timezone']) + '''. Pro právě probíhající problém nechej prázdné.<input type="datetime-local" name="occurred_at"></label>
 <label>Dotčená entita<input name="entity_id" list="entities" maxlength="200" required placeholder="media_player.radio"></label><datalist id="entities">''' + options + '''</datalist><button>Uložit incident a přečíst historii</button></form>
 <h2>Vyšetřit aplikaci HAOS</h2><form method="post" action="incident/app"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''"><label>Aplikace<select name="slug" required>''' + applications + '''</select></label><label>Co nefunguje?<input name="symptom" required maxlength="1000"></label><button>Načíst stav, statistiky a protokol aplikace</button></form>
-<h2 id="waiting">Co ode mě potřebuje</h2><p>Spis obsahuje dostupné důkazy a chybějící údaje. Tato verze nevytváří živě proveditelné opravy.</p>
-<h2 id="resolved">Co se podařilo vyřešit</h2><p>Žádná živá náprava nebyla touto verzí ověřena.</p>
-<h2 id="recurring">Co se opakuje</h2><p>Opakované ruční hlášení stejného problému a entity se ukládá do společného spisu.</p>
+<h2 id="waiting">Co ode mě potřebuje</h2><p>Ve spisu najdeš přesný plán, chybějící souhlas nebo požadovaný funkční test.</p>''' + (waiting_html or "<p>Žádná čekající rozhodnutí.</p>") + '''
+<h2 id="resolved">Co se podařilo vyřešit</h2><p>Zobrazují se pouze spisy uzavřené funkčním ověřením.</p>''' + (resolved or "<p>Dosud žádný ověřený výsledek.</p>") + '''
+<h2 id="recurring">Co se opakuje</h2><p>Skutečné další výskyty mají vlastní čas; opakované načtení stejného důkazu je nepřidává.</p>''' + (recurring or "<p>Zatím nejsou opakované případy.</p>") + '''
 <details><summary>Technický stav čtení</summary><pre>''' + escape(json.dumps(core, ensure_ascii=False, indent=2)) + "</pre></details></html>"
         self.send_body(200, body)
 
@@ -240,11 +287,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(303);self.send_header('Location','../setup');self.send_header('Content-Length','0');self.end_headers();return
         if not self.authorized():
             return self.send_body(403, "Chybí ověřený ingress uživatel.")
+        if urlsplit(self.path).path.startswith('/repair/') and not self.server.verified_admin(self.headers.get('X-Remote-User-Id'),fresh=True):
+            return self.send_body(403,'Aktuální oprávnění vlastníka nelze potvrdit.')
         if self.headers.get("Content-Type", "").split(";")[0] != "application/x-www-form-urlencoded":
             return self.send_body(415, "Nepodporovaný formát.")
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= 8192:
+            if not 0 < size <= (2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
                 raise ValueError()
             form = parse_qs(self.rfile.read(size).decode(), max_num_fields=8, strict_parsing=True)
             if form.get("csrf") != [self.server.csrf]:
@@ -284,6 +333,26 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.store.record(identity,'repair_suggestion_decision',{'job_id':jobs[0]['id'],'suggestion_id':proposal['suggestion_id'],
                     'decision':choice,'principal':self.headers['X-Remote-User-Id'],'approval_granted':False,'functional_result':'not_verified'})
                 self.send_response(303);self.send_header('Location','../case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/monitors':
+                self.server.app.detection.configure({'entity_id':form.get('entity_id',[''])[0],'kind':form.get('kind',[''])[0],
+                    'expected':form.get('expected',['on'])[0],'grace_seconds':int(form.get('grace_seconds',['30'])[0]),'trigger_entity':form.get('trigger_entity',[''])[0],'automation_entity':form.get('automation_entity',[''])[0]},self.headers['X-Remote-User-Id'])
+                self.server.app.detection.start()
+                self.send_response(303);self.send_header('Location','monitors');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/autonomy':
+                self.server.app.detection.consent(form.get('enabled')==['yes'],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','monitors');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/repair':
+                self.server.app.repairs.configure(form.get('enabled')==['yes'],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','repair');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/import':
+                from .migration import import_case
+                value=json.loads(form.get('document',[''])[0]);import_case(self.server.app.store,value)
+            elif path == '/repair/prepare':
+                self.server.app.repairs.prepare(form.get('incident_id',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/repair/decide':
+                self.server.app.repairs.decide(form.get('plan_id',[''])[0],form.get('decision',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/repair/rollback':
+                self.server.app.repairs.rollback(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
             elif path == '/setup/check':
                 self.server.app.request_source_check()
             elif path == '/setup/runtime':
@@ -305,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.report_incident(form.get("symptom", [""])[0], form.get("entity_id", [""])[0], self.headers["X-Remote-User-Id"],occurred_at=stamp)
             else:
                 return self.send_body(404, "Tato operace není dostupná.")
-        except JobBlocked as error:
+        except (JobBlocked,RepairBlocked) as error:
             return self.send_body(409,escape(str(error)))
         except (ValueError, KeyError, UnicodeError):
             return self.send_body(400, "Neplatné hlášení nebo dosažený limit. Zkontroluj popis a entity_id.")
@@ -354,11 +423,14 @@ def main():
     ws = CoreWSReader(NativeWebSocket('ws://supervisor/core/websocket',token,supervisor_proxy=True)) if token else None
     supervisor = SupervisorReader(SupervisorTransport(token)) if token else None
     app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher,runtime_error=runtime_error)
-    if app.owner():app.investigations.zha_observer.start()
+    if app.owner():
+        app.investigations.zha_observer.start();app.detection.start()
+        if app.repairs.status()['enabled']:app.repairs.start()
     threading.Thread(target=app.refresh, daemon=True).start()
     try:Server(("0.0.0.0", 8099), app, owner_user_id=owner).serve_forever()
     finally:
         app.investigations.zha_observer.close()
+        app.detection.close();app.repairs.close()
         if launcher:launcher.close()
 
 

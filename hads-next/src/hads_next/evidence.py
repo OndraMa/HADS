@@ -222,7 +222,7 @@ class IncidentStore:
         Live resolution requires the pending live acceptance/authentication gate.
         """
         if (report.get("classification") != "Vyřešeno a ověřeno"
-                or report.get("scope") not in {"offline_isolated_fixture", "actual_core_container"}
+                or report.get("scope") not in {"offline_isolated_fixture", "actual_core_container", "actual_core_managed_reference"}
                 or report.get("incident_id") != incident_id):
             raise ValueError("Only a matching verified isolated-test report can resolve this case")
         serialized = canonical(redact(report))
@@ -236,7 +236,7 @@ class IncidentStore:
 
     @staticmethod
     def _validate_core_lab_report(db, report, statuses):
-        if report.get('scope') != 'actual_core_container':
+        if report.get('scope') not in {'actual_core_container','actual_core_managed_reference'}:
             return
         try:
             row = db.execute('''SELECT r.document,e.status,p.document FROM repair_reports r
@@ -249,13 +249,13 @@ class IncidentStore:
         if row is None or row[1] not in statuses:
             raise ValueError('Real Core report must match a persisted functional verification')
         plan = json.loads(row[2])
-        if plan.get('incident_id') != report.get('incident_id') or plan.get('operation') != 'core_lab.replace_entity_reference':
+        if plan.get('incident_id') != report.get('incident_id') or plan.get('operation') != ('core_managed.replace_entity_reference' if report.get('scope')=='actual_core_managed_reference' else 'core_lab.replace_entity_reference'):
             raise ValueError('Report belongs to another case or operation')
 
     def reopen_for_report(self, incident_id: str, report: dict) -> None:
         """Trusted offline recurrence transition; dedup repeated verification."""
         if (report.get("classification") not in {"Oprava selhala", "Problém se opakoval"}
-                or report.get("scope") not in {"offline_isolated_fixture", "actual_core_container"}
+                or report.get("scope") not in {"offline_isolated_fixture", "actual_core_container", "actual_core_managed_reference"}
                 or report.get("incident_id") != incident_id or not report.get("execution_id")):
             raise ValueError("Only a matching failed offline report can reopen this case")
         failures = [item for item in report.get("evidence", []) if item.get("kind") == "functional_failure"]

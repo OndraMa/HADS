@@ -44,9 +44,14 @@ with tempfile.TemporaryDirectory() as tmp:
    assert page.get_by_role('button',name='Chci postupovat ručně').count()==0
    page.reload();assert 'Ověření výsledku stále čeká' in page.inner_text('body')
    assert app.store.case(case_id)['incident']['status']=='open'
-   page.screenshot(path='.test-tmp/haos-investigation-browser.png',full_page=True)
+   page.screenshot(path='.test-tmp/haos-final-browser-desktop.png',full_page=True)
+   page.set_viewport_size({'width':390,'height':844})
+   for route in ('/','/setup','/setup/monitors','/setup/repair','/setup/history'):
+    page.goto(origin+route)
+    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),route
+   page.screenshot(path='.test-tmp/haos-final-browser-mobile.png',full_page=True)
    browser.close()
-  receipt={'scope':'offline_browser_with_fake_ingress_and_fixture_case','live_haos':False,'browser':'system Chromium through Playwright','owner_enrolment':True,'source_check_with_unavailable_sources':True,'model_disabled_by_default':True,'manual_incident_persisted_after_reload':True,'exact_draft_manual_choice_visible_after_reload':True,'no_fake_approve_button':True,'incident_remains_open':True,'native_runtime':'separate actual container proof; no runtime injected into this browser fixture','passed':True,'input_sha256':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path('src/hads_next').glob('*.py'))}}
-  Path('docs/evidence/haos-investigation-browser.json').write_text(json.dumps(receipt,indent=2)+'\n');print(json.dumps(receipt))
+  receipt={'scope':'offline_browser_with_fake_ingress_and_fixture_case','live_haos':False,'browser':'system Chromium through Playwright','owner_enrolment':True,'source_check_with_unavailable_sources':True,'model_disabled_by_default':True,'manual_incident_persisted_after_reload':True,'exact_draft_manual_choice_visible_after_reload':True,'mobile_390px_no_horizontal_overflow':True,'responsive_pages_checked':5,'no_fake_approve_button':True,'incident_remains_open':True,'native_runtime':'separate actual container proof; no runtime injected into this browser fixture','passed':True,'input_sha256':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path('src/hads_next').glob('*.py'))}}
+  Path('docs/evidence/haos-final-browser.json').write_text(json.dumps(receipt,indent=2)+'\n');print(json.dumps(receipt))
  finally:
   server.shutdown();server.server_close();thread.join()

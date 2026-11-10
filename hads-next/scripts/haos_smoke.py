@@ -9,7 +9,7 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-IMAGE = "hads-next-haos:0.2.0-dev1"
+IMAGE = "hads-next-haos:1.0.0-rc1"
 
 
 def main():
@@ -60,6 +60,11 @@ for attempt in range(30):
  except (OSError,AssertionError):time.sleep(.1)
 else:raise AssertionError('Health did not become ready')
 c=http.client.HTTPConnection('127.0.0.1',8099,timeout=2);c.request('GET','/api/status',headers={'X-Remote-User-Id':'forged'});assert c.getresponse().status==403
+from pathlib import Path
+import importlib.util
+assert Path('/app/companion/custom_components/hads_reference/__init__.py').read_text().startswith('\"\"\"CAS')
+assert Path('/app/companion/test-automation.yaml').is_file()
+assert importlib.util.find_spec('homeassistant') is None
 status=open('/proc/1/status').read();assert 'Uid:\\t65532' in status;assert 'CapEff:\\t0000000000000000' in status
 print(json.dumps({'health':body,'runtime_uid':65532,'capabilities':0,'direct_data_access':403}))'''
         report["runtime"] = json.loads(docker("exec", "--user", "65532", name, "python", "-c", probe).stdout)
@@ -81,13 +86,13 @@ import json,sys
 args=sys.argv[1:]
 with open('/tmp/ha-calls.jsonl','a') as f:f.write(json.dumps(args)+'\\n')
 if args==['apps','--raw-json']:print(json.dumps({'result':'ok','data':{'addons':[]}}))
-elif args==['apps','info','local_hads_next_investigation','--raw-json']:print(json.dumps({'data':{'version':'0.2.0-dev1','state':'started'}}))
-elif args not in [['apps','--help'],['store','reload'],['apps','install','local_hads_next_investigation'],['apps','start','local_hads_next_investigation']]:sys.exit(91)
+elif args==['apps','info','local_hads_next_acceptance','--raw-json']:print(json.dumps({'data':{'version':'1.0.0-rc1','state':'started'}}))
+elif args not in [['apps','--help'],['store','reload'],['apps','install','local_hads_next_acceptance'],['apps','start','local_hads_next_acceptance']]:sys.exit(91)
 ''')
             fake.chmod(0o755)
             assertion = '''import json,subprocess,pathlib
 calls=[json.loads(x) for x in pathlib.Path('/tmp/ha-calls.jsonl').read_text().splitlines()]
-assert calls==[['apps','--help'],['apps','--raw-json'],['store','reload'],['apps','install','local_hads_next_investigation'],['apps','start','local_hads_next_investigation'],['apps','info','local_hads_next_investigation','--raw-json']],calls
+assert calls==[['apps','--help'],['apps','--raw-json'],['store','reload'],['apps','install','local_hads_next_acceptance'],['apps','start','local_hads_next_acceptance'],['apps','info','local_hads_next_acceptance','--raw-json']],calls
 again=subprocess.run(['bash','/installer.sh','--install-dev'],capture_output=True)
 assert again.returncode!=0
 assert len(pathlib.Path('/tmp/ha-calls.jsonl').read_text().splitlines())==len(calls)
@@ -101,7 +106,7 @@ print(json.dumps({'fake_supervisor_only':True,'commands':calls,'reinstallation_r
                 "--entrypoint", "bash", image, "-c", script)
             report["install"] = json.loads(result.stdout)
         report["passed"] = True
-        output = ROOT / "docs/evidence/haos-investigation-package.json"
+        output = ROOT / "docs/evidence/haos-final-package.json"
         output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps(report, ensure_ascii=False, indent=2))
     except Exception:

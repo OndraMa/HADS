@@ -12,8 +12,8 @@ import tarfile
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.2.0-dev1"
-SLUG = "hads_next_investigation"
+VERSION = "1.0.0-rc1"
+SLUG = "hads_next_acceptance"
 
 EXTRACTOR = r'''
 import hashlib, json, os, pathlib, sys, tarfile
@@ -75,7 +75,7 @@ Použití:
   bash HADS_Next_install_@@VERSION@@.sh --extract-only /absolutni/novy-adresar
   bash HADS_Next_install_@@VERSION@@.sh --install-dev
 Instalační režim přidá pouze local_@@SLUG@@. Existující HADS nepřepisuje.
-Původní Hermes je součástí balíčku. AI je vypnutá do výslovného souhlasu; živé opravy jsou vypnuté. Živá HAOS přejímka čeká.
+Původní Hermes je součástí balíčku. AI i vlastní testovací opravný katalog vyžadují výslovný souhlas. Obecné produkční zápisy jsou zakázané. Živá HAOS přejímka čeká.
 HADS_NEXT_USAGE
 }
 MODE="${1:-}"
@@ -152,12 +152,13 @@ echo 'Úspěšné spuštění není dokladem živé přejímky ani plné funkčn
 def build_installer(output_dir: Path) -> dict:
     output_dir = Path(output_dir)
     resolved=output_dir.resolve()
-    if resolved.is_relative_to(ROOT/"releases") or resolved.is_relative_to(ROOT.parent/"KE_STAZENI/HADS_Next_0.1.0-dev1"):
+    if resolved.is_relative_to(ROOT/"releases") or any(resolved.is_relative_to(ROOT.parent/"KE_STAZENI"/name) for name in ("HADS_Next_0.1.0-dev1","HADS_Next_0.2.0-dev1")):
         raise ValueError("Existing published archives are immutable; build into a new candidate directory")
     output_dir.mkdir(parents=True, exist_ok=True)
     sources = {p.name: p for p in (ROOT / "haos").iterdir() if p.is_file()}
     sources["hermes-constraints.txt"]=ROOT/"docs/evidence/hermes-dependencies.txt"
     sources["lab/core-constraints.txt"]=ROOT/"lab/core-constraints.txt"
+    sources.update({"companion/"+str(p.relative_to(ROOT/"companion")):p for p in (ROOT/"companion").rglob("*") if p.is_file() and "__pycache__" not in p.parts and p.suffix!=".pyc"})
     sources.update({"hads_next/" + p.name: p for p in (ROOT / "src/hads_next").glob("*.py")})
     if any(path.is_symlink() for path in sources.values()):
         raise ValueError("Source symlinks are forbidden")
@@ -170,7 +171,7 @@ def build_installer(output_dir: Path) -> dict:
                 "development_base_commit": "5fb2ba17cf0b50d483128bc0ccb834cc126dee47",
                 "source_revision_at_build":revision,"worktree_modified_at_build":dirty,
                 "hermes_upstream_revision":"d923a5eb487a17c0a68801bba9ef0f56c81040a8",
-                "live_haos_verified":False,"production_writes_enabled":False,
+                "live_haos_verified":False,"production_writes_enabled":False,"owned_virtual_reference_CAS_available":True,
                 "files": {name: {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
                                    "source": str(sources[name].relative_to(ROOT))} for name, data in sorted(contents.items())}}
     contents["PACKAGE_MANIFEST.json"] = (json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode()

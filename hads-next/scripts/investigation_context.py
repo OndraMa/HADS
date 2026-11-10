@@ -15,6 +15,7 @@ def main():
     if target.exists():raise ValueError('Use a new build context directory')
     target.mkdir(parents=True)
     shutil.copytree(ROOT/'src/hads_next',target/'hads_next',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+    shutil.copytree(ROOT/'companion',target/'companion',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
     shutil.copytree(ROOT/'lab',target/'lab',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
     shutil.copyfile(ROOT/'haos/Dockerfile',target/'Dockerfile')
     if args.receipt:

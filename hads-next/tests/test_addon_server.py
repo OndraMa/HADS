@@ -72,7 +72,14 @@ class IngressTests(unittest.TestCase):
         self.assertNotIn('<script>alert("x")</script>', page)
         self.assertIn("&lt;script&gt;", page)
         self.assertIn("Hermes vyžaduje izolovaný runtime", page)
-        self.assertIn("Živé opravy jsou vypnuté", page)
+        self.assertIn("Obecné zásahy jsou zakázané", page)
+
+    def test_repair_approval_rechecks_role_instead_of_using_cached_admin(self):
+        self.app.enroll_owner('owner-id')
+        self.assertEqual(self.request('GET','/')[0],200)
+        self.app.core_ws._auth_reader.transport=lambda _:[]
+        data={'csrf':self.server.csrf,'incident_id':'unknown'}
+        self.assertEqual(self.request('POST','/repair/prepare',urlencode(data))[0],403)
 
     def test_transport_is_a_fixed_read_catalog(self):
         transport = SupervisorCoreTransport("NOT_A_REAL_TOKEN")

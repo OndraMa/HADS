@@ -13,7 +13,7 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read
 
-VERSION = "0.2.0-dev1"
+VERSION = "1.0.0-rc1"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -50,6 +50,10 @@ class Application:
         self._source_job={'state':'idle','completed_at':None,'last_error':None}
         from .investigation_service import InvestigationService
         self.investigations=InvestigationService(self,launcher)
+        from .repair_service import RepairService
+        from .detection import DetectionEngine
+        self.repairs=RepairService(self)
+        self.detection=DetectionEngine(self)
 
     def request_source_check(self):
         with self._lock:
@@ -78,6 +82,8 @@ class Application:
                 raise ValueError('Vlastník již byl nastaven jiným uživatelem.')
             db.execute("INSERT OR IGNORE INTO application_settings VALUES('owner',?)", (user_id,))
         self.investigations.zha_observer.start()
+        self.detection.start()
+        if self.repairs.status()["enabled"]:self.repairs.start()
 
     def check_sources(self):
         """Execute actual supported reads, preserving per-read success/errors."""
@@ -200,8 +206,9 @@ class Application:
         with self._lock:
             return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
                     "entities": list(self._entities), "cases": cases,
-                    "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": False,
+                    "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": self.repairs.status()["enabled"],
                     'investigation_service':self.investigations.status(),
+                    'detection':self.detection.snapshot(),'repairs':self.repairs.status(),
                     'sources': dict(self._sources),
                     'applications': list(self._apps),
                     'source_job': dict(self._source_job),
