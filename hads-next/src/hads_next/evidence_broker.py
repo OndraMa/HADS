@@ -86,7 +86,7 @@ def project_trace(value):
 # Explicit HADS schemas, not upstream API names. additionalProperties=False is
 # enforced again in dispatch; an LLM schema is not an authorization boundary.
 _PARAMS={
-    'hads_get_incident':{}, 'hads_get_related_incidents':{}, 'hads_get_core_status':{}, 'hads_get_supported_repairs':{},
+    'hads_get_runtime_health':{},'hads_get_incident':{}, 'hads_get_related_incidents':{}, 'hads_get_core_status':{}, 'hads_get_supported_repairs':{},
     'hads_get_entity_registry':{'entity_id':'entity'},'hads_get_device_registry':{'device_id':'id'},
     'hads_get_entity_state':{'entity_id':'entity'},
     'hads_get_entity_history':{'entity_id':'entity','start':'time','end':'time'},
@@ -206,6 +206,10 @@ class EvidenceBroker:
             return self._result(incident_id,name,'zha_event',status,value,now,value['limitation_cs'],observed=observed)
         elif name=='hads_get_owned_reference' and not set(case['incident']['components']) & {'automation.hads_next_reference_test','input_boolean.hads_next_test_target'}:
             raise BrokerDenied('Spis se netýká vlastní testovací reference.')
+        elif name=='hads_get_runtime_health':
+            system=getattr(self,'runtime_system',None)
+            if system is None:return self._result(incident_id,name,'hads_controller','unavailable',None,now,'Měření není dostupné.')
+            source='hads_controller';value=system.status()
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()

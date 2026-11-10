@@ -31,6 +31,11 @@ class LiveAcceptance:
             row=db.execute('SELECT * FROM acceptance_sessions WHERE id=?',(identity,)).fetchone()
             if not row:raise RepairBlocked('Přejímka neexistuje.')
             steps={r['step']:dict(r) for r in db.execute('SELECT * FROM acceptance_steps WHERE session_id=?',(identity,))}
+        provider=self.app.investigations.provider
+        if steps['model']['status']=='passed' and hasattr(provider,'fingerprint'):
+            details=json.loads(steps['model']['details'])
+            if details.get('provider_fingerprint')!=provider.fingerprint():
+                steps['model']={**steps['model'],'status':'pending','reason':'model_not_authorized'}
         return {'session':dict(row),'steps':[{**steps[s],'label':label,'explanation':REASONS.get(steps[s]['reason'],REASONS['failed'])} for s,label in STEPS]}
     def _set(self,identity,step,status,reason,details=None):
         if status not in {'passed','failed','unavailable','pending'}:raise ValueError('Neplatný stav.')
@@ -54,7 +59,10 @@ class LiveAcceptance:
         if step in {'installation','identity'}:
             if step=='installation':
                 from pathlib import Path
-                try:manifest=json.loads(Path('/app/PACKAGE_MANIFEST.json').read_text());ok=manifest.get('version')==app.snapshot()['version']
+                try:
+                    manifest=json.loads(Path('/app/PACKAGE_MANIFEST.json').read_text())
+                    modules={name:metadata for name,metadata in manifest['files'].items() if name.startswith('hads_next/') and name.endswith('.py')}
+                    ok=manifest.get('version')==app.snapshot()['version'] and len(modules)>=20 and all(Path('/app',name).is_file() and hashlib.sha256(Path('/app',name).read_bytes()).hexdigest()==metadata['sha256'] for name,metadata in modules.items())
                 except (OSError,ValueError):ok=False
             else:ok=True
             self._set(identity,step,'passed' if ok else 'unavailable','observed' if ok else 'missing_source',{'private_storage':app.data_dir.is_dir(),'owner_authenticated':True,'instance':self.instance});return
@@ -101,7 +109,7 @@ class LiveAcceptance:
         provider=self.app.investigations.provider
         try:model,sender=provider.sender()
         except ValueError:self._set(identity,'model','unavailable','model_not_authorized');return
-        fingerprint=hashlib.sha256(canonical(provider.public_status()).encode()).hexdigest()
+        fingerprint=provider.fingerprint() if hasattr(provider,'fingerprint') else hashlib.sha256(canonical(provider.public_status()).encode()).hexdigest()
         with self.app.store._connect() as db:
             db.execute('BEGIN IMMEDIATE')
             if db.execute('SELECT 1 FROM acceptance_model_tests WHERE session_id=?',(identity,)).fetchone():raise RepairBlocked('Modelový test už byl zahájen.')
@@ -111,7 +119,8 @@ class LiveAcceptance:
             db.execute("INSERT INTO acceptance_model_tests VALUES(?,'intent',?)",(identity,fingerprint))
         try:
             result=sender({'messages':[{'role':'user','content':'Odpověz krátce česky, že komunikační test proběhl. Nemáš data domácnosti, neurčuj žádnou diagnózu ani nevolej nástroje.'}]})
-            ok=bool(result.get('choices'))
+            choices=result.get('choices');message=choices[0].get('message') if isinstance(choices,list) and choices and isinstance(choices[0],dict) else None
+            ok=isinstance(message,dict) and isinstance(message.get('content'),str) and bool(message['content'].strip()) and not message.get('tool_calls')
             with self.app.store._connect() as db:db.execute("UPDATE acceptance_model_tests SET state='response' WHERE session_id=?",(identity,))
             self._set(identity,'model','passed' if ok else 'failed','observed' if ok else 'failed',{'provider_fingerprint':fingerprint,'requests':1,'hermes_reasoning_proven':False})
         except Exception:
@@ -124,4 +133,4 @@ class LiveAcceptance:
         # No raw logs, prompts, summaries, endpoints, entities, user IDs or settings.
         steps=[{'step':r['step'],'status':r['status'],'reason_code':r['reason'],'explanation_cs':r['explanation'],'at':r['at']} for r in session['steps']]
         resources=self.app.system.status()['resources']
-        return {'schema':1,'scope':session['session']['operator_scope'],'independent_live_HAOS_proof':False,'session':opaque(identity),'steps':steps,'resources':resources,'model_test_proves':'connectivity_only','real_model_investigation':'requires_actual_case_and_citation_review','all_steps_passed':all(s['status']=='passed' for s in steps),'tokens_or_raw_household_content_included':False}
+        return {'schema':1,'scope':session['session']['operator_scope'],'independent_live_HAOS_proof':False,'session':opaque(identity),'steps':steps,'resources':resources,'core_read_latency_ms':self.app.system.status().get('core_read_latency_ms'),'model_test_proves':'connectivity_only','real_model_investigation':'requires_actual_case_and_citation_review','all_steps_passed':all(s['status']=='passed' for s in steps),'tokens_or_raw_household_content_included':False}

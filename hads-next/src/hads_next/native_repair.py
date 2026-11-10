@@ -56,7 +56,10 @@ class AutomationEnableEngine(RepairEngine):
         config=self.app.core.automation_config(config_id);trigger,light=lighting_policy(config)
         if config['id']!=config_id or state.get('attributes',{}).get('current',0)!=0:raise RepairBlocked('Konfigurace se neshoduje nebo běží akce.')
         light_state=self.app.core.states(light);trigger_state=self.app.core.states(trigger)
-        if not isinstance(light_state,dict) or light_state.get('state') not in {'on','off'} or not isinstance(trigger_state,dict) or trigger_state.get('state') in {'unavailable','unknown'}:raise RepairBlocked('Cíl nebo spouštěč nejsou dostupné.')
+        # An input_button has no timestamp before its first press. Its normal
+        # initial state is unknown, unlike an unavailable entity or sensor.
+        rejected_trigger_states={'unavailable'} if trigger.startswith('input_button.') else {'unavailable','unknown'}
+        if not isinstance(light_state,dict) or light_state.get('state') not in {'on','off'} or not isinstance(trigger_state,dict) or not isinstance(trigger_state.get('state'),str) or trigger_state.get('state') in rejected_trigger_states:raise RepairBlocked('Cíl nebo spouštěč nejsou dostupné.')
         return canonical({'id':config_id,'entity_id':self.entity_id,'configuration':config,'enabled':state['state']=='on',
             'state_context':state.get('context',{}).get('id'),'last_changed':state.get('last_changed'),'light':light,'trigger':trigger}).encode()
     def _valid_transition(self,original,proposed):

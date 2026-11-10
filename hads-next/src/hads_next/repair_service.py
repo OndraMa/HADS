@@ -149,7 +149,7 @@ class RepairService:
             engine=self.native_engine(plan)
             with self.app._read_lock:rollback=engine.prepare_enable(plan.document['incident_id'],evidence,rollback_of=plan.plan_id)
         else:rollback=self.engine().prepare_rollback(plan,evidence)
-        self.app.store.record(plan.document['incident_id'],'rollback_prepared',{'plan_id':rollback.plan_id,'summary_cs':'Návrat vlastní reference vyžaduje samostatné nové schválení. Neobnovuje HAOS.'})
+        self.app.store.record(plan.document['incident_id'],'rollback_prepared',{'plan_id':rollback.plan_id,'summary_cs':'Návrat aktivace vypne příjem dalších triggerů. Již rozsvícené světlo nevrací. Potřebuje nové schválení; neobnovuje HAOS.' if plan.document['operation']=='core.enable_lighting_automation' else 'Návrat vlastní reference vyžaduje samostatné nové schválení. Neobnovuje HAOS.'})
         return rollback
 
     def on_trigger(self,event):
@@ -206,8 +206,8 @@ class RepairService:
             rows=db.execute("SELECT p.id,p.document FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='verified'").fetchall()
         for row in rows:
             plan=RepairPlan(row['document'])
-            if plan.document['incident_id']!=incident_id or plan.document['operation']!='core_managed.replace_entity_reference' or plan.document['verification']['entity_id']!=entity:continue
-            engine=self.engine();execution=engine.execution(row['id'])
+            if plan.document['incident_id']!=incident_id or plan.document['operation'] not in {'core_managed.replace_entity_reference','core.enable_lighting_automation'} or plan.document['verification']['entity_id']!=entity:continue
+            engine=self.native_engine(plan) if plan.document['operation']=='core.enable_lighting_automation' else self.engine();execution=engine.execution(row['id'])
             report=FunctionalVerifier(self.app.store.db_path).evaluate(plan,execution,[{'kind':'functional_failure','observed_at':stamp,'payload':{'entity_id':entity,'event_id':identity}}])
             self.app.store.reopen_for_report(incident_id,report)
 

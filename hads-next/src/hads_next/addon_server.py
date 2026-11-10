@@ -264,6 +264,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(404, "Stránka nebyla nalezena.")
         value = self.server.app.snapshot()
         core = value["core"]
+        health=value["system_health"]
+        health_text=("Celkový stav zatím není ověřený." if health["last_check_at"] is None else "Prověřuji "+str(health["active_findings"])+" podložených systémových nálezů. Nepřečtené zdroje zůstávají neověřené." if health["active_findings"] else "Poslední dostupná strukturovaná čtení neukazují aktivní systémový nález. Neověřené zdroje tím nejsou potvrzené jako zdravé.")
         text = "Čtení Core funguje." if core["available"] else core["last_error"] or "Čtení Core čeká."
         cases = "".join('<article><h3>' + escape(c["symptom"]) + '</h3><p>Výskytů: ' + str(c["occurrence_count"]) +
             '</p><a href="case/' + escape(c["id"], quote=True) + '">Otevřít důkazy spisu</a></article>' for c in value["cases"] if c["status"]=="open")
@@ -283,7 +285,7 @@ class Handler(BaseHTTPRequestHandler):
 <title>HADS Next</title><style>body{font:17px/1.6 system-ui;margin:2rem auto;padding:0 1rem;max-width:960px;color:#182638;background:#f3f5f7}article,form{background:white;padding:1rem;margin:1rem 0;border:1px solid #ccd6df;border-radius:6px}input,textarea,button{font:inherit;padding:.5rem;box-sizing:border-box;max-width:100%}input,textarea{width:100%}button{background:#12695f;color:white;border:0;border-radius:4px;cursor:pointer}.notice{border-left:4px solid #b36b12;padding:1rem;background:#fff7e8}a{color:#12695f}</style>
 <h1>HADS Next</h1><p class="notice">Vývojová verze ''' + VERSION + '''. Hermes vyžaduje izolovaný runtime a výslovně povoleného poskytovatele AI. Obecné zásahy jsou zakázané. Katalog vlastní testovací reference má samostatné schvalování; HAOS přejímka čeká.</p>
 <nav><a href="./">Moje domácnost</a> · <a href="#investigation">Vyšetřování</a> · <a href="#waiting">Čeká na mě</a> · <a href="#resolved">Opraveno</a> · <a href="#recurring">Opakující se problémy</a> · <a href="setup">Agenti a zdroje</a> · <a href="#investigation">Historie</a></nav>
-<h2>Co je dostupné</h2><p>''' + escape(text) + '</p><p>Načtených entit: ' + str(core["entity_count"]) + ". Samotná nedostupnost entity neurčuje příčinu závady.</p>" + '''
+<h2>Jak zdravý je Home Assistant</h2><p>'''+escape(health_text)+'''</p><h2>Co je dostupné</h2><p>''' + escape(text) + '</p><p>Načtených entit: ' + str(core["entity_count"]) + ". Samotná nedostupnost entity neurčuje příčinu závady.</p>" + '''
 <form method="post" action="read"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''"><button>Obnovit čtení Core</button><p>Nejvýše jednou za minutu.</p></form>
 <h2 id="investigation">Co nefunguje a co HADS vyšetřuje</h2>''' + (cases or "<p>Zatím nebyl nahlášen žádný funkční incident.</p>") + '''
 <h2>Nahlásit problém</h2><form method="post" action="incident"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''">
@@ -468,7 +470,7 @@ def main():
     app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher,runtime_error=runtime_error,automation_writer=writer)
     if app.owner():
         app.investigations.zha_observer.start();app.detection.start()
-        if app.repairs.status()['enabled']:app.repairs.start()
+        if app.repairs.status()['enabled'] or app.repairs.status()['native_state_targets']:app.repairs.start()
     threading.Thread(target=app.refresh, daemon=True).start()
     try:Server(("0.0.0.0", 8099), app, owner_user_id=owner).serve_forever()
     finally:

@@ -122,6 +122,15 @@ class DetectionEngine:
             for row in db.execute('SELECT rule_id,document FROM detection_state').fetchall():
                 rule=rules.get(row[0]);pending=json.loads(row[1])
                 if not rule or not rule['enabled'] or pending.get('reported') or now-pending['since']<rule['grace_seconds']:continue
+                if rule['kind']=='response' and rule['entity_id'] not in self._latest_states:
+                    if self.app.core is None or not self.app._read_lock.acquire(blocking=False):continue
+                    try:actual=self.app.core.states(rule['entity_id'])
+                    finally:self.app._read_lock.release()
+                    if not isinstance(actual,dict) or not isinstance(actual.get('state'),str):
+                        self.health['last_error']='Chybí čerstvý stav cíle; nesplněnou odezvu nelze doložit.';continue
+                    self._latest_states[rule['entity_id']]=actual['state']
+                if rule['kind']=='response' and self._latest_states.get(rule['entity_id'])==rule['expected']:
+                    db.execute('DELETE FROM detection_state WHERE rule_id=?',(rule['id'],));continue
                 pending['reported']=True;db.execute('UPDATE detection_state SET document=? WHERE rule_id=?',(canonical(pending),row[0]));events.append((rule,pending))
         for rule,pending in events:self._incident(rule,pending,now)
 

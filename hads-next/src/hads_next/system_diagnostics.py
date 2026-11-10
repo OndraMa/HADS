@@ -46,6 +46,12 @@ class SystemDiagnostics:
         data={'controller_rss_bytes':int(usage.get('VmRSS','0 kB').split()[0])*1024,'controller_peak_rss_bytes':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,'available_bytes':memory_available(),'controller_cpu_percent':round(100*(cpu-self._cpu[1])/elapsed,2) if elapsed>0 else None,'worker_reserve_bytes':576*1024*1024,'raspberry_pi_measured':False}
         self._cpu=(current,cpu)
         with self.app.store._connect() as db:
+            rows=db.execute("SELECT content FROM case_records WHERE kind='hermes_worker_runtime' ORDER BY id DESC LIMIT 20").fetchall()
+            peaks=[json.loads(r[0]).get('peak_rss_bytes') for r in rows]
+            data['worker_peak_rss_bytes']=max((x for x in peaks if type(x) is int),default=None)
+            data['controller_scope']='current_controller_hosting_process'
+            data['source']='Linux_proc_and_cgroup_plus_persisted_native_worker_receipts'
+        with self.app.store._connect() as db:
             db.execute('INSERT OR REPLACE INTO resource_samples VALUES(?,?)',(self.app.clock(),canonical(data)))
             db.execute('DELETE FROM resource_samples WHERE at IN (SELECT at FROM resource_samples ORDER BY at DESC LIMIT -1 OFFSET 240)')
         return data
@@ -138,4 +144,15 @@ class SystemDiagnostics:
         with self.app.store._connect() as db:status=db.execute('SELECT last_error,authenticated FROM zha_collector_status WHERE id=1').fetchone()
         self.capabilities['zha_capture']='read' if zha.capture is not None else 'unavailable'
         if status and status[0] and status[1]:self._finding('zha-subscription','diagnostic_capture_gap','Odběr ZHA událostí má doloženou mezeru.',['zha'],{'capture_gap':True,'physical_press_failure_proven':False})
+        reader=self.app.investigations.broker.music
+        if reader and reader.mapping:
+            entity=next(iter(reader.mapping))
+            try:
+                result=reader.diagnostics(entity,'health',now-60,now)
+                self.capabilities['music_assistant']='read' if result is not None else 'read_failed'
+                if result and isinstance(result.get('data'),dict):
+                    errors=result['data'].get('providers_error',0)
+                    if type(errors) is int:self._finding('music-providers','music_provider_failure','Music Assistant hlásí nedostupné providery.',[entity],{'providers_error':errors},active=errors>0)
+            except Exception:self.capabilities['music_assistant']='unavailable'
+        else:self.capabilities['music_assistant']='not_configured'
         self.last=now;self.last_error=None

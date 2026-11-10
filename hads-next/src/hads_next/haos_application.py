@@ -58,6 +58,7 @@ class Application:
         self.detection=DetectionEngine(self)
         from .system_diagnostics import SystemDiagnostics
         self.system=SystemDiagnostics(self)
+        self.investigations.broker.runtime_system=self.system
         from .live_acceptance import LiveAcceptance
         self.acceptance=LiveAcceptance(self)
 
@@ -90,7 +91,7 @@ class Application:
             db.execute("INSERT OR IGNORE INTO application_settings VALUES('owner',?)", (user_id,))
         self.investigations.zha_observer.start()
         self.detection.start()
-        if self.repairs.status()["enabled"]:self.repairs.start()
+        if self.repairs.status()["enabled"] or self.repairs.status()['native_state_targets']:self.repairs.start()
 
     def check_sources(self):
         """Execute actual supported reads, preserving per-read success/errors."""

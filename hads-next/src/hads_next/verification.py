@@ -85,7 +85,7 @@ class FunctionalVerifier:
                         covered.append(item)
             if condition.get('physical_confirmation_required'):
                 confirmations=[x['observed_at'] for x in fresh if x.get('kind')=='owner_functional_confirmation' and x.get('payload',{}).get('entity_id')==condition['entity_id'] and x.get('payload',{}).get('confirmed') is True and x.get('payload',{}).get('authority')=='authenticated_owner']
-                covered=[checkpoint for checkpoint in covered if any(success['observed_at']<=confirmation<=checkpoint['observed_at'] for success in successes for confirmation in confirmations)]
+                covered=[checkpoint for checkpoint in covered if any(checkpoint['payload']['continuous_since']<=success['observed_at']<=confirmation<=checkpoint['observed_at'] and checkpoint['observed_at']-success['observed_at']>=condition['watch_seconds'] for success in successes for confirmation in confirmations)]
             if recurrences:
                 classification = "Problém se opakoval" if successes or row["status"] == "verified" else "Oprava selhala"
                 status = "recurred" if classification == "Problém se opakoval" else "failed"
