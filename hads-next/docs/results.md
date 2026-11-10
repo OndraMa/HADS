@@ -1,30 +1,54 @@
 # Výsledky HADS Next, 2026-11-09
 
-## P6: instalační runtime a kontrola připravenosti
+## P6: testovaný instalační kandidát 0.2.0-dev1
 
-**ZDROJOVÝ CHECKPOINT, BALÍČEK SE OVĚŘUJE:** kanonický HAOS Dockerfile
-obsahuje skutečný připnutý Hermes. Výchozí stavba neinstaluje Core ani testovací
-zapisovací server. Nový slug `local_hads_next_investigation` zachovává staré
-aplikace a data. První nastavení používá ověřenou HA identitu; AI je opt-in.
+**OVĚŘENO NA NATIVNÍM AMD64 I ARM64:**
+[GitHub Actions běh 42678100603](https://github.com/OndraMa/HADS/actions/runs/42678100603)
+dokončil obě architektury úspěšně nad commitem
+`7b3df242cd3aa056d76d64a478f122dca4fed6e9`. Každá provedla 150 offline testů,
+skutečný Core 2026.11.0 + původní Hermes, stavbu přesně rozbaleného kandidátu
+bez laboratorního Core a přejímku jeho běžícího kontejneru.
+[Trvalé protokoly a hashe](evidence/installation-0.2.0-dev1/ACCEPTANCE.json)
+zůstávají v repozitáři i po expiraci dočasných CI artefaktů.
 
-Vlastník může bez modelu spustit skutečnou izolovanou kontrolu načtení upstream
-agenta. Kontrola sdílí jediný worker slot s vyšetřováním, nezapíná model ani
-neobnovuje staré placené úlohy. Nedostatek paměti odmítne spuštění před modelem.
-Chyby spuštění pomocníka jsou viditelné. Oddělené čtení HA identity nepřepisuje
-výsledek diagnostických WS čtení. Prošlo 150 offline regresních testů.
+Výchozí instalační image skutečně načetl upstream Hermes bez modelu, HA dat
+nebo vlastníka fixture. Řadič měl UID 65532, worker UID 65534 a ověřenou izolaci.
+RSS workeru při kontrole: AMD64 140 824 576 B, ARM64 138 969 088 B. Obě architektury
+odmítly spuštění při limitu paměti 512 MiB před načtením modelu. S limitem 768 MiB
+kontrola prošla. To není výkonový test celého Raspberry Pi. Incident přežil
+restart kontejneru; podvržený přímý přístup vrátil 403. Instalační posloupnost
+byla testovaná pouze s náhradním HA CLI, nikoli skutečným Supervisorem.
 
-**SKUTEČNÝ CORE A HERMES V AMD64 KONTEJNERU:**
-[protokol instalační smyčky](evidence/hermes-installation-core.json) obsahuje
-kontrolu připravenosti bez jediného modelového volání, poté opt-in, osm volání
-skriptovaného HTTPS endpointu, živá Core čtení a validovaný návrh. Obsahuje
-restart/SIGKILL a negativní bezpečnostní výsledky s hashi vstupů. Pozdější drobná
-změna pouze UI potvrzuje zaznamenání ruční volby; přesné vstupy nejsou zaměnitelné.
-Autonomní úsudek skutečného LLM tímto testem prokázaný není.
+Obě architektury vytvořily **stejné bajty** instalátoru:
+`ea0c569b03f669d54f2ba5f709821601aad3b45236122c392c86bfe0a09fcb9c`.
+Všech 34 payload souborů bylo navíc porovnáno s přesným zdrojovým commitem.
+Manifest poctivě zachovává `worktree_modified_at_build: true`, protože CI před
+balením regenerovalo testovací protokol; žádný payload se od commitu neliší.
+Apt repozitáře nejsou zmrazený snapshot: budoucí image nemusí mít stejný digest;
+zdrojový payload, Hermes pin, Python base index a Python constraints jsou doložené.
 
-Výchozí instalační image, jeho paměťová brána a restart se nyní ověřují.
-Nativní AMD64/ARM64 CI je připravené; jeho výsledek se nesmí předjímat.
-Živý HAOS, Supervisor, MA server, fyzická zařízení, RPi a skutečný LLM čekají.
-Produkční zapisovací katalog a migrační importér nejsou zpřístupněné.
+**SKUTEČNÝ CORE A HERMES, SKRIPTOVANÝ MODEL:** nativní protokoly obsahují
+bezplatnou kontrolu připravenosti, opt-in přes provozní UI, osm požadavků na
+řízený HTTPS endpoint, skutečná Core čtení, předání role a validovaný návrh.
+SIGKILL a obnovení nezdvojily dokončené čtení. Shell/Python/write pokusy selhaly.
+Modelový server ověřuje protokol; **autonomní úsudek reálného LLM neprokazuje**.
+Neexistuje dostupný autorizovaný modelový endpoint ani testovací HAOS.
+
+**PROHLÍŽEČ:** skutečný Chromium/Playwright prošel registrací vlastníka,
+kontrolou nedostupných fixture zdrojů, vypnutým modelem, ručním hlášením a
+uložením ruční volby konkrétního návrhu po reloadu. Incident zůstal otevřený,
+falešné tlačítko schválení nevzniklo.
+[Protokol](evidence/haos-investigation-browser.json), reprodukce `lab/browser_probe.py`.
+Jde o oddělený test s náhradním ingressem a incidentem, nikoli HAOS.
+
+Kandidát má nový slug `local_hads_next_investigation`, původní aplikace a data
+zachovává. Původní Hermes běží lokálně, poskytovatel je opt-in. Kontrola
+připravenosti bez modelu nezapíná staré placené úlohy. Instalační payload
+neobsahuje testovací Core ani laboratorní zapisovací server. Produkční zápisy,
+OneDrive restore, migrační importér, skutečný LLM, živý HAOS/Supervisor/MA,
+fyzické rádio/Zigbee a RPi 4 / 2 GB nejsou přijaté schopnosti.
+[Český návod](../haos/DOCS.md) a [čekající živá přejímka](haos-acceptance.md).
+Historické checkpointy níže popisují svůj tehdejší rozsah.
 
 ## P5: validovaný návrh a stávající plánovač
 
@@ -53,7 +77,7 @@ Obě cesty evidence aplikací nyní sdílejí pozitivní výběr Supervisor pol�
 celé aplikační `options` se neukládají do spisu. Výsledek každého čtení je
 zachycen před dalším požadavkem; čitelné logy nezakryjí nedostupné statistiky.
 Prošlo 145 regresních testů včetně tohoto negativního scénáře.
-P6 (finální instalovatelný runtime a ARM64/HAOS přejímka) ještě není dokončené.
+V tomto P5 checkpointu P6 ještě nebylo dokončené; aktuální výsledek je výše.
 
 ## P4: řízené specializace a cílený výzkum
 

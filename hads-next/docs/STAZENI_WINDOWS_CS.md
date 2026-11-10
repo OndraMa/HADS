@@ -11,17 +11,21 @@ Na stránce větve zvol **Code → Download ZIP**. Archiv rozbal a otevři adres
 a `docs`. Aktuální návod je
 [haos/DOCS.md](../haos/DOCS.md), stav testů v [results.md](results.md).
 
-Kandidát 0.2.0-dev1 se ověřuje před samostatným zveřejněním. Starý instalátor
+Kandidát 0.2.0-dev1 prošel nativní přejímkou v AMD64 i ARM64 kontejnerech. Starý instalátor
 0.1.0-dev1 nemá nový Hermes runtime; nepoužívej jej jako aktuální balíček.
-Připravený nový instalátor a přehledný kompletní ZIP budou v
-`KE_STAZENI/HADS_Next_0.2.0-dev1` až po dokončení příslušných kontrol.
+Připravený nový instalátor a přehledný kompletní ZIP jsou v
+[KE_STAZENI/HADS_Next_0.2.0-dev1](../../KE_STAZENI/HADS_Next_0.2.0-dev1/).
 Samotný ZIP větve není důkaz úspěšného build/testu.
 
 ## Ověření souboru
 
 Na GitHub stránce souboru použij **Download raw file**, nikoli „Uložit stránku
 jako“, které může uložit HTML. U soukromého repozitáře může odkaz bez přihlášení
-vracet 404. SHA-256 porovnej s manifestem přiloženým ke konkrétnímu kandidátu:
+vracet 404. SHA-256 porovnej s manifestem přiloženým ke konkrétnímu kandidátu. Přesný
+testovaný instalátor má SHA-256
+`ea0c569b03f669d54f2ba5f709821601aad3b45236122c392c86bfe0a09fcb9c`.
+
+V PowerShellu:
 
 ```powershell
 Get-FileHash .\HADS_Next_install_0.2.0-dev1.sh -Algorithm SHA256

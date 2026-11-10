@@ -182,3 +182,11 @@ BuildKit v0.34.0 (driver docker) v tomto executor prostředí hlásí pouze
 neproběhly**; nebyl instalován emulátor ani měněn daemon. RPi4/2GB, produkční
 HAOS izolace, skutečný LLM, placené inference a reálný externí výzkum jsou
 samostatné čekající přejímky.
+
+## Aktuální instalační přejímka 0.2.0-dev1
+
+Historické limity výše patří k jejich tehdejším běhům. Aktuální původní
+Hermes, Core smyčka a výchozí instalační runtime prošly nativními AMD64 i ARM64
+testy v GitHub Actions 42678100603. Trvalé důkazy:
+`docs/evidence/installation-0.2.0-dev1/ACCEPTANCE.json`.
+Reálný LLM, HAOS, fyzická zařízení a RPi zůstávají čekající.

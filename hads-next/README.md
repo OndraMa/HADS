@@ -9,14 +9,14 @@ broker, ukládá vícekrokové vyšetřování a připravuje nezávisle validova
 Vlastník ověřený přes HA spravuje poskytovatele, jednotlivé případy a souhlasy.
 AI i veřejný výzkum jsou standardně vypnuté. Produkční zápisy nejsou zpřístupněné.
 
-Instalační kandidát **0.2.0-dev1 se právě ověřuje**. Obsahuje skutečný runtime
+Instalační kandidát **0.2.0-dev1 prošel nativními kontejnerovými testy AMD64 i ARM64**. Obsahuje skutečný runtime
 a kontrolu jeho připravenosti bez modelu. [Instalační návod a první spuštění](haos/DOCS.md),
 [stažení ve Windows](docs/STAZENI_WINDOWS_CS.md), [výsledky](docs/results.md),
 [reprodukce](lab/README_CS.md), [živá přejímka](docs/haos-acceptance.md).
 V prohlížeči vyber tuto větev a **Code → Download ZIP**; cloudový panel není potřeba.
 
-Prošlo 150 offline testů a skutečný Core 2026.11.0 + původní Hermes v AMD64
-kontejneru. Model byl skriptovaný HTTPS endpoint, takže autonomní úsudek skutečného
+Na obou architekturách prošlo 150 offline testů, skutečný Core 2026.11.0 +
+původní Hermes i výchozí instalační image. Model byl skriptovaný HTTPS endpoint, takže autonomní úsudek skutečného
 LLM není prokázaný. Živý HAOS, Supervisor, MA server, fyzické rádio/Zigbee a
 RPi 4 / 2 GB čekají na přejímku. Tyto hranice se neskrývají počtem testů.
 

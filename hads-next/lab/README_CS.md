@@ -106,3 +106,28 @@ v produkci. HAOS zapisovač zůstává vypnutý.
 Hermes není součástí tohoto konkrétního běhu. Supervisor, skutečný Ingress,
 HAOS, ARM64/RPi, Music Assistant, ZHA a fyzické výsledky dosud neprošly touto
 zkouškou. Jejich dostupnost tento protokol netvrdí.
+
+## Přesný instalační kandidát a prohlížeč
+
+Nativní AMD64 i ARM64 běh: GitHub Actions 42678100603, commit
+`7b3df242cd3aa056d76d64a478f122dca4fed6e9`. Protokoly zůstávají v
+`docs/evidence/installation-0.2.0-dev1/`. Model je skriptovaný, fyzický HAOS není součástí testu.
+
+Výchozí image z již ověřeného instalátoru (Linux, nové cílové adresáře):
+
+```sh
+bash /cesta/HADS_Next_install_0.2.0-dev1.sh --verify
+bash /cesta/HADS_Next_install_0.2.0-dev1.sh --extract-only "$PWD/.test-tmp/installable-source"
+docker build -t hads-next-haos:0.2.0-dev1 .test-tmp/installable-source
+python scripts/haos_smoke.py --installer /cesta/HADS_Next_install_0.2.0-dev1.sh
+```
+
+Smoke používá skutečný upstream runtime a kontejnerový restart, ale pouze náhradu
+HA CLI pro instalační posloupnost. Nesahá na Supervisor domácnosti. Na VFS může
+být nutná vícegigabajtová rezerva; místní cloudový běh narazil na disk ještě před
+startem kontejneru, nezávislé GitHub běhy obou architektur prošly.
+
+`python lab/browser_probe.py` ověřuje skutečný prohlížeč nad náhradním ingressem
+a offline spisem. Vyžaduje Playwright a systémový `/usr/bin/chromium`; nic
+neinstaluje, nevytváří živé HA uživatele a nevolá model. Připravenost runtime má
+samostatný nativní protokol, do tohoto testu se nepředstírá launcher.

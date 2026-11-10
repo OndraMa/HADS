@@ -1,46 +1,25 @@
 # HADS — stažení a návody
 
-## Aktuální HADS Next – zdroje vyšetřovacího runtime
+Aktuální vývojová větev je **codex/hads-next-investigation**.
+Ve Windows otevři přímo [složku ke stažení HADS Next 0.2.0-dev1](https://github.com/OndraMa/HADS/tree/codex/hads-next-investigation/KE_STAZENI/HADS_Next_0.2.0-dev1).
+Kompletní ZIP obsahuje instalátor, český návod, kontrolní součty, testovací
+protokoly a verzované zdroje. Cloudový panel ChatGPT není potřeba.
 
-Práce pokračuje ve větvi **`codex/hads-next-investigation`**,
-[návrh změn č. 6](https://github.com/OndraMa/HADS/pull/6).
-Zde jsou [aktuální zdroje a testy](hads-next/),
-[česká zpráva o výsledcích](hads-next/docs/results.md)
-a [reprodukovatelný Core/Hermes test](hads-next/lab/README_CS.md).
-Ve Windows vyber tuto větev a **Code → Download ZIP**; cloudový panel není potřeba.
+- [Stažení ve Windows](hads-next/docs/STAZENI_WINDOWS_CS.md)
+- [První nastavení a instalace](hads-next/haos/DOCS.md)
+- [Výsledky a čekající schopnosti](hads-next/docs/results.md)
+- [Kontrolovatelný návrh změn č. 6](https://github.com/OndraMa/HADS/pull/6)
+- [Úspěšné AMD64 i ARM64 testy](https://github.com/OndraMa/HADS/actions/runs/42678100603)
 
-Původní Hermes nyní čte skutečné Core API přes oddělený broker. Nový kompletní
-HAOS instalační kandidát **zatím vydán není**; živá HAOS a reálná modelová
-přejímka čekají. Níže uvedený starší instalátor nový runtime neobsahuje.
+Kandidát obsahuje skutečný původní Hermes, oddělený čtecí broker a kontrolu
+připravenosti bez modelu. Obě architektury prošly testy se skutečným Core a
+instalačním image. Modelový endpoint byl skriptovaný. **Živý HAOS, skutečný LLM,
+fyzická zařízení a RPi zatím přijaté nejsou; produkční zápisy jsou vypnuté.**
+Používej oddělený testovací HAOS. Stažení není pokyn k zásahu v domácnosti.
 
-## Historický HADS Next 0.1.0-dev1 pro testovací HAOS
+Výchozí main může dál ukazovat starý HADS 4.6.3. Přepni větev nad seznamem
+souborů nebo použij přímé odkazy výše. RC3 zůstává ve větvi
+`hermes-2-rc2-cloud-verification`; vydané archivy se nepřepisují.
 
-**[Otevřít stránku vydání a stáhnout vše](https://github.com/OndraMa/HADS/releases/tag/hads-next-0.1.0-dev1)**
-
-Na stránce vydání zvol **Stáhnout kompletní ZIP**, nebo otevři
-**[složku KE_STAZENI](KE_STAZENI/HADS_Next_0.1.0-dev1/)**
-a soubor `HADS_Next_0.1.0-dev1-komplet.zip`. Obsahuje instalační
-soubor, české návody, zdrojový balíček aplikace a celý verzovaný repozitář.
-Cloudový panel ChatGPT není potřeba. Repozitář je soukromý: přihlas se na GitHub
-účtem, který k němu má přístup.
-
-- [Postup stažení ve Windows](hads-next/docs/STAZENI_WINDOWS_CS.md)
-- [Instalační soubor na GitHubu](hads-next/releases/0.1.0-dev1/HADS_Next_install_0.1.0-dev1.sh)
-- [Český návod pro HAOS](hads-next/haos/DOCS.md)
-- [Kontrolní součty SHA-256](hads-next/releases/0.1.0-dev1/SHA256SUMS)
-- [Zdrojový kód, testy a dokumentace HADS Next](hads-next/)
-- [Ověřené výsledky a omezení](hads-next/docs/results.md)
-
-Jde o **vývojovou verzi**, která se instaluje vedle RC3. Umožňuje čtení Core
-a incidentní spisy; Hermes a živé opravy v této instalační aplikaci nejsou aktivní.
-Živá HAOS a ARM64/RPi přejímka čekají. Soubor `.sh` se spouští v terminálu HAOS,
-nikoli ve Windows.
-
-## Proč je na výchozí stránce stará 4.6.3
-
-Výchozí větev `main` obsahuje historickou verzi. Pro novou práci vyber nad
-seznamem souborů **`codex/hads-next-investigation`**. Staré Releases neobsahují nový runtime.
-Historické zdroje 4.x nejsou zdroje Hermes RC3 ani HADS Next.
-
-RC3 zůstává beze změn ve větvi `hermes-2-rc2-cloud-verification` a v adresáři
-`cloud-hermes/releases/2.0.0-rc3/`. Instalátory starších verzí se nepřepisují.
+Historický [balíček 0.1.0-dev1](KE_STAZENI/HADS_Next_0.1.0-dev1/) nový Hermes
+runtime neobsahuje. Nepoužívej jej jako aktuální instalátor.
