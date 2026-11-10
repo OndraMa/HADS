@@ -60,6 +60,11 @@ for attempt in range(30):
  except (OSError,AssertionError):time.sleep(.1)
 else:raise AssertionError('Health did not become ready')
 c=http.client.HTTPConnection('127.0.0.1',8099,timeout=2);c.request('GET','/api/status',headers={'X-Remote-User-Id':'forged'});assert c.getresponse().status==403
+from pathlib import Path
+import importlib.util
+assert Path('/app/companion/custom_components/hads_reference/__init__.py').read_text().startswith('\"\"\"CAS')
+assert Path('/app/companion/test-automation.yaml').is_file()
+assert importlib.util.find_spec('homeassistant') is None
 status=open('/proc/1/status').read();assert 'Uid:\\t65532' in status;assert 'CapEff:\\t0000000000000000' in status
 print(json.dumps({'health':body,'runtime_uid':65532,'capabilities':0,'direct_data_access':403}))'''
         report["runtime"] = json.loads(docker("exec", "--user", "65532", name, "python", "-c", probe).stdout)

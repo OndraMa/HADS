@@ -49,8 +49,8 @@ RUN --mount=type=bind,source=.,target=/source,readonly \
     cp -a /source/hads_next /app/hads_next; cp /source/run.sh /run.sh; cp -a /source/companion /app/companion; \
     for file in __init__.py hermes_worker.py hermes_sandbox.py worker_protocol.py; do \
       cp /app/hads_next/"$file" /opt/hermes-root/app/hads_next/"$file"; done; \
-    find /app/hads_next /opt/hermes-root/app -type d -exec chmod 755 {} +; \
-    find /app/hads_next /opt/hermes-root/app -type f -exec chmod 644 {} +; \
+    find /app/hads_next /app/companion /opt/hermes-root/app -type d -exec chmod 755 {} +; \
+    find /app/hads_next /app/companion /opt/hermes-root/app -type f -exec chmod 644 {} +; \
     chmod 755 /app /run.sh; \
     if [ "$CORE_LAB" = 1 ]; then \
       python /source/lab/core_hermes_probe.py > /app/core-hermes-proof.json; \
