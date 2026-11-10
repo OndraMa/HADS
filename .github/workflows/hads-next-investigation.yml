@@ -1,7 +1,7 @@
 name: HADS Next final delivery acceptance
 on:
   push:
-    branches: [codex/hads-next-final-delivery]
+    branches: [codex/hads-next-practical-acceptance]
     paths:
       - .github/workflows/hads-next-investigation.yml
       - hads-next/src/**

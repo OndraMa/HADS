@@ -83,6 +83,9 @@ class FunctionalVerifier:
                     index = bisect_left(success_times, since)
                     if index < len(success_times) and item["observed_at"] - success_times[index] >= condition["watch_seconds"]:
                         covered.append(item)
+            if condition.get('physical_confirmation_required'):
+                confirmations=[x['observed_at'] for x in fresh if x.get('kind')=='owner_functional_confirmation' and x.get('payload',{}).get('entity_id')==condition['entity_id'] and x.get('payload',{}).get('confirmed') is True and x.get('payload',{}).get('authority')=='authenticated_owner']
+                covered=[checkpoint for checkpoint in covered if any(success['observed_at']<=confirmation<=checkpoint['observed_at'] for success in successes for confirmation in confirmations)]
             if recurrences:
                 classification = "Problém se opakoval" if successes or row["status"] == "verified" else "Oprava selhala"
                 status = "recurred" if classification == "Problém se opakoval" else "failed"
@@ -95,13 +98,14 @@ class FunctionalVerifier:
             else:
                 classification, status = "Oprava provedena, ověření čeká", "applied_verification_pending"
             actual_core_lab = plan.document['operation'] == 'core_lab.replace_entity_reference' and not supplied_clock
-            managed_core = plan.document['operation'] == 'core_managed.replace_entity_reference' and not supplied_clock
+            managed_core = plan.document['operation'] in {'core_managed.replace_entity_reference','core.enable_lighting_automation'} and not supplied_clock
             report = {
                 "language": "cs", "scope": "actual_core_managed_reference" if managed_core else "actual_core_container" if actual_core_lab else "offline_isolated_fixture", "plan_id": plan.plan_id,
                 "clock_mode": "caller_supplied_offline_clock" if supplied_clock else "system_utc",
                 "incident_id": plan.document["incident_id"], "execution_id": execution.execution_id,
                 "classification": classification, "created_at": now,
-                "summary": self._summary(classification),
+                "summary": ('Aktivace byla provedena. Funkční ověření vyžaduje skutečný trigger, stav světla, souvislé sledování a potvrzení vlastníka.' if plan.document['operation']=='core.enable_lighting_automation' and classification!='Vyřešeno a ověřeno' else self._summary(classification)),
+                'operation':plan.document['operation'],
                 "functional_successes": len(successes), "coverage_checkpoints": len(covered),
                 "recurrences": len(recurrences), "evidence": fresh,
                 "limitation": ("Ověřena je virtuální automatizace ve skutečném odpojeném HA Core. Živý HAOS ani fyzické zařízení nebyly testovány."

@@ -51,6 +51,7 @@ class BrokerTests(unittest.TestCase):
         self.broker.supervisor.transport=outage
         self.assertEqual(self.broker.read(self.case,'hads_get_supervisor_status',{})['status'],'read_failed')
         self.broker.ws=CoreWSReader(lambda cmd:[])
+        with self.store._connect() as db:db.execute('UPDATE incidents SET components=? WHERE id=?',(json.dumps(['automation.known']),self.case))
         empty=self.broker.read(self.case,'hads_get_automation_traces',{'automation_id':'known'})
         self.assertEqual(empty['status'],'no_relevant_data');self.assertEqual(empty['data'],[])
 
@@ -60,6 +61,7 @@ class BrokerTests(unittest.TestCase):
 
     def test_wrong_source_schema_is_not_an_empty_successful_read(self):
         self.broker.ws=CoreWSReader(lambda command:{'unexpected':'object'})
+        with self.store._connect() as db:db.execute('UPDATE incidents SET components=? WHERE id=?',(json.dumps(['automation.known']),self.case))
         result=self.broker.read(self.case,'hads_get_automation_traces',{'automation_id':'known'})
         self.assertEqual(result['status'],'read_failed')
 

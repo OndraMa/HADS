@@ -12,12 +12,43 @@ class RepairService:
     def __init__(self,app):
         self.app=app;self.root=app.data_dir/'managed-repair';self.root.mkdir(mode=0o700,exist_ok=True)
         self.companion_checked_at=None;self.enabled=False;self.last_error=None;self.stop=threading.Event();self.thread=None
-        self.observations=[];self.lock=threading.RLock();self.trigger_coverage=None;self.trigger_heartbeat=None
+        self.state_breaks={};self.observations=[];self.lock=threading.RLock();self.trigger_coverage=None;self.trigger_heartbeat=None
         with app.store._connect() as db:db.execute('CREATE TABLE IF NOT EXISTS managed_repair_settings(id INTEGER PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0)');db.execute('INSERT OR IGNORE INTO managed_repair_settings VALUES(1,0)')
+        with app.store._connect() as db:
+            db.execute('CREATE TABLE IF NOT EXISTS automation_intents(entity_id TEXT PRIMARY KEY,expected_enabled INTEGER NOT NULL,confirmed_at REAL NOT NULL,principal TEXT NOT NULL)')
         connect(app.store.db_path).close()
 
     def owner_only(self,principal):
         if not principal or principal!=self.app.owner():raise RepairBlocked('Tuto operaci smí potvrdit pouze vlastník.')
+
+    def allow_automation(self,entity_id,principal):
+        self.owner_only(principal)
+        from .native_repair import AutomationEnableEngine
+        with self.app._read_lock:
+            engine=AutomationEnableEngine(self.app.store.db_path,self.root,self.app,entity_id)
+            engine._read(engine.filename)
+        with self.app.store._connect() as db:
+            db.execute('INSERT OR REPLACE INTO automation_intents VALUES(?,1,?,?)',(entity_id,self.app.clock(),principal))
+        self.start()
+
+    def native_engine(self,plan):
+        from .native_repair import AutomationEnableEngine
+        entity=plan.document['target']['entity_id']
+        with self.app.store._connect() as db:allowed=db.execute('SELECT expected_enabled FROM automation_intents WHERE entity_id=?',(entity,)).fetchone()
+        if not allowed or not allowed[0]:raise RepairBlocked('Chybí aktuální záměr vlastníka, že automatizace má být zapnutá.')
+        return AutomationEnableEngine(self.app.store.db_path,self.root,self.app,entity)
+
+    def prepare_native(self,incident_id,entity,principal,*,exclusive=False):
+        if exclusive is not True:raise RepairBlocked("Potvrď, že cílovou automatizaci nyní nikdo současně neupravuje.")
+        self.owner_only(principal)
+        if self.app.automation_writer is None:raise RepairBlocked('Nativní stavový vykonavatel není připojený.')
+        with self.app.store._connect() as db:allowed=db.execute('SELECT expected_enabled FROM automation_intents WHERE entity_id=?',(entity,)).fetchone()
+        case=self.app.store.case(incident_id)
+        if not allowed or not allowed[0] or entity not in case['incident']['components']:raise RepairBlocked('Nejprve potvrď zamýšlené chování a načti důkazy tohoto cíle.')
+        from .native_repair import AutomationEnableEngine
+        with self.app._read_lock:
+            engine=AutomationEnableEngine(self.app.store.db_path,self.root,self.app,entity)
+            return engine.prepare_enable(incident_id,[e['evidence_id'] for e in case['evidence']])
 
     def engine(self):
         if not self.status()['enabled'] or self.app.core_ws is None:raise RepairBlocked('Nejprve povol izolovaný testovací katalog a ověř companion.')
@@ -36,19 +67,20 @@ class RepairService:
         if enabled:self.start()
 
     def status(self):
-        with self.app.store._connect() as db:enabled=bool(db.execute('SELECT enabled FROM managed_repair_settings WHERE id=1').fetchone()[0])
-        return {'enabled':enabled,'catalog':'integration_owned_virtual_test_reference','native_automation_writes':False,
+        with self.app.store._connect() as db:
+            enabled=bool(db.execute('SELECT enabled FROM managed_repair_settings WHERE id=1').fetchone()[0]);native_count=db.execute('SELECT count(*) FROM automation_intents WHERE expected_enabled=1').fetchone()[0]
+        return {'enabled':enabled,'catalog':'owned_reference_and_selected_lighting','native_automation_writes':False,'native_state_targets':native_count,'native_config_writes':False,
             'last_error':self.last_error,'companion_checked_at':self.companion_checked_at,'backup':'Ověřený snapshot jediné reference; není to záloha HAOS/OneDrive.',
             'one_drive_risky_operations':'blocked_no_independent_restore_proof'}
 
     def plans(self,incident_id):
         with closing(connect(self.app.store.db_path)) as db:
-            rows=db.execute('SELECT p.id,p.document,e.status,e.id AS execution_id FROM repair_plans p LEFT JOIN repair_executions e ON e.plan_id=p.id ORDER BY p.created_at DESC LIMIT 100').fetchall()
+            rows=db.execute("SELECT p.id,p.document,e.status,e.id AS execution_id,(SELECT decision FROM repair_decisions d WHERE d.plan_id=p.id ORDER BY d.rowid DESC LIMIT 1) AS decision FROM repair_plans p LEFT JOIN repair_executions e ON e.plan_id=p.id WHERE json_extract(p.document,'$.incident_id')=? ORDER BY p.created_at DESC LIMIT 100",(incident_id,)).fetchall()
         result=[]
         for r in rows:
             document=json.loads(r['document'])
-            if document['incident_id']==incident_id and document['operation']=='core_managed.replace_entity_reference':
-                result.append({'plan_id':r['id'],'document':document,'status':r['status'],'execution_id':r['execution_id']})
+            if document['incident_id']==incident_id and document['operation'] in {'core_managed.replace_entity_reference','core.enable_lighting_automation'}:
+                result.append({'plan_id':r['id'],'document':document,'status':r['status'],'execution_id':r['execution_id'],'decision':r['decision']})
         return result
 
     def plan(self,identity):
@@ -86,35 +118,61 @@ class RepairService:
     def decide(self,identity,decision,principal):
         self.owner_only(principal);plan=self.plan(identity)
         authority=ApprovalAuthority(self.app.store.db_path,owner=self.app.owner())
-        # Reject/manual revoke previous approvals too; neither performs a write.
+        engine=None
+        if decision=='approve':
+            if self.trigger_coverage is None or self.app.clock()-(self.trigger_heartbeat or 0)>15:raise RepairBlocked('Neprobíhá ověřený odběr automatizace; oprava není připravená.')
+            engine=self.native_engine(plan) if plan.document['operation']=='core.enable_lighting_automation' else self.engine()
+            with self.app._read_lock:
+                from .repair import digest
+                if digest(engine._read(plan.document['target']['filename']))!=plan.document['original_sha256']:raise RepairBlocked('Předpoklady se změnily. Připrav nový plán a znovu jej schval.')
         token=authority.decide(plan,principal=principal,decision=decision)
         self.app.store.record(plan.document['incident_id'],'repair_decision',{'plan_id':identity,'decision':decision,'principal':principal})
         if decision!='approve':return None
-        if self.trigger_coverage is None or self.app.clock()-(self.trigger_heartbeat or 0)>15:raise RepairBlocked('Neprobíhá ověřený odběr automatizace. Schválení nic neprovedlo; po obnovení zkontroluj plán znovu.')
-        execution=self.engine().execute(plan,token,principal=principal)
-        with self.lock:self.observations=[]
-        self.app.store.record(plan.document['incident_id'],'repair_applied',{'plan_id':identity,'execution_id':execution.execution_id,'summary_cs':'Reference změněna přes atomické CAS. Stiskni testovací tlačítko. Ověření čeká.'})
+        with self.app._read_lock:execution=engine.execute(plan,token,principal=principal)
+        self.app.store.record(plan.document['incident_id'],'repair_applied',{'plan_id':identity,'execution_id':execution.execution_id,'summary_cs':('Stav automatizace změněn nativní službou. Konfigurace se nepřepisovala; funkční a fyzický výsledek čeká na test.' if plan.document['operation']=='core.enable_lighting_automation' else 'Reference změněna přes atomické CAS. Stiskni testovací tlačítko. Ověření čeká.')})
         return execution
+
+    def confirm_physical(self,identity,principal):
+        self.owner_only(principal);plan=self.plan(identity)
+        if plan.document['operation']!='core.enable_lighting_automation':raise RepairBlocked('Tento plán nevyžaduje potvrzení světla.')
+        execution=self.native_engine(plan).execution(identity)
+        if not execution or execution.status!='applied_verification_pending':raise RepairBlocked('Oprava nečeká na funkční potvrzení.')
+        value={'kind':'owner_functional_confirmation','observed_at':self.app.clock(),'payload':{'entity_id':plan.document['verification']['entity_id'],'confirmed':True,'authority':'authenticated_owner'}}
+        # Persist before restart; model output never reaches this path.
+        FunctionalVerifier(self.app.store.db_path).evaluate(plan,execution,[value])
+        with self.lock:self.observations.append(value)
 
     def rollback(self,identity,principal):
         self.owner_only(principal);plan=self.plan(identity)
         case=self.app.store.case(plan.document['incident_id']);evidence=[e['evidence_id'] for e in case['evidence']]
-        rollback=self.engine().prepare_rollback(plan,evidence)
+        if plan.document['operation']=='core.enable_lighting_automation':
+            engine=self.native_engine(plan)
+            with self.app._read_lock:rollback=engine.prepare_enable(plan.document['incident_id'],evidence,rollback_of=plan.plan_id)
+        else:rollback=self.engine().prepare_rollback(plan,evidence)
         self.app.store.record(plan.document['incident_id'],'rollback_prepared',{'plan_id':rollback.plan_id,'summary_cs':'Návrat vlastní reference vyžaduje samostatné nové schválení. Neobnovuje HAOS.'})
         return rollback
 
     def on_trigger(self,event):
-        if event.get('data',{}).get('entity_id')!='automation.hads_next_reference_test':return
+        entity=event.get('data',{}).get('entity_id')
+        tracked={'automation.hads_next_reference_test'}
+        with self.app.store._connect() as db:tracked.update(r[0] for r in db.execute('SELECT entity_id FROM automation_intents WHERE expected_enabled=1'))
+        if entity not in tracked:return
         try:stamp=datetime.fromisoformat(event['time_fired']).timestamp();context=event['context']['id']
         except (ValueError,KeyError,TypeError):return
+        automation_id=entity.split('.',1)[1]
+        with closing(connect(self.app.store.db_path)) as db:
+            for row in db.execute('SELECT document FROM repair_plans ORDER BY created_at DESC LIMIT 100'):
+                d=json.loads(row[0])
+                if d['target'].get('entity_id')==entity:automation_id=d['verification']['automation_id'];break
         with self.lock:
-            self.observations.append({'kind':'automation_triggered','observed_at':stamp,'payload':{'automation_id':'hads_next_reference_test','context_id':context}});self.observations=self.observations[-256:]
+            self.observations.append({'kind':'automation_triggered','observed_at':stamp,'payload':{'automation_id':automation_id,'automation_entity_id':entity,'context_id':context}});self.observations=self.observations[-256:]
 
     def observe_state(self,state,stamp):
-        if state['entity_id']!=TARGET:return
+        if not state['entity_id'].startswith('light.') and state['entity_id']!=TARGET:return
         context=state.get('context',{}).get('id')
         with self.lock:
-            self.observations.append({'kind':'target_state','observed_at':stamp,'payload':{'entity_id':TARGET,'state':state['state'],'context_id':context}});self.observations=self.observations[-256:]
+            if state['state']!='on':self.state_breaks[state['entity_id']]=stamp
+            self.observations.append({'kind':'target_state','observed_at':stamp,'payload':{'entity_id':state['entity_id'],'state':state['state'],'context_id':context}});self.observations=self.observations[-256:]
         # A later legitimate off alone is not recurrence. A failed new trigger
         # is detected by the functional monitor, not by arbitrary state changes.
 
@@ -125,19 +183,21 @@ class RepairService:
             rows=db.execute("SELECT p.id,p.document FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='applied_verification_pending'").fetchall()
         for row in rows:
             plan=RepairPlan(row['document'])
-            if plan.document['operation']!='core_managed.replace_entity_reference':continue
-            engine=self.engine();execution=engine.execution(row['id'])
+            if plan.document['operation'] not in {'core_managed.replace_entity_reference','core.enable_lighting_automation'}:continue
+            engine=self.native_engine(plan) if plan.document['operation']=='core.enable_lighting_automation' else self.engine();execution=engine.execution(row['id'])
             if plan.document['rollback']['rollback_of']:
                 # Exact readback is configuration rollback evidence, not a
                 # functional success of the deliberately broken old reference.
-                if json.loads(engine._read(engine.FILENAME))==plan.document['proposed']:
+                filename=plan.document['target']['filename']
+                if engine._readback_matches(plan.document['proposed'],json.loads(engine._read(filename))):
                     with closing(connect(self.app.store.db_path)) as db:db.execute("UPDATE repair_executions SET status='rollback_reference_restored' WHERE id=?",(execution.execution_id,))
                     self.app.store.record(plan.document['incident_id'],'rollback_report',{'classification':'Návrat reference ověřen čtením; funkční problém trvá','plan_id':plan.plan_id,'haos_restored':False})
                 continue
             with self.lock:observations=list(self.observations)
-            current=self.app.core.states(TARGET) if self.app.core else None
+            target=plan.document['verification']['entity_id']
+            current=self.app.core.states(target) if self.app.core else None
             if not isinstance(current,dict) or current.get('state')!=plan.document['verification']['state']:continue
-            observations.append({'kind':'monitoring_checkpoint','observed_at':now,'payload':{'entity_id':TARGET,'continuous_since':max(execution.completed_at,detector['continuous_since'] or now,self.trigger_coverage),'healthy':True}})
+            observations.append({'kind':'monitoring_checkpoint','observed_at':now,'payload':{'entity_id':target,'continuous_since':max(execution.completed_at,detector['continuous_since'] or now,self.trigger_coverage,self.state_breaks.get(target,0)),'healthy':True}})
             report=FunctionalVerifier(self.app.store.db_path).evaluate(plan,execution,observations)
             if report['classification']=='Vyřešeno a ověřeno':self.app.store.mark_resolved(plan.document['incident_id'],report)
 
@@ -157,7 +217,10 @@ class RepairService:
         if self.thread and self.thread.is_alive():return True
         self.stop.clear()
         def ready():self.trigger_coverage=self.app.clock();self.trigger_heartbeat=self.app.clock()
-        def heartbeat():self.trigger_heartbeat=self.app.clock()
+        def heartbeat():
+            now=self.app.clock()
+            if self.trigger_heartbeat is not None and now-self.trigger_heartbeat>15:self.trigger_coverage=now
+            self.trigger_heartbeat=now
         def run():
             while not self.stop.is_set():
                 try:transport.automation_events(self.stop,self.on_trigger,ready,heartbeat)

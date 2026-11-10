@@ -23,18 +23,20 @@ def project_state(row):
     context = row.get("context")
     return {"entity_id": row["entity_id"], "state": str(row.get("state", "unknown"))[:256],
             "last_updated": str(row.get("last_updated", ""))[:80],
+            "name":str((row.get("attributes") or {}).get("friendly_name",row["entity_id"]))[:120],
             "context": {k: str(context[k])[:128] for k in ("id", "parent_id") if context.get(k)}
                 if isinstance(context, dict) else {}}
 
 
 class Application:
-    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time, launcher=None,runtime_error=None):
+    def __init__(self, data_dir, core=None, *, core_ws=None, supervisor=None, clock=time.time, launcher=None,runtime_error=None,automation_writer=None):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.store = IncidentStore(self.data_dir / "incidents.sqlite")
         self.core, self.clock = core, clock
         self.core_ws, self.supervisor = core_ws, supervisor
         self.runtime_error=runtime_error
+        self.automation_writer=automation_writer
         with self.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS application_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
         self._lock = threading.RLock()
@@ -54,6 +56,10 @@ class Application:
         from .detection import DetectionEngine
         self.repairs=RepairService(self)
         self.detection=DetectionEngine(self)
+        from .system_diagnostics import SystemDiagnostics
+        self.system=SystemDiagnostics(self)
+        from .live_acceptance import LiveAcceptance
+        self.acceptance=LiveAcceptance(self)
 
     def request_source_check(self):
         with self._lock:
@@ -62,6 +68,7 @@ class Application:
         def run():
             try:
                 self.check_sources()
+                self.system.inspect()
                 with self._lock:self._source_job={'state':'finished','completed_at':self.clock(),'last_error':None}
             except Exception as error:
                 with self._lock:self._source_job={'state':'failed','completed_at':None,'last_error':type(error).__name__}
@@ -206,9 +213,9 @@ class Application:
         with self._lock:
             return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
                     "entities": list(self._entities), "cases": cases,
-                    "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": self.repairs.status()["enabled"],
+                    "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": (self.repairs.status()["enabled"] or self.repairs.status()["native_state_targets"]>0),
                     'investigation_service':self.investigations.status(),
-                    'detection':self.detection.snapshot(),'repairs':self.repairs.status(),
+                    'system_health':self.system.status(),'detection':self.detection.snapshot(),'repairs':self.repairs.status(),
                     'sources': dict(self._sources),
                     'applications': list(self._apps),
                     'source_job': dict(self._source_job),

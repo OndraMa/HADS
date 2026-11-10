@@ -13,6 +13,7 @@ ENTITY=re.compile(r'[a-z][a-z0-9_]*\.[a-z0-9_]+')
 class DetectionEngine:
     def __init__(self,app):
         self.app=app;self.stop=threading.Event();self.thread=None;self.poll_thread=None;self.lock=threading.RLock()
+        self._latest_states={}
         self.health={'state':'stopped','last_event_at':None,'last_error':None,'continuous_since':None,'heartbeat_at':None,'last_system_check_at':None}
         with app.store._connect() as db:
             db.executescript('''CREATE TABLE IF NOT EXISTS detection_rules(id TEXT PRIMARY KEY,document TEXT NOT NULL);
@@ -27,7 +28,7 @@ class DetectionEngine:
 
     def configure(self,rule,principal):
         if principal!=self.app.owner() or not principal:raise ValueError('Pravidla může měnit jen vlastník.')
-        if set(rule)-{'entity_id','kind','expected','grace_seconds','trigger_entity','enabled','automation_entity'}:raise ValueError('Neznámá pole pravidla.')
+        if set(rule)-{'entity_id','kind','expected','grace_seconds','trigger_entity','enabled','automation_entity','trigger_state'}:raise ValueError('Neznámá pole pravidla.')
         if not ENTITY.fullmatch(str(rule.get('entity_id',''))) or rule.get('kind') not in {'unavailable','state','playback','response'}:raise ValueError('Neplatné pravidlo.')
         if type(rule.get('enabled',True)) is not bool:raise ValueError('Neplatný stav pravidla.')
         grace=rule.get('grace_seconds',30)
@@ -38,7 +39,9 @@ class DetectionEngine:
         if rule['kind']=='response' and not ENTITY.fullmatch(trigger):raise ValueError('Chybí spouštěcí entita.')
         automation=rule.get('automation_entity','')
         if automation and not re.fullmatch(r'automation\.[a-z0-9_]+',automation):raise ValueError('Neplatná automatizace.')
-        document={'automation_entity':automation,'entity_id':rule['entity_id'],'kind':rule['kind'],'expected':expected,'grace_seconds':grace,'trigger_entity':trigger,'enabled':rule.get('enabled',True)}
+        trigger_state=rule.get('trigger_state','')
+        if not isinstance(trigger_state,str) or len(trigger_state)>64:raise ValueError('Neplatný spouštěcí stav.')
+        document={'trigger_state':trigger_state,'automation_entity':automation,'entity_id':rule['entity_id'],'kind':rule['kind'],'expected':expected,'grace_seconds':grace,'trigger_entity':trigger,'enabled':rule.get('enabled',True)}
         identity=hashlib.sha256((document['kind']+':'+document['entity_id']+':'+trigger).encode()).hexdigest()[:24]
         with self.lock,self.app.store._connect() as db:
             if db.execute('SELECT count(*) FROM detection_rules').fetchone()[0]>=32 and not db.execute('SELECT 1 FROM detection_rules WHERE id=?',(identity,)).fetchone():raise ValueError('Nejvýše 32 pravidel.')
@@ -57,10 +60,14 @@ class DetectionEngine:
     def ready(self):
         with self.lock:
             now=self.app.clock();self.health.update(state='listening',continuous_since=now,heartbeat_at=now,last_error=None)
+            self._latest_states.clear()
             with self.app.store._connect() as db:db.execute('DELETE FROM detection_state')
 
     def heartbeat(self):
-        with self.lock:self.health['heartbeat_at']=self.app.clock()
+        with self.lock:
+            now=self.app.clock()
+            if self.health['heartbeat_at'] is not None and now-self.health['heartbeat_at']>15:self.ready()
+            self.health['heartbeat_at']=now
 
     def gap(self,error):
         with self.lock:
@@ -78,7 +85,10 @@ class DetectionEngine:
         from .haos_application import project_state
         state=project_state(raw)
         if not state or state['entity_id']!=entity:return
+        if self.health['heartbeat_at'] is not None and now-self.health['heartbeat_at']>15:self.ready()
         old=data.get('old_state') or {};value=state['state'];self.health['last_event_at']=stamp
+        watched={r['entity_id'] for r in self.rules() if r['enabled']}
+        if entity in watched:self._latest_states[entity]=value
         repairs=getattr(self.app,'repairs',None)
         if repairs:repairs.observe_state(state,stamp)
         with self.lock,self.app.store._connect() as db:
@@ -88,8 +98,9 @@ class DetectionEngine:
                 pending=json.loads(row[0]) if row else None
                 # Trigger means a real transition, not a repeated read or same-state attributes.
                 if rule['kind']=='response':
-                    if entity==rule['trigger_entity'] and old.get('state')!=value:
-                        pending={'since':stamp,'event':state,'trigger_at':stamp,'matched':False}
+                    if entity==rule['trigger_entity'] and old.get('state')!=value and (not rule.get('trigger_state') or value==rule['trigger_state']):
+                        if self._latest_states.get(rule['entity_id'])==rule['expected']:pending=None
+                        elif pending is None:pending={'since':stamp,'event':state,'trigger_at':stamp,'matched':False}
                     elif entity==rule['entity_id'] and pending and value==rule['expected'] and stamp>=pending['since']:
                         pending=None
                 else:
@@ -149,7 +160,7 @@ class DetectionEngine:
                     if now-(self.health['last_system_check_at'] or 0)>=300:
                         self.app.request_source_check();self.health['last_system_check_at']=now
                     repairs=getattr(self.app,"repairs",None)
-                    if repairs and repairs.status()["enabled"]:repairs.verify_pending()
+                    if repairs:repairs.verify_pending()
                 except Exception:self.health['last_error']='Kontrola podmínek selhala; nelze potvrdit úplné pokrytí.'
         self.thread=threading.Thread(target=run,daemon=True,name='hads-state-monitor');self.thread.start()
         self.poll_thread=threading.Thread(target=timer,daemon=True,name='hads-monitor-deadlines');self.poll_thread.start();return True

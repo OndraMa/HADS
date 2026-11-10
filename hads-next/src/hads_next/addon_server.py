@@ -170,10 +170,32 @@ class Handler(BaseHTTPRequestHandler):
             from .readiness import checklist
             gates=''.join('<article><h3>'+escape(g['label'])+' — '+('Ověřeno' if g['passed'] else 'Čeká / omezeno')+'</h3><p>'+escape(g['detail'])+'</p></article>' for g in checklist(self.server.app))
             return self.send_body(200,'<h1>Průvodce připraveností</h1>'+gates+'<ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Obecné zásahy jsou zakázané; dostupný je jen zvlášť povolený testovací katalog.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
+        if path == '/setup/lighting':
+            entities=[s for s in self.server.app.snapshot()['entities'] if s['entity_id'].startswith('automation.')]
+            options=''.join('<option value="'+escape(s['entity_id'],quote=True)+'">'+escape(s.get('name',s['entity_id']))+' — '+escape(s['state'])+'</option>' for s in entities)
+            return self.send_body(200,'<h1>Praktická oprava světelné automatizace</h1><p>Po potvrzení záměru mohu navrhnout opětovné zapnutí jednoduché automatizace s jedinou akcí light.turn_on na jednom světle. Konfiguraci nepřepisuji. Senzor musí spouštět jen při přechodu na on. Šablony, zámky, spínače a jiné služby katalog nepovolí.</p><p>Aktivací začnou fungovat budoucí triggery. Po dobu schválení nesmí stejný cíl upravovat jiný editor; nativní stavová služba není config CAS. Návrat vypne jen budoucí triggery, nevrací fyzické účinky světla.</p><form method="post" action="lighting"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>Automatizace<select name="entity_id" required>'+options+'</select></label><label><input type="checkbox" name="expected" value="yes" required>Potvrzuji, že má být zapnutá a že ovládá pouze určené bezpečné světlo.</label><button>Ověřit konfiguraci a uložit můj záměr</button></form><p>Obnov čtení Core, pokud v seznamu cíl chybí. Bez skutečně přečtené konfigurace nelze katalog povolit.</p>')
+        if path == '/acceptance':
+            identity=__import__('urllib.parse',fromlist=['parse_qs']).parse_qs(urlsplit(self.path).query).get('session',[''])[0]
+            if not identity:
+                return self.send_body(200,'<h1>Živá přejímka krok za krokem</h1><p>Tento režim sám neoznačuje HAOS za ověřený. Zaznamená skutečná čtení, zásah a funkční výsledek. Modelový komunikační test má zvláštní souhlas a nejvýše jedno volání na tuto přejímku.</p><form method="post" action="acceptance/create"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="isolated" value="yes" required>Pracuji v odděleném bezpečném testovacím prostředí.</label><button>Založit přejímkový protokol</button></form>')
+            acceptance=self.server.app.acceptance.session(identity);rows=''
+            status_names={'passed':'Prošlo','failed':'Selhalo','unavailable':'Nedostupné','pending':'Čeká na test'}
+            choices=''.join('<option value="'+c['id']+'">'+escape(c['symptom'])+'</option>' for c in self.server.app.snapshot()['cases'])
+            apps=''.join('<option value="'+escape(a['slug'],quote=True)+'">'+escape(a['name'])+'</option>' for a in self.server.app.snapshot()['applications'])
+            for step in acceptance['steps']:
+                rows+='<article><h2>'+escape(step['label'])+' — '+status_names[step['status']]+'</h2><p>'+escape(step['explanation'])+'</p><form method="post" action="acceptance/run"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="session_id" value="'+identity+'"><input type="hidden" name="step" value="'+step['step']+'">'
+                if step['step']=='logs':rows+='<label>Aplikace<select name="slug">'+apps+'</select></label>'
+                if step['step'] in {'manual','automatic','repair','verification'}:rows+='<label>Spis<select name="incident_id">'+choices+'</select></label>'
+                if step['step']=='model':rows+='<label><input type="checkbox" name="cost_consent" value="yes" required>Výslovně povoluji jedno skutečné modelové volání a případnou cenu. Nejde o důkaz diagnostického úsudku.</label>'
+                rows+='<button>Provést tento test</button></form></article>'
+            return self.send_body(200,'<h1>Živá přejímka</h1><p>Průběh obnovíš znovunačtením stránky. Reálný Hermes se testuje samostatným vyšetřováním vybraného skutečného incidentu.</p>'+rows+'<a download="HADS-anonymized-acceptance.json" href="acceptance/export?session='+identity+'">Stáhnout anonymizovaný report</a>')
+        if path == '/acceptance/export':
+            identity=__import__('urllib.parse',fromlist=['parse_qs']).parse_qs(urlsplit(self.path).query).get('session',[''])[0]
+            return self.send_body(200,json.dumps(self.server.app.acceptance.export(identity),ensure_ascii=False,indent=2),'application/json; charset=utf-8')
         if path == '/setup/monitors':
             monitor=self.server.app.detection.snapshot()
             rows=''.join('<li>'+escape(r['entity_id'])+' — '+escape(r['kind'])+'; očekáváno '+escape(r['expected'])+'; '+str(r['grace_seconds'])+' s</li>' for r in monitor['rules'])
-            return self.send_body(200,'<h1>Sledované funkce</h1><p>Pravidlo popisuje očekávání uživatele. Chyba v logu sama incident nevytváří. Přehrávání sleduji až po skutečném přechodu z hraní; při mezeře v odběru začíná pokrytí znovu.</p><p>'+escape(monitor['last_error'] or ('Odběr funguje.' if monitor['state']=='listening' else 'Odběr dosud není potvrzený.'))+'</p><ul>'+rows+'</ul><form method="post" action="monitors"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>Entita<input name="entity_id" required></label><label>Podmínka<select name="kind"><option value="unavailable">Zůstává nedostupná</option><option value="state">Nedosáhne očekávaného stavu</option><option value="playback">Přehrávání se zastaví</option><option value="response">Po spouštěcí události chybí odezva</option></select></label><label>Očekávaný stav<input name="expected" value="on" required></label><label>Doba v sekundách<input type="number" name="grace_seconds" value="30" min="1" max="3600"></label><label>Spouštěcí entita pro odezvu<input name="trigger_entity"></label><label>Související automatizace (volitelné)<input name="automation_entity" placeholder="automation.hads_next_reference_test"></label><button>Uložit monitorovací pravidlo</button></form><form method="post" action="autonomy"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if monitor['autonomous_ai'] else '')+'>Povoluji automaticky zahájit AI vyšetřování nových funkčních incidentů v rámci limitu poskytovatele. Může být zpoplatněné.</label><button>Uložit souhlas s autonomním vyšetřováním</button></form>')
+            return self.send_body(200,'<h1>Sledované funkce</h1><p>Pravidlo popisuje očekávání uživatele. Chyba v logu sama incident nevytváří. Přehrávání sleduji až po skutečném přechodu z hraní; při mezeře v odběru začíná pokrytí znovu.</p><p>'+escape(monitor['last_error'] or ('Odběr funguje.' if monitor['state']=='listening' else 'Odběr dosud není potvrzený.'))+'</p><ul>'+rows+'</ul><form method="post" action="monitors"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>Entita<input name="entity_id" required></label><label>Podmínka<select name="kind"><option value="unavailable">Zůstává nedostupná</option><option value="state">Nedosáhne očekávaného stavu</option><option value="playback">Přehrávání se zastaví</option><option value="response">Po spouštěcí události chybí odezva</option></select></label><label>Očekávaný stav<input name="expected" value="on" required></label><label>Doba v sekundách<input type="number" name="grace_seconds" value="30" min="1" max="3600"></label><label>Spouštěcí entita pro odezvu<input name="trigger_entity"></label><label>Požadovaný nový stav spouštěče (např. on; prázdné pro tlačítko)<input name="trigger_state"></label><label>Související automatizace (volitelné)<input name="automation_entity" placeholder="automation.hads_next_reference_test"></label><button>Uložit monitorovací pravidlo</button></form><form method="post" action="autonomy"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if monitor['autonomous_ai'] else '')+'>Povoluji automaticky zahájit AI vyšetřování nových funkčních incidentů v rámci limitu poskytovatele. Může být zpoplatněné.</label><button>Uložit souhlas s autonomním vyšetřováním</button></form>')
         if path == '/download/companion':
             import io,zipfile
             root=Path('/app/companion')
@@ -224,7 +246,11 @@ class Handler(BaseHTTPRequestHandler):
             suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
             if self.server.app.repairs.status()['enabled']:
                 suggestion_html+='<form method="post" action="../repair/prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><button>Připravit přesnou opravu vlastní testovací reference</button></form>'
-            suggestion_html+='<a href="../export/'+case['incident']['id']+'">Exportovat spis JSON</a>'
+            for target in case['incident']['components']:
+                if target.startswith('automation.'):
+                    suggestion_html+='<form method="post" action="../repair/native_prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><input type="hidden" name="entity_id" value="'+escape(target,quote=True)+'"><label><input type="checkbox" name="exclusive" value="yes" required>Potvrzuji, že tuto světelnou automatizaci nyní nikdo současně neupravuje.</label><button>Připravit ověřené opětovné zapnutí světelné automatizace</button></form>'
+            suggestion_html+='<a href="../setup/lighting">Ověřit a vybrat bezpečný světelný cíl</a>'
+            suggestion_html+='<a href="../export/' +case['incident']['id']+'">Exportovat spis JSON</a>'
             stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
             acknowledge='<label><input type="checkbox" name="ack_unknown" value="yes"> Povolím další pokus i v případě, že předchozí nedokončené modelové volání mohlo být účtováno.</label>' if jobs and jobs[0]['state']=='blocked' else ''
@@ -249,7 +275,7 @@ class Handler(BaseHTTPRequestHandler):
         for c in value['cases']:
             plans=self.server.app.repairs.plans(c['id'])
             jobs=self.server.app.investigations.for_case(c['id'])
-            if any(p['status'] is None or p['status']=='applied_verification_pending' for p in plans) or (jobs and jobs[0]['state'] in {'waiting_for_user','blocked','waiting_for_source'}):waiting.append(c)
+            if any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans) or (jobs and jobs[0]['state'] in {'waiting_for_user','blocked','waiting_for_source'}):waiting.append(c)
         waiting_html=case_cards(waiting)
         options = "".join('<option value="' + escape(e["entity_id"], quote=True) + '"></option>' for e in value["entities"])
         applications = ''.join('<option value="' + escape(a['slug'],quote=True) + '">' + escape(a['name']) + '</option>' for a in value['applications'])
@@ -287,7 +313,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(303);self.send_header('Location','../setup');self.send_header('Content-Length','0');self.end_headers();return
         if not self.authorized():
             return self.send_body(403, "Chybí ověřený ingress uživatel.")
-        if urlsplit(self.path).path.startswith('/repair/') and not self.server.verified_admin(self.headers.get('X-Remote-User-Id'),fresh=True):
+        if (urlsplit(self.path).path.startswith(('/repair/','/acceptance/')) or urlsplit(self.path).path=='/setup/lighting') and not self.server.verified_admin(self.headers.get('X-Remote-User-Id'),fresh=True):
             return self.send_body(403,'Aktuální oprávnění vlastníka nelze potvrdit.')
         if self.headers.get("Content-Type", "").split(";")[0] != "application/x-www-form-urlencoded":
             return self.send_body(415, "Nepodporovaný formát.")
@@ -295,7 +321,7 @@ class Handler(BaseHTTPRequestHandler):
             size = int(self.headers.get("Content-Length", "0"))
             if not 0 < size <= (2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
                 raise ValueError()
-            form = parse_qs(self.rfile.read(size).decode(), max_num_fields=8, strict_parsing=True)
+            form = parse_qs(self.rfile.read(size).decode(), max_num_fields=10, strict_parsing=True)
             if form.get("csrf") != [self.server.csrf]:
                 return self.send_body(403, "Formulář vypršel. Obnov stránku.")
             path = urlsplit(self.path).path
@@ -333,9 +359,24 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.store.record(identity,'repair_suggestion_decision',{'job_id':jobs[0]['id'],'suggestion_id':proposal['suggestion_id'],
                     'decision':choice,'principal':self.headers['X-Remote-User-Id'],'approval_granted':False,'functional_result':'not_verified'})
                 self.send_response(303);self.send_header('Location','../case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/lighting':
+                if form.get('expected')!=['yes']:raise RepairBlocked('Potvrď zamýšlené bezpečné chování.')
+                self.server.app.repairs.allow_automation(form.get('entity_id',[''])[0],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','lighting');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/repair/native_prepare':
+                self.server.app.repairs.prepare_native(form.get('incident_id',[''])[0],form.get('entity_id',[''])[0],self.headers['X-Remote-User-Id'],exclusive=form.get('exclusive')==['yes'])
+            elif path == '/repair/physical':
+                self.server.app.repairs.confirm_physical(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/acceptance/create':
+                identity=self.server.app.acceptance.create(self.headers['X-Remote-User-Id'],isolated_confirmed=form.get('isolated')==['yes'])
+                self.send_response(303);self.send_header('Location','../acceptance?session='+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/acceptance/run':
+                identity=form.get('session_id',[''])[0]
+                self.server.app.acceptance.run(identity,form.get('step',[''])[0],self.headers['X-Remote-User-Id'],{'incident_id':form.get('incident_id',[''])[0],'slug':form.get('slug',[''])[0],'cost_consent':form.get('cost_consent')==['yes']})
+                self.send_response(303);self.send_header('Location','../acceptance?session='+identity);self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/monitors':
                 self.server.app.detection.configure({'entity_id':form.get('entity_id',[''])[0],'kind':form.get('kind',[''])[0],
-                    'expected':form.get('expected',['on'])[0],'grace_seconds':int(form.get('grace_seconds',['30'])[0]),'trigger_entity':form.get('trigger_entity',[''])[0],'automation_entity':form.get('automation_entity',[''])[0]},self.headers['X-Remote-User-Id'])
+                    'expected':form.get('expected',['on'])[0],'grace_seconds':int(form.get('grace_seconds',['30'])[0]),'trigger_entity':form.get('trigger_entity',[''])[0],'automation_entity':form.get('automation_entity',[''])[0],'trigger_state':form.get('trigger_state',[''])[0]},self.headers['X-Remote-User-Id'])
                 self.server.app.detection.start()
                 self.send_response(303);self.send_header('Location','monitors');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/autonomy':
@@ -422,7 +463,9 @@ def main():
     core = CoreReader(SupervisorCoreTransport(token)) if token else None
     ws = CoreWSReader(NativeWebSocket('ws://supervisor/core/websocket',token,supervisor_proxy=True)) if token else None
     supervisor = SupervisorReader(SupervisorTransport(token)) if token else None
-    app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher,runtime_error=runtime_error)
+    from .native_repair import AutomationStateTransport
+    writer=AutomationStateTransport('http://supervisor',token,supervisor=True) if token else None
+    app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher,runtime_error=runtime_error,automation_writer=writer)
     if app.owner():
         app.investigations.zha_observer.start();app.detection.start()
         if app.repairs.status()['enabled']:app.repairs.start()

@@ -249,7 +249,7 @@ class IncidentStore:
         if row is None or row[1] not in statuses:
             raise ValueError('Real Core report must match a persisted functional verification')
         plan = json.loads(row[2])
-        if plan.get('incident_id') != report.get('incident_id') or plan.get('operation') != ('core_managed.replace_entity_reference' if report.get('scope')=='actual_core_managed_reference' else 'core_lab.replace_entity_reference'):
+        if plan.get('incident_id') != report.get('incident_id') or plan.get('operation') not in ({'core_managed.replace_entity_reference','core.enable_lighting_automation'} if report.get('scope')=='actual_core_managed_reference' else {'core_lab.replace_entity_reference'}):
             raise ValueError('Report belongs to another case or operation')
 
     def reopen_for_report(self, incident_id: str, report: dict) -> None:
