@@ -84,3 +84,21 @@ produkční image bez testovacího Core, memory admission 768/512 MiB a restart.
 Finální revize, hashe a výsledky kandidáta jsou v
 `evidence/installation-1.0.0-rc2/ACCEPTANCE.json`. Kandidát je přijatý pouze tehdy,
 pokud tento protokol obsahuje úspěch obou architektur a shodu všech payload souborů.
+
+## Finální dostupný kandidát – 12. 11. 2026
+
+Obě nativní architektury prošly [během 43278689080](https://github.com/OndraMa/HADS/actions/runs/43278689080).
+Testovaný runtime commit: `5fb55e1974e2fd25edde54d4446dcf28ea5d8933`.
+Na každé architektuře prošlo 168 regresních testů, původní Hermes se skutečným
+Core a praktickou nativní operací, produkční image bez testovacího Core,
+paměťová brána a restart. Chromium ověřilo deset pohledů na desktopu a mobilu.
+
+Instalátor obou architektur má shodný SHA-256:
+`e09c1d0a4b7b10775ba2e5ef238a68390316793dadb355074798e3d28e9e7a29`.
+Všechny payload soubory byly porovnány s přesným zdrojovým commitem.
+Protokoly jsou trvale uložené v `evidence/installation-1.0.0-rc2/`.
+
+Uživatel nemá testovací HAOS. [Postup prvního živého ověření](LIVE_WITHOUT_TEST_HAOS_CS.md)
+proto začíná pouze čtením, s vypnutými opravami a AI. Tento kandidát není
+přijatý pro obecné produkční opravy; reálný HAOS, fyzická zařízení, RPi a
+úsudek běžného LLM zůstávají čekající. Žádná placená volání nebyla provedena.

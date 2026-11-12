@@ -1,20 +1,21 @@
-# HADS Next — souhrnné dodání
+# HADS Next — praktický přejímkový kandidát
 
-Aktuální práce je v [PR 7](https://github.com/OndraMa/HADS/pull/7), větev
-**codex/hads-next-final-delivery**. RC3 a staré archivy se nepřepisují.
+Aktuální práce: [PR 8](https://github.com/OndraMa/HADS/pull/8), větev
+**codex/hads-next-practical-acceptance**. Main, RC3 a vydané archivy se nepřepisují.
 
-- [Jeden souhrnný výsledek, přesné stavy funkcí a omezení](hads-next/docs/FINAL_DELIVERY.md)
-- [Instalační kandidát, kompletní ZIP a české návody](KE_STAZENI/HADS_Next_1.0.0-rc1/)
+- [Souhrn změn, ověření a skutečných omezení](hads-next/docs/PRACTICAL_ACCEPTANCE.md)
+- [Instalační kandidát, kompletní ZIP a české návody](KE_STAZENI/HADS_Next_1.0.0-rc2/)
 - [Instalace a první nastavení](hads-next/haos/DOCS.md)
-- [Čekající živá HAOS přejímka](hads-next/docs/haos-acceptance.md)
+- [Pozdější živé ověření bez testovacího HAOS](hads-next/docs/LIVE_WITHOUT_TEST_HAOS_CS.md)
 
-Ve Windows otevři tuto větev v přihlášeném GitHubu a použij Download raw file
-u kompletního ZIPu. Cloudový panel ChatGPT není potřeba. Výchozí main může
-nadále obsahovat starý HADS 4.6.3; není zdrojem aktuálního HADS Next.
+Ve Windows otevři tuto větev v přihlášeném GitHubu a u ZIPu použij Download raw
+file. Cloudový panel ChatGPT není potřeba. Main může obsahovat starý HADS 4.6.3.
 
-Nový systém propojuje vybrané funkční monitory, původní Hermes a broker,
-schválení, atomickou vlastní virtuální referenci, funkční ověření a report.
-**Obecné automatizace domácnosti se nepřepisují.** Plný nativní Core řetězec
-prošel na AMD64 a ARM64 se skriptovaným modelem. Reálný LLM, živý HAOS,
-Supervisor/MA server, fyzická zařízení a RPi 4 / 2 GB stále vyžadují přejímku.
-Nejde o produkčně ověřené vydání. Kandidát je pro oddělený testovací HAOS.
+Nově je připravená praktická oprava mimo HADS virtuální referenci: schvalované
+zapnutí jednoduché světelné automatizace nativní službou, následované skutečným
+triggerem, sledováním a potvrzením vlastníka. Konfigurace se nepřepisuje;
+nativní stavová služba nemá CAS a vyžaduje potvrzenou výlučnou práci s cílem.
+
+Systémová diagnostika, původní Hermes, schvalování, report a živý přejímkový
+průvodce jsou propojené. Skutečný HAOS, fyzická zařízení, RPi a úsudek reálného
+LLM stále potřebují přejímku. Kandidát není produkčně ověřený.
