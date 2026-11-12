@@ -1,24 +1,19 @@
-# HADS Next — integrovaný přejímkový kandidát
+# HADS Next — praktická oprava a řízená přejímka
 
-[Souhrnný výsledek a stav každé funkce](docs/FINAL_DELIVERY.md),
-[nový PR 7](https://github.com/OndraMa/HADS/pull/7),
-[instalace](haos/DOCS.md), [soubory ke stažení](../KE_STAZENI/HADS_Next_1.0.0-rc1/).
+[PR 8](https://github.com/OndraMa/HADS/pull/8),
+[souhrn výsledků](docs/PRACTICAL_ACCEPTANCE.md),
+[český návod](haos/DOCS.md), [stažení](../KE_STAZENI/HADS_Next_1.0.0-rc2/).
 
-Kontinuální monitorovací podmínky → trvalý spis → původní Hermes a další
-skutečná čtení → validovaný návrh → schválení vlastníkem → CAS vlastní virtuální
-reference → skutečná nativní automatizace a funkční sledování → český report.
-Návrat závady znovu otevře stejný spis. UI je responzivní, logy jsou v detailu.
+Systémový incident → původní Hermes a další nativní důkazy → nezávislý plán →
+souhlas vlastníka → pevná nativní aktivace světelné automatizace → skutečný
+trigger, kontext, sledování a fyzické potvrzení → český report. Nově schválený
+návrat vypne budoucí triggery; nevrací fyzické účinky světla. Původní CAS testovací
+reference a bezpečnostní kontroly jsou zachované. Obecné konfigurační zápisy
+jsou zakázané. Nativní stavová služba není config CAS.
 
-Používá se původní RepairEngine/ApprovalAuthority/FunctionalVerifier. Obecný
-Core automation config API nemá CAS, a proto se jím produkční konfigurace
-nepřepisuje. Companion je omezená custom integrace pro vlastní testovací
-referenci; její instalace a každý plán vyžadují vědomé rozhodnutí operátora.
+Regrese: `python scripts/check.py`. Prohlížeč: `python scripts/practical_browser.py`.
+Nativní Core/Hermes a produkční image testuje workflow pro AMD64 a ARM64;
+model je skriptovaný. Nový slug `local_hads_next_practical` zachová staré aplikace.
 
-Z adresáře hads-next lze spustit `python scripts/check.py`. Nativní reprodukce
-je v `lab/README_CS.md`; testy používají skutečný Core a původní Hermes, model
-zůstává skriptovaný. Chromium test: `python lab/browser_probe.py`.
-Neprovedené živé kroky jsou v `docs/haos-acceptance.md`.
-
-Starší 0.1/0.2 a RC3 zůstávají zachované. Nový slug je
-`local_hads_next_acceptance`; historická data se importují neautorizujícím
-schema-1 exportem, nikdy přenosem schválení nebo aktivních zápisů.
+[Živé ověření bez testovacího HAOS](docs/LIVE_WITHOUT_TEST_HAOS_CS.md) začíná pouze
+čtením. Skutečný HAOS, fyzická zařízení, RPi a reálný LLM nejsou dosud přijaté.

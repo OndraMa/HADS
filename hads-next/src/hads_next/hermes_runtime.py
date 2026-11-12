@@ -71,6 +71,9 @@ def run_investigation(jobs,job_id,broker,launcher,model_send,*,model):
         'Při chybějícím zdroji ji uveď jako omezení. Neprohlašuj incident za vyřešený. '
         'Závěr vrať jako JSON: summary_cs, hypotheses:[{claim,evidence_ids,confidence}], needed:[], '
         'next_test_cs, repair_proposal:null nebo objekt s target,change:{from,to},reason,evidence_ids,risk,backup,preconditions,verification,rollback,manual_alternative. '
+        'Před návrhem načti hads_get_supported_repairs a řiď se jeho skutečným katalogem. '
+        'Pro doloženou vypnutou světelnou automatizaci může návrh obsahovat operation:enable_lighting_automation, '
+        'target:automation.entity_id, reason a evidence_ids; konkrétní bezpečnou konfiguraci i záměr vlastníka nezávisle ověří planner. '
         'Pro jinou specializaci zvol hads_select_investigator s konkrétním úkolem a doloženým předáním. '
         'Aktuální role: '+canonical(broker.status())+'. Návrh není schválená oprava. Incident: '+canonical(incident)+'. '
         'Dřívější ověřená čtení po přerušení: '+canonical(job['reads'])[:20000])
@@ -101,7 +104,7 @@ def run_investigation(jobs,job_id,broker,launcher,model_send,*,model):
                 hypothesis['authority']='model_hypothesis_not_functional_verification'
             conclusion=redact(conclusion)
             conclusion['repair_executable']=False
-            conclusion['repair_limitation_cs']='Produkční opravný katalog není aktivní. Návrh není schválení ani příkaz.'
+            conclusion['repair_limitation_cs']='Návrh není schválení ani příkaz. Pouze podporovaný plán po nezávislé kontrole může vlastník samostatně schválit; obecné zásahy jsou zakázané.'
             suggestion=interpret_proposal(conclusion.get('repair_proposal'),jobs.store.case(job['incident_id']))
             conclusion['repair_suggestion']=None if suggestion is None else {'suggestion_id':suggestion.suggestion_id,**suggestion.document}
             unavailable=any(row['result']['status'] in {'unavailable','insufficient_permissions','read_failed','not_read'} for row in job['reads'])

@@ -86,7 +86,7 @@ def project_trace(value):
 # Explicit HADS schemas, not upstream API names. additionalProperties=False is
 # enforced again in dispatch; an LLM schema is not an authorization boundary.
 _PARAMS={
-    'hads_get_incident':{}, 'hads_get_related_incidents':{}, 'hads_get_core_status':{}, 'hads_get_supported_repairs':{},
+    'hads_get_runtime_health':{},'hads_get_incident':{}, 'hads_get_related_incidents':{}, 'hads_get_core_status':{}, 'hads_get_supported_repairs':{},
     'hads_get_entity_registry':{'entity_id':'entity'},'hads_get_device_registry':{'device_id':'id'},
     'hads_get_entity_state':{'entity_id':'entity'},
     'hads_get_entity_history':{'entity_id':'entity','start':'time','end':'time'},
@@ -171,6 +171,16 @@ class EvidenceBroker:
                         devices.update(step.get('event_data',{}).get('device_id',[]))
                         devices.update(step.get('target',{}).get('device_id',[]))
             if args['device_id'] not in devices:raise BrokerDenied('Zařízení není doložené registry ani automatizací tohoto případu.')
+        resolved_automation=args.get('automation_id')
+        if resolved_automation is not None:
+            entities={x for x in case['incident']['components'] if x.startswith('automation.')}
+            known={x.split('.',1)[1] for x in entities}
+            prior={str(e['payload']['data'].get('id')) for e in case['evidence'] if e['kind']=='hads_get_automation_config' and e['source']=='ha_core' and isinstance(e.get('payload',{}).get('data'),dict)}
+            if resolved_automation not in known|prior:raise BrokerDenied('Automatizace není doložená tímto spisem.')
+            if resolved_automation in known and self.core is not None:
+                state=self.core.states('automation.'+resolved_automation)
+                actual=state.get('attributes',{}).get('id') if isinstance(state,dict) else None
+                if isinstance(actual,str) and re.fullmatch(r'[A-Za-z0-9_-]{1,128}',actual):resolved_automation=actual
         reader=None;source='hads_database';value=None;projection=lambda x:x
         if name=='hads_get_music_assistant_diagnostics':
             if self.music is None:return self._result(incident_id,name,'music_assistant_fastmcp','unavailable',None,now,'Music Assistant FastMCP není nastavený. Použij historii HA a logy aplikace přes Supervisor.')
@@ -196,6 +206,10 @@ class EvidenceBroker:
             return self._result(incident_id,name,'zha_event',status,value,now,value['limitation_cs'],observed=observed)
         elif name=='hads_get_owned_reference' and not set(case['incident']['components']) & {'automation.hads_next_reference_test','input_boolean.hads_next_test_target'}:
             raise BrokerDenied('Spis se netýká vlastní testovací reference.')
+        elif name=='hads_get_runtime_health':
+            system=getattr(self,'runtime_system',None)
+            if system is None:return self._result(incident_id,name,'hads_controller','unavailable',None,now,'Měření není dostupné.')
+            source='hads_controller';value=system.status()
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()
@@ -216,11 +230,11 @@ class EvidenceBroker:
         else:
             core={'hads_get_core_status':('config',()),'hads_get_entity_state':('states',(args.get('entity_id'),)),
                 'hads_get_entity_history':('history',(args.get('start'),args.get('entity_id'),args.get('end'))),
-                'hads_get_automation_config':('automation_config',(args.get('automation_id'),))}
+                'hads_get_automation_config':('automation_config',(resolved_automation,))}
             ws={'hads_get_entity_registry':('entity_registry',()),'hads_get_device_registry':('device_registry',()),
                 'hads_get_action_history':('action_history',(args.get('start'),args.get('end'))),
-                'hads_get_automation_traces':('traces',('automation',args.get('automation_id'))),
-                'hads_get_automation_trace':('trace',('automation',args.get('automation_id'),args.get('run_id'))),
+                'hads_get_automation_traces':('traces',('automation',resolved_automation)),
+                'hads_get_automation_trace':('trace',('automation',resolved_automation,args.get('run_id'))),
                 'hads_get_integration_repairs':('repairs',()),'hads_get_system_log':('system_log',()),
                 'hads_get_system_health':('system_health',()),'hads_get_owned_reference':('owned_reference',())}
             supervisor={'hads_get_supervisor_status':('info',()),'hads_get_haos_status':('os_info',()),

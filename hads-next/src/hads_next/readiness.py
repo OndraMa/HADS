@@ -25,6 +25,6 @@ def checklist(app):
         ('AI poskytovatel',model_read,('Přijatá skutečná odpověď poskytovatele; správnost úsudku tím není dokázaná.' if model_read else 'Nastavení existuje; skutečný úspěšný požadavek ověř v konkrétním vyšetřování.' if runtime['provider']['configured'] else 'Poskytovatel není nastavený. Lokální detekce pokračuje.')),
         ('Souhlas s náklady',runtime['provider']['enabled'],'Automatické vyšetřování má navíc vlastní samostatný souhlas.'),
         ('Zálohování',False,'Snapshot jediné reference je ověřen při přípravě plánu. HAOS/OneDrive obnovitelnost není doložená; rizikové operace jsou blokované.'),
-        ('Opravný mechanismus',bool(repairs.get('companion_checked_at')),'Pouze atomická vlastní virtuální reference; obecné editace automatizací nejsou povolené.'),
+        ('Opravný mechanismus',bool(repairs.get('companion_checked_at')) or repairs.get('native_state_targets',0)>0,'Vlastní CAS reference nebo vlastníkem vybraná jednoduchá světelná automatizace. Nativní operace mění pouze aktivaci, nemá config CAS a vyžaduje samostatný souhlas i fyzické potvrzení.'),
         ('První funkční diagnostika',any(c['kind']=='functional_monitor' for c in snapshot['cases']),'Skutečný monitor musí zachytit nesplněnou podmínku; samotné spojení ani modelový závěr ji nenahrazují.')]
     return [{'label':label,'passed':bool(passed),'detail':detail} for label,passed,detail in checks]

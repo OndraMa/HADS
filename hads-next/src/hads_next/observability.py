@@ -405,6 +405,9 @@ class SupervisorReader(_Reader):
     def os_info(self):
         return self._supervised('/os/info')
 
+    def host_info(self):
+        return self._supervised('/host/info')
+
     def app_logs(self, slug):
         if not re.fullmatch(r"[a-z0-9_]+", slug):
             raise ValueError('invalid app slug')

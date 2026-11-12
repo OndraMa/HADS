@@ -90,6 +90,7 @@ async def main():
             from source_contract_probe import prepare_fixture
             prepare_fixture(path)
             import shutil
+            shutil.copytree(Path(__file__).resolve().parent/"practical_light",path/"custom_components/practical_light")
             shutil.copytree(Path(__file__).resolve().parents[1]/"companion/custom_components/hads_reference",path/"custom_components/hads_reference")
             automation={'id':'hads_lab_reference','triggers':[{'trigger':'state','entity_id':'input_button.hads_lab_run'}],
                 'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':'input_boolean.hads_lab_missing'}}]}
@@ -97,7 +98,8 @@ async def main():
                 'event_data':{'device_id':'11111111111111111111111111111111','command':'toggle'}}],
                 'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':'input_boolean.hads_zha_target'}}]}
             managed={'id':'hads_next_reference_test','alias':'HADS Next reference test','triggers':[{'trigger':'state','entity_id':'input_button.hads_next_test_run'}],'actions':[{'action':'input_boolean.turn_on','target':{'entity_id':"{{ states('sensor.hads_next_test_reference') }}"}}]}
-            (path/'automations.yaml').write_text(yaml.safe_dump([automation,zha,managed]))
+            lighting={'id':'173100000001','alias':'Entry lighting','triggers':[{'trigger':'state','entity_id':'input_button.entry_button'}],'actions':[{'action':'light.turn_on','target':{'entity_id':'light.entry_lamp'}}]}
+            (path/'automations.yaml').write_text(yaml.safe_dump([automation,zha,managed,lighting]))
             (path/'configuration.yaml').write_text('''homeassistant:
   name: HADS native investigation lab
   latitude: 0
@@ -119,6 +121,8 @@ logbook:
 system_health:
 system_log:
 repairs:
+light:
+  - platform: practical_light
 media_player:
   - platform: hads_lab_player
 automation: !include automations.yaml
@@ -131,6 +135,7 @@ input_boolean:
   hads_zha_target:
     initial: false
 input_button:
+  entry_button:
   hads_next_test_run:
   hads_lab_run:
 ''')
@@ -143,7 +148,7 @@ input_button:
                 await core_config.async_process_ha_core_config(hass,config['homeassistant'])
                 from homeassistant.helpers.recorder import async_initialize_recorder
                 async_initialize_recorder(hass)
-                for domain in ('homeassistant','http','websocket_api','api','config','recorder','history','logbook','system_health','system_log','repairs','input_boolean','input_button','media_player','hads_reference','automation'):
+                for domain in ('homeassistant','http','websocket_api','api','config','recorder','history','logbook','system_health','system_log','repairs','input_boolean','input_button','media_player','light','hads_reference','automation'):
                     assert await async_setup_component(hass,domain,config),domain
                 user=await hass.auth.async_create_user('Native lab admin',group_ids=['system-admin'])
                 refresh=await hass.auth.async_create_refresh_token(user,client_id='https://hads-lab.invalid/')
@@ -241,6 +246,9 @@ input_button:
                     from managed_delivery_probe import exercise_managed
                     result['final_delivery']=await exercise_managed(hass,core,ws,launcher,path,user,models,'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions')
                     assert result['final_delivery']['passed']
+                    from practical_acceptance_probe import exercise_practical
+                    result['practical_acceptance']=await exercise_practical(hass,core,ws,launcher,path,user,models,'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions',token)
+                    assert result['practical_acceptance']['passed']
                 finally:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()

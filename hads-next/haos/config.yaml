@@ -1,8 +1,8 @@
 name: "HADS Next – vývojová přejímka"
-version: "1.0.0-rc1"
-slug: "hads_next_acceptance"
-description: "Funkční monitory, původní Hermes a schvalované vlastní testovací reference. Omezený kandidát pro HAOS přejímku."
-url: "https://github.com/OndraMa/HADS/tree/codex/hads-next-final-delivery/hads-next"
+version: "1.0.0-rc2"
+slug: "hads_next_practical"
+description: "Systémová diagnostika, původní Hermes, schvalované zapnutí světelné automatizace a řízená HAOS přejímka."
+url: "https://github.com/OndraMa/HADS/tree/codex/hads-next-practical-acceptance/hads-next"
 arch:
   - aarch64
   - amd64

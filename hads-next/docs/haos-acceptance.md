@@ -52,3 +52,22 @@ výsledek ČEKÁ, nikoli PASS.
 Celkové přijetí vyžaduje skutečné výsledky a důkazy všech relevantních řádků.
 Neprovedený řádek se nesmí odvodit z počtu unit testů. Produkční použití je
 následné samostatné rozhodnutí vlastníka po živé přejímce.
+
+## Praktická přejímka po kritické kontrole RC1
+
+Aktuální postup a přesné limity: [PRACTICAL_ACCEPTANCE.md](PRACTICAL_ACCEPTANCE.md)
+a [instalační a uživatelský návod](../haos/DOCS.md). Nový slug je
+`local_hads_next_practical`; předchozí `local_hads_next_acceptance` se nepřepisuje.
+Přejímku založ v rozhraní a její URL si ulož pro kontrolu persistence po restartu.
+Každý ze dvanácti kroků potřebuje vlastní skutečný test. Export protokolu je
+anonymizovaný; export celého spisu za anonymní nepovažuj.
+
+Pro Raspberry Pi 4 / 2 GB zaznamenej před startem HADS běžnou odezvu Core,
+volnou RAM a souběžné aplikace. Potom ponech AI vypnutou alespoň 30 minut,
+spusť zero-model Hermes probe a následně vědomě jedno vyšetřování. Z exportu
+zaznamenej RSS/peak řadiče, peak workeru, available bytes, CPU a Core latency.
+Srovnej stejné Core čtení před a během zátěže; jediný vzorek není důkaz nulového
+dopadu. Prověř restart aplikace a trvalý otevřený spis. Nedostatek rezervy
+576 MiB musí blokovat nový worker při zachované deterministické diagnostice.
+Nezatěžuj skutečnou domácnost umělým vyčerpáváním paměti. Kontejnerové ověření
+768/512 MiB je oddělený test brány, nikoli měření Raspberry Pi.

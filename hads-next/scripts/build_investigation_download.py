@@ -48,8 +48,8 @@ def build(ref, package, output, version=VERSION):
             if data != original or hashlib.sha256(data).hexdigest() != metadata["sha256"]:
                 raise ValueError("Payload source mismatch: " + name)
         assets["HADS_Next_" + VERSION + "-navod-CS.md"] = archive.extractfile("DOCS.md").read()
-    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
-    if VERSION=="1.0.0-rc1":
+    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/PRACTICAL_ACCEPTANCE.md" if VERSION=="1.0.0-rc2" else "hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
+    if VERSION in {"1.0.0-rc1","1.0.0-rc2"}:
         companion=io.BytesIO()
         with tarfile.open(fileobj=io.BytesIO(assets[source]),mode="r:gz") as archive,zipfile.ZipFile(companion,"w",compression=zipfile.ZIP_DEFLATED) as target:
             for member in archive:
@@ -75,6 +75,9 @@ def build(ref, package, output, version=VERSION):
         "Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.\n"
         "Návody a stav přejímky čti nejprve v kořeni tohoto balíčku.\n")
     if VERSION=="1.0.0-rc1":quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné produkční zápisy jsou zakázané.");quick+="\nJediná podporovaná zapisovací oprava mění vlastní virtuální referenci přes companion CAS. Potřebuje instalaci přiložené integrace a zvláštní schválení každého plánu. Nativní automatizace se obecně nepřepisují.\n"
+    if VERSION=="1.0.0-rc2":
+        quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné a rizikové zápisy jsou zakázané.")
+        quick+="\nPraktická oprava umí po přesném schválení zapnout vybranou jednoduchou světelnou automatizaci nativní službou. Konfiguraci nepřepisuje; služba nemá CAS. Potřebuje výlučnou práci s cílem a funkční i fyzické ověření. Návrat vypne budoucí triggery, nevrací fyzické účinky. Živá přejímka je v UI.\n"
     assets["CTI_ME_NEJDRIVE_CS.txt"] = quick.encode("utf-8-sig")
     files = dict(assets)
     with zipfile.ZipFile(io.BytesIO(git("archive", "--format=zip", "--prefix=zdrojovy-repozitar/", commit))) as archive:
@@ -110,7 +113,7 @@ def build(ref, package, output, version=VERSION):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ref", default="HEAD")
-    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1"])
+    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1","1.0.0-rc2"])
     parser.add_argument("--package-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()

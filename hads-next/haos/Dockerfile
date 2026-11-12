@@ -46,7 +46,7 @@ RUN --mount=type=bind,source=.,target=/source,readonly \
       if [ -f /run/secrets/proxy_ca ]; then export SSL_CERT_FILE=/run/secrets/proxy_ca; fi; \
       python /source/lab/install_frontend.py; \
     fi; \
-    cp -a /source/hads_next /app/hads_next; cp /source/run.sh /run.sh; cp -a /source/companion /app/companion; \
+    cp -a /source/hads_next /app/hads_next; cp /source/run.sh /run.sh; if [ -f /source/PACKAGE_MANIFEST.json ]; then cp /source/PACKAGE_MANIFEST.json /app/PACKAGE_MANIFEST.json; chmod 644 /app/PACKAGE_MANIFEST.json; fi; cp -a /source/companion /app/companion; \
     for file in __init__.py hermes_worker.py hermes_sandbox.py worker_protocol.py; do \
       cp /app/hads_next/"$file" /opt/hermes-root/app/hads_next/"$file"; done; \
     find /app/hads_next /app/companion /opt/hermes-root/app -type d -exec chmod 755 {} +; \

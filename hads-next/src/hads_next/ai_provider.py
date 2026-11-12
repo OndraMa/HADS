@@ -66,6 +66,10 @@ class AIProvider:
                 'model':value['model'] if value else '', 'max_model_calls_per_case':8,'daily_model_call_limit':12,
                 'max_output_tokens_per_call':1024,'oauth_supported':False,'last_error':self._load_error}
 
+    def fingerprint(self):
+        import hashlib
+        with self.lock:return hashlib.sha256(json.dumps(self._settings,sort_keys=True).encode()).hexdigest()
+
     def sender(self):
         # Bind endpoint, key and model for the entire immutable job policy. An
         # owner editing settings mid-run cannot send an old key to a new host.

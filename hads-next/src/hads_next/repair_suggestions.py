@@ -14,11 +14,11 @@ from .observability import redact
 
 
 def supported_catalog():
-    return {'production_operations':[],'managed_test_operations':[{'operation':'replace_managed_reference','scope':'integration_owned_virtual_test_reference','server_atomic_CAS':True,'approval_required':True,'companion_required':True}],
+    return {'production_operations':[],'native_operations':[{'operation':'enable_lighting_automation','scope':'owner_selected_single_light_state_automation','approval_required':True,'physical_confirmation_required':True,'native_config_write':False,'atomic_CAS':False,'exclusive_editor_confirmation_required':True,'rollback':'disable_future_triggers_only','trigger':'binary_sensor_to_on_or_input_button','action':'light.turn_on_on_one_explicit_light'}],'managed_test_operations':[{'operation':'replace_managed_reference','scope':'integration_owned_virtual_test_reference','server_atomic_CAS':True,'approval_required':True,'companion_required':True}],
         'laboratory_operations':[{'operation':'replace_entity_reference','scope':'isolated_fixture_or_disconnected_virtual_Core_only',
             'approval_required':True,'backup':'verified_single_object_snapshot','functional_verification_required':True,
             'rollback':'single_object_with_separate_approval'}],
-        'production_limitation_cs':'V provozní HAOS aplikaci není aktivní žádný zapisovací opravný adaptér. Nepodporované opravy mají ruční postup nebo další test.'}
+        'production_limitation_cs':'Dostupná je pouze vlastní CAS testovací reference a zvlášť povolené nativní zapnutí jednoduché světelné automatizace. Obecné konfigurační a rizikové zásahy jsou zakázané; živá přejímka čeká.'}
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,7 @@ class RepairSuggestion:
 
 def interpret_proposal(proposal,case):
     if proposal is None:return None
+    if isinstance(proposal,dict) and proposal.get('operation')=='enable_lighting_automation':return native_enable_suggestion(proposal,case)
     base={'schema':1,'incident_id':case['incident']['id'],'production_executable':False,
         'status':'manual_or_test_required','summary_cs':'Návrh není dostatečně doložený pro podporovanou opravu.',
         'manual_steps_cs':['Ověř zamýšlené chování a doplň chybějící důkazy. Žádná automatická změna není připravena.'],
@@ -111,3 +112,13 @@ def prepare_reference_plan(suggestion,planner,filename,*,watch_seconds=30):
     if fresh.get('id')!=document['target']:raise RepairBlocked('Cíl plánovače neodpovídá konkrétnímu návrhu.')
     return planner.prepare_entity_reference(document['incident_id'],filename,document['change']['from'],document['change']['to'],
         document['evidence_ids'],document['reason'],watch_seconds=watch_seconds,target_state=document['verification']['expected_state'])
+
+
+def native_enable_suggestion(proposal,case):
+    target=proposal.get('target');cited=proposal.get('evidence_ids',[])
+    evidence={e['evidence_id']:e for e in case['evidence']}
+    valid=isinstance(target,str) and re.fullmatch(r'automation\.[a-z0-9_]+',target) and target in case['incident']['components'] and isinstance(cited,list) and bool(cited) and all(isinstance(x,str) and x in evidence for x in cited)
+    state=[e for e in case['evidence'] if e['source']=='ha_core' and e['kind']=='hads_get_entity_state' and e['payload'].get('data',{}).get('entity_id')==target]
+    valid=valid and bool(state) and state[-1]['payload']['data'].get('state')=='off'
+    document={'schema':1,'incident_id':case['incident']['id'],'status':'supported_native_candidate' if valid else 'manual_or_test_required','production_executable':False,'target':target if valid else '','summary_cs':'Vypnutá automatizace může být kandidátem opětovné aktivace. Vlastník musí potvrdit záměr; přesný světelný katalog ověří čerstvou úplnou konfiguraci.' if valid else 'Chybí aktuální důkaz vypnuté automatizace nebo platné citace.','manual_steps_cs':['V HA zkontroluj, zda má být tato automatizace zapnutá.','Ověř jedinou světelnou akci a spouštěč; složitou konfiguraci tento katalog nemění.','Po schválení proveď skutečný trigger a potvrď reakci světla.'],'evidence_ids':cited if valid else [],'approval_required':True}
+    return RepairSuggestion(canonical(document))

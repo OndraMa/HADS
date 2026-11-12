@@ -234,6 +234,9 @@ class RepairEngine:
                          "scope": self._snapshot_scope, "rollback_of": rollback_of},
             "manual_alternative": self._manual_alternative(filename, expected_old, new_entity_id),
         }
+        return self._register_plan(document,raw)
+
+    def _register_plan(self, document, raw):
         plan = RepairPlan(canonical(document))
         conn = connect(self.db_path)
         try:
@@ -254,10 +257,15 @@ class RepairEngine:
             raise RepairBlocked("Operace nebo kořen nemá oprávnění.")
         if document["backup"]["onedrive_required"] or document["risk"] != self._risk:
             raise RepairBlocked("Rizikový zásah vyžaduje nezávisle ověřenou obnovitelnou OneDrive zálohu; není podporován.")
-        changed = self._change_entity(document["original"], self._entity(document["proposed"]))
-        if changed != document["proposed"] or digest(row["snapshot"]) != document["original_sha256"]:
+        if not self._valid_transition(document["original"],document["proposed"]) or digest(row["snapshot"]) != document["original_sha256"]:
             raise RepairBlocked("Plán obsahuje změny mimo jediný podporovaný odkaz nebo neplatnou zálohu.")
         return document
+
+    def _readback_matches(self,proposed,current):
+        return current==proposed
+
+    def _valid_transition(self,original,proposed):
+        return self._change_entity(original,self._entity(proposed))==proposed
 
     def execute(self, plan: RepairPlan, token: str, *, principal: str, after_intent=None) -> ExecutionResult:
         # Keep a process-safe filesystem lock through preflight, intent and readback.
@@ -306,7 +314,7 @@ class RepairEngine:
             if after_intent:
                 after_intent()
             self._replace(document["target"]["filename"], canonical(document["proposed"]).encode())
-            if json.loads(self._read(document["target"]["filename"])) != document["proposed"]:
+            if not self._readback_matches(document["proposed"],json.loads(self._read(document["target"]["filename"]))):
                 raise RepairBlocked("Zápis nesplnil kontrolu přesného obsahu.")
             done = self.clock()
             conn.execute("UPDATE repair_executions SET status='applied_verification_pending',completed_at=? WHERE id=?",
