@@ -92,6 +92,19 @@ class IngressTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 transport(path)
 
+    def test_health_case_has_native_read_next_step_and_no_unrelated_lighting_repair(self):
+        self.app.enroll_owner('owner-id')
+        self.app.system._finding('health:marketplace','system_health_failure','Obecný starý symptom.',
+            ['integration:marketplace'],{'domain':'marketplace','failed_fields':['github_web']})
+        case=self.app.snapshot()['cases'][0];before=self.app.store.export(case['id'])
+        status,page=self.request('GET','/case/'+case['id'])
+        self.assertEqual(status,200);self.assertIn('kontrola přístupu k webu GitHubu',page)
+        self.assertIn('Zopakovat nativní diagnostiku bez AI',page)
+        self.assertNotIn('Ověřit a vybrat bezpečný světelný cíl',page)
+        self.assertNotIn('Připravit přesnou opravu',page)
+        self.assertEqual(before,self.app.store.export(case['id']))
+        self.assertEqual(self.request('POST','/setup/check',urlencode({'csrf':'forged'}))[0],403)
+
     def test_public_research_consent_and_cancel_routes_require_owner_and_csrf(self):
         self.app.enroll_owner('owner-id')
         self.assertFalse(self.app.investigations.research.enabled())
