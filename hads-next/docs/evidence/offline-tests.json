@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-11-13T06:19:27.754082+00:00",
+  "recorded_at": "2026-11-13T06:22:25.702682+00:00",
   "scope": "offline",
   "live_haos": false,
   "python": "3.12.14",
@@ -12,7 +12,7 @@
   "input_sha256": {
     "companion/custom_components/hads_reference/__init__.py": "fe4012b0a6ace28894bf2f31e4044a38f252462fdd0517c950bfd1369ff89225",
     "scripts/build_download_bundle.py": "d70fc42305a2d1f8e4f615e1b0f9f5c8100e3559e02d0a3e78aa72dd31c9009d",
-    "scripts/build_haos_installer.py": "f47b10d8dd5c3c860a63f43657a302c7da5eb2d6bc56c2c191bc05ae7db344dc",
+    "scripts/build_haos_installer.py": "0f8a2c19bb2ac7f9efb73a3ec602484a98adb3c99c73c86edea43464e4dc5565",
     "scripts/build_investigation_download.py": "90943da9ae84f76a3b84ce41624d330c899ca10827c83d89939ddfc6f126c03a",
     "scripts/check.py": "2a045c94e4b0b316be75513e9be53c9319f8c7c0fa4dc358dafdf98be461bc62",
     "scripts/export_previous_next.py": "57280f42c85551efcc03274947e03790b3b39db27ccd7fdbd435933a68f2e021",

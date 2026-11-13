@@ -111,7 +111,10 @@ elif [ -d /addons ] && [ ! -L /addons ]; then APP_ROOT=/addons
 else echo 'Chybí připojený adresář /local_apps nebo /addons. Nic neměním.' >&2; exit 1
 fi
 TARGET="$APP_ROOT/@@SLUG@@"
-
+if [ "$MODE" = '--install-dev' ] && { [ -e "$TARGET" ] || [ -L "$TARGET" ]; }; then
+  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC2 použij --upgrade-rc2.' >&2
+  exit 1
+fi
 if ha apps --help >/dev/null 2>&1; then APP_COMMAND=apps
 elif ha addons --help >/dev/null 2>&1; then APP_COMMAND=addons
 else echo 'HA CLI neposkytuje podporovanou správu aplikací.' >&2; exit 1
