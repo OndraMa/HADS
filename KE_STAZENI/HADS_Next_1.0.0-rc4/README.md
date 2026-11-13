@@ -1,8 +1,7 @@
 # HADS Next RC4 — HADS provádí diagnostická čtení samo
 
-Pracovní kandidát: dokončuje se přejímka opravy souběhu při startu. Pro instalaci
-vyčkej na vydání označené tagem `hads-next-1.0.0-rc4`; tyto pracovní soubory se
-před prvním vydáním nahradí přesnými nově ověřenými bytes.
+Vydání `hads-next-1.0.0-rc4`: instalační kandidát s dokončenou izolovanou
+a nativní kontejnerovou přejímkou. Živá HAOS přejímka zůstává otevřená.
 
 [Instalační skript](HADS_Next_install_1.0.0-rc4.sh) ·
 [Kompletní ZIP se zdroji a návody](HADS_Next_1.0.0-rc4-komplet.zip) ·
@@ -39,10 +38,10 @@ Při 373 MiB nadále platí paměťová brána 576 MiB: HADS samo prověří pro
 nepředstírá spuštěný Hermes a neobchází ochranu.
 
 [PR #13](https://github.com/OndraMa/HADS/pull/13) ·
-[ARM64 + AMD64 přejímka](https://github.com/OndraMa/HADS/actions/runs/43436851932) ·
-[16 desktopových/mobilních zobrazení](https://github.com/OndraMa/HADS/actions/runs/43436851956)
+[ARM64 + AMD64 přejímka](https://github.com/OndraMa/HADS/actions/runs/43442196703) ·
+[16 desktopových/mobilních zobrazení](https://github.com/OndraMa/HADS/actions/runs/43442203778)
 
-Na každé architektuře 223 testů, skutečný Core 2026.11.0 a původní izolovaný
+Na každé architektuře 224 testů, skutečný Core 2026.11.0 a původní izolovaný
 Hermes se skriptovaným místním HTTPS modelem. Omezený režim skutečně zvládl dvě
 čtení ve třech modelových voláních a odmítl čtvrté. Zabalená služba ukončila
 SIGTERM s kódem 0 a zachovala případ po restartu. Aktualizátor byl ověřen se
@@ -50,9 +49,9 @@ skutečnými vydanými RC3 zdroji a falešným HA CLI/Supervisorem. Obě archite
 vytvořily shodný instalační soubor i zdrojový archiv; payload je byte po bytu
 porovnaný s přesným Git commitem.
 
-Testovaný zdroj: `1c5db118a861a0a89edf50dc636fc2d6657e1e60`.
+Testovaný zdroj: `cae2eabf1287ef4d952e66df4c1ffa79033b4ede`.
 SHA-256 instalátoru:
-`35307113c7b26bd82b1b6c93c547ed4152eff6e94f576d68565adbe79368a593`.
+`1499885b48e763e97c0d8f5047b20e83b374dbffc03a3850b9e433c7f22fd375`.
 
 Živá aktualizace/restore HAOS, původní Hermes při zátěži této domácnosti,
 skutečný LLM, MA FastMCP a fyzické rádio/Zigbee stále čekají na ověření.

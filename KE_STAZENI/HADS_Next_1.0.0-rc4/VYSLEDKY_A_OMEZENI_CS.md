@@ -59,6 +59,20 @@ s původním izolovaným Hermesem. AI endpoint je lokální skriptovaný HTTPS s
 ne skutečný placený LLM. Samostatný test musí prokázat dvě čtení řízená skutečným
 Hermesem v rozpočtu tří volání a odmítnutí čtvrtého před odesláním.
 
+Přejímka poslední zdrojové revize `cae2eabf1287ef4d952e66df4c1ffa79033b4ede`
+prošla: 224 offline a bezpečnostních testů na každé architektuře, skutečný Core
+a izolovaný původní Hermes na nativních ARM64 i AMD64 a 16 zobrazení rozhraní.
+Omezený test skutečně provedl dvě čtení ve třech modelových požadavcích; čtvrtý
+byl odmítnut před sítí. Kontejner zvládl SIGTERM s kódem 0 a uchoval případ po
+restartu. Instalační soubor i zdrojový archiv vyšly na obou architekturách
+shodně; všech 53 souborů vloženého payloadu je porovnáno s přesnou Git revizí.
+Test startovního souběhu ověřuje načtení Core bez ručního obnovování.
+
+Reprodukovatelné výsledky:
+[nativní přejímka](https://github.com/OndraMa/HADS/actions/runs/43442196703),
+[prohlížeč](https://github.com/OndraMa/HADS/actions/runs/43442203778),
+`docs/evidence/installation-1.0.0-rc4/ACCEPTANCE.json` a přiložené protokoly.
+
 Živá HAOS aktualizace, záloha/restore na cílové instalaci, RPi při aktuální
 zátěži, skutečná dostupnost Marketplace, MA FastMCP, fyzické rádio/Zigbee a reálný
 úsudek placeného modelu stále potřebují přejímku. Podporované opravy mají nadále
