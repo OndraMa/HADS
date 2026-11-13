@@ -39,7 +39,7 @@ class SystemDiagnostics:
         with self.app.store._connect() as db:update=db.execute("SELECT document,changed_at FROM health_observations WHERE key='last-update'").fetchone()
         if update and 0<=now-update[1]<=86400:
             self.app.store.record(incident['id'],'version_correlation',{'version_change':json.loads(update[0]),'changed_at':update[1],'causality_proven':False})
-        if kind not in {'automation_reference','source_unavailable'} and self.app.detection.snapshot()['autonomous_ai']:
+        if kind not in {'automation_reference','source_unavailable','application_failure'} and self.app.detection.snapshot()['autonomous_ai']:
             try:self.app.investigations.start(incident['id'],self.app.owner())
             except ValueError:pass
     def sample_resources(self):
@@ -95,7 +95,8 @@ class SystemDiagnostics:
                     for item in apps['addons'][:64]:
                         if not isinstance(item,dict) or not isinstance(item.get('slug'),str):continue
                         slug=item['slug'];state=item.get('state')
-                        # stopped may be intentional; only explicit error is automatic failure.
+                        # Even error/failed may follow an intentional stop. Preserve the
+                        # observation; it alone neither proves impact nor authorizes AI.
                         self._finding('app:'+slug,'application_failure','Aplikace hlásí neúspěšný běh.',['supervisor',slug],{'slug':slug,'state':state,'version':item.get('version')},active=state in {'error','failed'})
             self._finding('native-api-access','source_unavailable','Nativní diagnostická API neposkytují ověřitelné údaje.',['homeassistant','supervisor'] if len(failures)>1 else failures,{'failed_sources':failures,'common_root_cause_proven':False},active=bool(failures))
             if self.app.core_ws:
