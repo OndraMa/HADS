@@ -258,50 +258,18 @@ class Handler(BaseHTTPRequestHandler):
             stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
             acknowledge='<label><input type="checkbox" name="ack_unknown" value="yes"> Povolím další pokus i v případě, že předchozí nedokončené modelové volání mohlo být účtováno.</label>' if jobs and jobs[0]['state']=='blocked' else ''
-            return self.send_body(200,'<!doctype html><html lang="cs"><meta charset="utf-8"><h1>' + escape(case['incident']['symptom'])
-                +'</h1><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul>'+stop_form+'<details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
+            from .dashboard import case_title,case_summary
+            title=case_title(case['incident'],self.server.app.snapshot()['applications'])
+            return self.send_body(200,'<!doctype html><html lang="cs"><meta charset="utf-8"><h1>' + escape(title)
+                +'</h1><p>'+escape(case_summary(case['incident']))+'</p><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul>'+stop_form+'<details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
                 + '<h2>Pracovní závěr</h2><p>' + escape(result.get('summary_cs','Vyšetřování ještě nemá závěr.'))
                 + '</p><h2>Další potřebné důkazy</h2><ul>' + ''.join('<li>'+escape(str(x))+'</li>' for x in result.get('needed',[]))
                 + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p>'+suggestion_html+'<p>'+('Funkční podmínka byla ověřena; report je v historii.' if case['incident']['status']=='resolved' else 'Případ zůstává otevřený do ověření funkční podmínky.')+'</p><details><summary>Technické důkazy spisu</summary><pre>'
                 + escape(json.dumps(case,ensure_ascii=False,indent=2)) + '</pre></details></html>')
         if path not in {"/", "/index.html"}:
             return self.send_body(404, "Stránka nebyla nalezena.")
-        value = self.server.app.snapshot()
-        core = value["core"]
-        health=value["system_health"]
-        health_text=("Celkový stav zatím není ověřený." if health["last_check_at"] is None else "Prověřuji "+str(health["active_findings"])+" podložených systémových nálezů. Nepřečtené zdroje zůstávají neověřené." if health["active_findings"] else "Poslední dostupná strukturovaná čtení neukazují aktivní systémový nález. Neověřené zdroje tím nejsou potvrzené jako zdravé.")
-        text = "Čtení Core funguje." if core["available"] else core["last_error"] or "Čtení Core čeká."
-        cases = "".join('<article><h3>' + escape(c["symptom"]) + '</h3><p>Výskytů: ' + str(c["occurrence_count"]) +
-            '</p><a href="case/' + escape(c["id"], quote=True) + '">Otevřít důkazy spisu</a></article>' for c in value["cases"] if c["status"]=="open")
-        def case_cards(rows):
-            return ''.join('<article><h3>'+escape(c['symptom'])+'</h3><p>Výskytů: '+str(c['occurrence_count'])+'</p><a href="case/'+c['id']+'">Otevřít spis a reporty</a></article>' for c in rows)
-        resolved=case_cards([c for c in value['cases'] if c['status']=='resolved'])
-        recurring=case_cards([c for c in value['cases'] if c['occurrence_count']>1])
-        waiting=[]
-        for c in value['cases']:
-            plans=self.server.app.repairs.plans(c['id'])
-            jobs=self.server.app.investigations.for_case(c['id'])
-            if any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans) or (jobs and jobs[0]['state'] in {'waiting_for_user','blocked','waiting_for_source'}):waiting.append(c)
-        waiting_html=case_cards(waiting)
-        options = "".join('<option value="' + escape(e["entity_id"], quote=True) + '"></option>' for e in value["entities"])
-        applications = ''.join('<option value="' + escape(a['slug'],quote=True) + '">' + escape(a['name']) + '</option>' for a in value['applications'])
-        body = '''<!doctype html><html lang="cs"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HADS Next</title><style>body{font:17px/1.6 system-ui;margin:2rem auto;padding:0 1rem;max-width:960px;color:#182638;background:#f3f5f7}article,form{background:white;padding:1rem;margin:1rem 0;border:1px solid #ccd6df;border-radius:6px}input,textarea,button{font:inherit;padding:.5rem;box-sizing:border-box;max-width:100%}input,textarea{width:100%}button{background:#12695f;color:white;border:0;border-radius:4px;cursor:pointer}.notice{border-left:4px solid #b36b12;padding:1rem;background:#fff7e8}a{color:#12695f}</style>
-<h1>HADS Next</h1><p class="notice">Vývojová verze ''' + VERSION + '''. Hermes vyžaduje izolovaný runtime a výslovně povoleného poskytovatele AI. Obecné zásahy jsou zakázané. Katalog vlastní testovací reference má samostatné schvalování; HAOS přejímka čeká.</p>
-<nav><a href="./">Moje domácnost</a> · <a href="#investigation">Vyšetřování</a> · <a href="#waiting">Čeká na mě</a> · <a href="#resolved">Opraveno</a> · <a href="#recurring">Opakující se problémy</a> · <a href="setup">Agenti a zdroje</a> · <a href="#investigation">Historie</a></nav>
-<h2>Jak zdravý je Home Assistant</h2><p>'''+escape(health_text)+'''</p><h2>Co je dostupné</h2><p>''' + escape(text) + '</p><p>Načtených entit: ' + str(core["entity_count"]) + ". Samotná nedostupnost entity neurčuje příčinu závady.</p>" + '''
-<form method="post" action="read"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''"><button>Obnovit čtení Core</button><p>Nejvýše jednou za minutu.</p></form>
-<h2 id="investigation">Co nefunguje a co HADS vyšetřuje</h2>''' + (cases or "<p>Zatím nebyl nahlášen žádný funkční incident.</p>") + '''
-<h2>Nahlásit problém</h2><form method="post" action="incident"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''">
-<label>Co se stalo?<textarea name="symptom" maxlength="1000" required placeholder="Rádio se právě samo vypnulo."></textarea></label>
-<label>Kdy se to stalo? Časové pásmo ''' + escape(value['timezone']) + '''. Pro právě probíhající problém nechej prázdné.<input type="datetime-local" name="occurred_at"></label>
-<label>Dotčená entita<input name="entity_id" list="entities" maxlength="200" required placeholder="media_player.radio"></label><datalist id="entities">''' + options + '''</datalist><button>Uložit incident a přečíst historii</button></form>
-<h2>Vyšetřit aplikaci HAOS</h2><form method="post" action="incident/app"><input type="hidden" name="csrf" value="''' + self.server.csrf + '''"><label>Aplikace<select name="slug" required>''' + applications + '''</select></label><label>Co nefunguje?<input name="symptom" required maxlength="1000"></label><button>Načíst stav, statistiky a protokol aplikace</button></form>
-<h2 id="waiting">Co ode mě potřebuje</h2><p>Ve spisu najdeš přesný plán, chybějící souhlas nebo požadovaný funkční test.</p>''' + (waiting_html or "<p>Žádná čekající rozhodnutí.</p>") + '''
-<h2 id="resolved">Co se podařilo vyřešit</h2><p>Zobrazují se pouze spisy uzavřené funkčním ověřením.</p>''' + (resolved or "<p>Dosud žádný ověřený výsledek.</p>") + '''
-<h2 id="recurring">Co se opakuje</h2><p>Skutečné další výskyty mají vlastní čas; opakované načtení stejného důkazu je nepřidává.</p>''' + (recurring or "<p>Zatím nejsou opakované případy.</p>") + '''
-<details><summary>Technický stav čtení</summary><pre>''' + escape(json.dumps(core, ensure_ascii=False, indent=2)) + "</pre></details></html>"
-        self.send_body(200, body)
+        from .dashboard import render_dashboard
+        self.send_body(200,render_dashboard(self.server.app,self.server.csrf))
 
     def do_POST(self):
         if urlsplit(self.path).path == '/setup/enroll':

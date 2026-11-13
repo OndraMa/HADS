@@ -21,7 +21,7 @@ def checklist(app):
         ('Supervisor a HAOS',source('supervisor') and source('haos'),'Přístup k API nestačí; oba zdroje se musejí skutečně přečíst.'),
         ('Diagnostické zdroje',any(x.get('read_succeeded') for x in sources.values()),str(sum(bool(x.get('read_succeeded')) for x in sources.values()))+' úspěšných čtení; detaily a mezery jsou níže.'),
         ('Hermes runtime',runtime['runtime_probe']['state']=='ready',runtime['runtime_probe']['summary_cs']),
-        ('Volná paměť',memory is not None and memory>=576*1024*1024,('Nezjištěná' if memory is None else str(memory//(1024*1024))+' MiB')+'; rezerva 576 MiB zůstává povinná a znovu se kontroluje před workerem.'),
+        ('Volná paměť',memory is not None and memory>=576*1024*1024,('Nezjištěná' if memory is None else str(memory//(1024*1024))+' MiB')+'; rezerva 576 MiB zůstává povinná a znovu se kontroluje před workerem. '+('Nad hranicí zbývá '+str((memory-576*1024*1024)//(1024*1024))+' MiB. Tento údaj nezaručuje připravenost při zátěži.' if memory is not None and memory>=576*1024*1024 else 'Bez splněné rezervy se nový worker nespustí.')),
         ('AI poskytovatel',model_read,('Přijatá skutečná odpověď poskytovatele; správnost úsudku tím není dokázaná.' if model_read else 'Nastavení existuje; skutečný úspěšný požadavek ověř v konkrétním vyšetřování.' if runtime['provider']['configured'] else 'Poskytovatel není nastavený. Lokální detekce pokračuje.')),
         ('Souhlas s náklady',runtime['provider']['enabled'],'Automatické vyšetřování má navíc vlastní samostatný souhlas.'),
         ('Zálohování',False,'Snapshot jediné reference je ověřen při přípravě plánu. HAOS/OneDrive obnovitelnost není doložená; rizikové operace jsou blokované.'),
