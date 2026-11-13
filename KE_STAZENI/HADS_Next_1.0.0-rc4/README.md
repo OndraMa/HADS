@@ -1,5 +1,9 @@
 # HADS Next RC4 — HADS provádí diagnostická čtení samo
 
+Pracovní kandidát: dokončuje se přejímka opravy souběhu při startu. Pro instalaci
+vyčkej na vydání označené tagem `hads-next-1.0.0-rc4`; tyto pracovní soubory se
+před prvním vydáním nahradí přesnými nově ověřenými bytes.
+
 [Instalační skript](HADS_Next_install_1.0.0-rc4.sh) ·
 [Kompletní ZIP se zdroji a návody](HADS_Next_1.0.0-rc4-komplet.zip) ·
 [Český návod](HADS_Next_1.0.0-rc4-navod-CS.md) ·

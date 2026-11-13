@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import time
 
 from hads_next.haos_application import Application
 from hads_next.observability import CoreReader, ReadFailure
@@ -39,6 +40,23 @@ class ApplicationTests(unittest.TestCase):
         self.assertFalse(result["hermes_enabled"])
         self.assertFalse(result["live_repairs_enabled"])
         self.assertNotIn("DO_NOT_EXPORT", json.dumps(result))
+
+    def test_automatic_source_check_populates_core_overview_after_read_contention(self):
+        self.app._read_lock.acquire()
+        try:
+            self.assertTrue(self.app.request_source_check())
+            time.sleep(.05)
+            self.assertEqual(self.calls,[])
+        finally:self.app._read_lock.release()
+        for _ in range(300):
+            state=self.app.snapshot()['source_job']['state']
+            if state in {'finished','failed'}:break
+            time.sleep(.02)
+        self.assertEqual(state,'finished')
+        snapshot=self.app.snapshot()
+        self.assertTrue(snapshot['core']['available'])
+        self.assertEqual(snapshot['core']['entity_count'],1)
+        self.assertEqual(snapshot['core']['version'],'2026.11.0')
 
     def test_manual_radio_report_persists_real_history_without_fake_root_cause(self):
         self.app.refresh()

@@ -68,8 +68,10 @@ class Application:
             self._source_job['state']='running'
         def run():
             try:
+                self.refresh(wait_for_reader=True)
                 self.check_sources()
                 self.system.inspect()
+                self.refresh(wait_for_reader=True)
                 with self._lock:self._source_job={'state':'finished','completed_at':self.clock(),'last_error':None}
             except Exception as error:
                 with self._lock:self._source_job={'state':'failed','completed_at':None,'last_error':type(error).__name__}
@@ -174,8 +176,9 @@ class Application:
                 'actor': principal, 'repair_performed': False})
             return self.store.case(incident['id'])
 
-    def refresh(self):
-        if not self._read_lock.acquire(blocking=False):
+    def refresh(self,*,wait_for_reader=False):
+        acquired=self._read_lock.acquire(timeout=12) if wait_for_reader else self._read_lock.acquire(blocking=False)
+        if not acquired:
             return self.snapshot()
         try:
             now = self.clock()
