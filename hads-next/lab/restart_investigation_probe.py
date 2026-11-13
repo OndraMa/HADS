@@ -10,7 +10,7 @@ async def exercise_restart(path,core,ws,launcher,user,endpoint,models,scripted_c
     model=scripted_class();models['hads-restart-contract']=model
     app=Application(path/'restart-site',core,core_ws=ws,launcher=launcher)
     app.enroll_owner(user.id)
-    app.investigations.provider.configure(endpoint=endpoint,model='hads-restart-contract',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id)
+    app.investigations.provider.configure(endpoint=endpoint,model='hads-restart-contract',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id,mode='bounded')
     case=app.store.open_incident('automation_reference','Test přerušení vyšetřování.',
         ['automation.hads_lab_reference','input_boolean.hads_lab_target'],time.time())
     reached=threading.Event();release=threading.Event()

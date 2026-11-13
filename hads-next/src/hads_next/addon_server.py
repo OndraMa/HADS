@@ -25,7 +25,7 @@ class SupervisorTransport:
 
     def __call__(self, path):
         import re
-        if path not in {'/supervisor/info','/os/info','/host/info','/addons'} and not re.fullmatch(r'/addons/[a-z0-9_]+/(info|stats|logs)',path):
+        if path not in {'/supervisor/info','/supervisor/stats','/core/stats','/os/info','/host/info','/addons'} and not re.fullmatch(r'/addons/[a-z0-9_]+/(info|stats|logs)',path):
             raise ValueError('Unsupported Supervisor read')
         return self._http(path, raw=path.endswith('/logs'))
 
@@ -157,8 +157,9 @@ class Handler(BaseHTTPRequestHandler):
                 +'<label>HTTPS chat/completions endpoint<input name="endpoint" required value="'+escape(settings['endpoint'],quote=True)+'"></label>'
                 +'<label>Model<input name="model" required maxlength="128" value="'+escape(settings['model'],quote=True)+'"></label>'
                 +'<label>API klíč<input type="password" name="api_key" maxlength="2048" autocomplete="new-password" placeholder="Při zachování endpointu a modelu lze existující klíč ponechat prázdný."></label>'
+                +'<label>Rozsah modelových volání<select name="mode"><option value="trial" '+('selected' if settings['mode']=='trial' else '')+'>Omezený test: nejvýše 3 požadavky za 24 hodin, pouze výslovně spuštěný případ</option><option value="bounded" '+('selected' if settings['mode']=='bounded' else '')+'>Rozšířený režim: nejvýše 8 na případ a 12 za 24 hodin</option></select></label>'
                 +'<label><input type="checkbox" name="consent" value="yes" '+('checked' if settings['enabled'] else '')+'> Výslovně povoluji modelová volání a předání redigovaných diagnostických údajů tomuto poskytovateli.</label>'
-                +'<p>Nejvýše 8 požadavků na případ, 12 denně, 1024 výstupních tokenů na požadavek. Změna nastavení sama vyšetřování nespouští.</p><button>Uložit nastavení AI</button></form><a href="../">Přehled</a>')
+                +'<p>V testu nejvýše 48 000 bajtů vstupu a 512 výstupních tokenů na požadavek. Zbývá '+str(settings['rolling_24h_calls_remaining'])+' požadavků z vybraného rozpočtu. Počítadlo přežije restart i změnu klíče; nejasný výsledek se také započítá. Test nikdy sám nespustí modelovou frontu.</p><p>Cena závisí na modelu a tarifu poskytovatele. Limit požadavků a tokenů není garantovaný dolarový strop. Změna nastavení sama vyšetřování nespouští. Nativní automatická čtení nepotřebují AI klíč.</p><p>'+escape(settings.get('last_error') or '')+'</p><button>Uložit nastavení AI</button></form><a href="../">Přehled</a>')
         if path == '/setup':
             sources = self.server.app.snapshot()['sources']
             rows = ''.join('<li>' + escape(k) + ': ' + ('Čtení proběhlo' if v['read_succeeded'] else 'Čtení není dostupné: ' + escape(str(v['status'].get('last_error')))) + '</li>' for k,v in sources.items())
@@ -230,6 +231,10 @@ class Handler(BaseHTTPRequestHandler):
             from .health_cases import explain_health_case
             explanation=explain_health_case(case)
             if explanation:result=explanation
+            automatic=self.server.app.system.automatic.report(case['incident']['id'])
+            if automatic:
+                result={**result,'summary_cs':result.get('summary_cs','')+' '+automatic['summary_cs'],
+                        'next_test_cs':automatic['next_test_cs'],'needed':[]}
             jobs=self.server.app.investigations.for_case(case['incident']['id'])
             if jobs and jobs[0]['conclusion']:result=jobs[0]['conclusion']
             suggestion=result.get('repair_suggestion')
@@ -259,6 +264,14 @@ class Handler(BaseHTTPRequestHandler):
                 if target.startswith('automation.'):
                     suggestion_html+='<form method="post" action="../repair/native_prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><input type="hidden" name="entity_id" value="'+escape(target,quote=True)+'"><label><input type="checkbox" name="exclusive" value="yes" required>Potvrzuji, že tuto světelnou automatizaci nyní nikdo současně neupravuje.</label><button>Připravit ověřené opětovné zapnutí světelné automatizace</button></form>'
             if automation_case:suggestion_html+='<a href="../setup/lighting">Ověřit a vybrat bezpečný světelný cíl</a>'
+            if automatic:
+                suggestion_html+='<h2>Co HADS sám přečetl</h2><p>'+escape(automatic['summary_cs'])+'</p>'
+                if automatic['measured']:
+                    suggestion_html+='<table><thead><tr><th>Komponenta</th><th>Paměť</th><th>Limit</th></tr></thead><tbody>'+''.join('<tr><td>'+escape(r['label'])+'</td><td>'+str(round(r['memory_usage']/1048576))+' MiB</td><td>'+str(round(r['memory_limit']/1048576))+' MiB</td></tr>' for r in automatic['measured'])+'</tbody></table>'
+                for row in automatic.get('comparison',[]):
+                    name=next((r['label'] for r in automatic['measured'] if (r['component'],r['target'])==(row['component'],row['target'])),row['target'])
+                    suggestion_html+='<p>'+escape(name)+': mezi měřeními '+('+' if row['change_bytes']>0 else '')+str(round(row['change_bytes']/1048576))+' MiB za '+str(round(row['elapsed_seconds']))+' sekund. Samotná změna není důkaz úniku paměti.</p>'
+                if automatic['gaps']:suggestion_html+='<p>Některá čtení nebyla dostupná. HADS zachoval jejich chybu v důkazech; chybějící údaj nepovažuje za nulovou spotřebu.</p>'
             if explanation:
                 suggestion_html+='<form method="post" action="../setup/check"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Zopakovat nativní diagnostiku bez AI</button></form><a href="../setup">Zdroje a připravenost</a><p>Proběhne čtení dostupných nativních zdrojů na pozadí. Model ani oprava se nespustí. Po dokončení otevři spis znovu. Zmizení diagnostické chyby samo spis neuzavírá.</p>'
             suggestion_html+='<a href="../export/' +case['incident']['id']+'">Exportovat spis JSON</a>'
@@ -289,6 +302,7 @@ class Handler(BaseHTTPRequestHandler):
                 if form.get('csrf') != [self.server.csrf]: return self.send_body(403,'Formulář vypršel.')
                 self.server.app.enroll_owner(self.headers['X-Remote-User-Id'])
                 self.server.app.request_source_check()
+                if getattr(self.server.app,'automatic_initial_setup',False):self.server.app.request_initial_diagnostics()
             except ValueError:
                 return self.send_body(409,'Registraci nelze dokončit. Obnov stránku.')
             self.send_response(303);self.send_header('Location','../setup');self.send_header('Content-Length','0');self.end_headers();return
@@ -310,7 +324,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.refresh()
             elif path == '/setup/ai':
                 self.server.app.investigations.provider.configure(endpoint=form.get('endpoint',[''])[0],model=form.get('model',[''])[0],
-                    api_key=form.get('api_key',[''])[0],consent=form.get('consent')==['yes'],principal=self.headers['X-Remote-User-Id'])
+                    api_key=form.get('api_key',[''])[0],consent=form.get('consent')==['yes'],principal=self.headers['X-Remote-User-Id'],mode=form.get('mode',['trial'])[0])
                 self.send_response(303);self.send_header('Location','ai');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/music':
                 service=self.server.app.investigations
@@ -425,6 +439,18 @@ def prepare_data_directory(path):
     return path
 
 
+def serve(server):
+    """A requested stop exits cleanly; never turn SIGTERM into a forced kill."""
+    import signal
+    previous=signal.getsignal(signal.SIGTERM)
+    def stopping(signum,frame):
+        threading.Thread(target=server.shutdown,daemon=True,name='hads-shutdown').start()
+    signal.signal(signal.SIGTERM,stopping)
+    try:server.serve_forever(poll_interval=.2)
+    finally:
+        signal.signal(signal.SIGTERM,previous);server.server_close()
+
+
 def main():
     os.umask(0o077)
     options_path = Path("/data/options.json")
@@ -447,12 +473,16 @@ def main():
     from .native_repair import AutomationStateTransport
     writer=AutomationStateTransport('http://supervisor',token,supervisor=True) if token else None
     app = Application(path, core, core_ws=ws, supervisor=supervisor,launcher=launcher,runtime_error=runtime_error,automation_writer=writer)
+    app.automatic_initial_setup=True
     if app.owner():
+        app.system.automatic.start()
+        app.request_initial_diagnostics()
         app.investigations.zha_observer.start();app.detection.start()
         if app.repairs.status()['enabled'] or app.repairs.status()['native_state_targets']:app.repairs.start()
     threading.Thread(target=app.refresh, daemon=True).start()
-    try:Server(("0.0.0.0", 8099), app, owner_user_id=owner).serve_forever()
+    try:serve(Server(("0.0.0.0", 8099), app, owner_user_id=owner))
     finally:
+        app.system.automatic.close()
         app.investigations.zha_observer.close()
         app.detection.close();app.repairs.close()
         if launcher:launcher.close()

@@ -148,7 +148,7 @@ class DetectionEngine:
         if repairs:repairs.on_functional_failure(incident['id'],rule['entity_id'],now,identity)
         self.app.store.record(incident['id'],'deterministic_investigation',{'summary_cs':text+'. Příčina zatím není doložená. Porovnej historii, akce a trace.','next_test_cs':'Ověř očekávané chování a načti související důkazy.'})
         if self.snapshot()['autonomous_ai']:
-            try:self.app.investigations.start(incident['id'],self.app.owner())
+            try:self.app.investigations.start(incident['id'],self.app.owner(),automatic=True)
             except ValueError:self.app.store.record(incident['id'],'automatic_investigation_deferred',{'summary_cs':'AI nelze nyní spustit; spis a lokální sledování zůstávají zachované.'})
 
     def start(self):

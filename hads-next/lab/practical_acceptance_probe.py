@@ -31,7 +31,7 @@ async def exercise_practical(hass,core,ws,launcher,path,user,models,endpoint,tok
     try:
         app.enroll_owner(user.id)
         model=NativeLightingModel();models['hads-native-lighting']=model
-        app.investigations.provider.configure(endpoint=endpoint,model='hads-native-lighting',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id)
+        app.investigations.provider.configure(endpoint=endpoint,model='hads-native-lighting',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id,mode='bounded')
         await asyncio.to_thread(app.repairs.allow_automation,'automation.entry_lighting',user.id)
         await hass.services.async_call('automation','turn_off',{'entity_id':'automation.entry_lighting','stop_actions':False},blocking=True)
         app.detection.consent(True,user.id)

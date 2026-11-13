@@ -213,7 +213,7 @@ input_button:
                         assert readiness['state']=='ready',readiness
                         assert model.requests==[],'Runtime readiness must not call the model'
                         async with ui_client.post(ui+'/setup/ai',data={'csrf':controller.csrf,'endpoint':'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions',
-                            'model':'hads-scripted-contract','api_key':'SYNTHETIC_TEST_KEY','consent':'yes'},allow_redirects=False) as response:assert response.status==303
+                            'model':'hads-scripted-contract','api_key':'SYNTHETIC_TEST_KEY','consent':'yes','mode':'bounded'},allow_redirects=False) as response:assert response.status==303
                         async with ui_client.post(ui+'/investigate',data={'csrf':controller.csrf,'incident_id':incident['id']},allow_redirects=False) as response:assert response.status==303
                         for _ in range(1600):
                             investigations=app.investigations.for_case(incident['id'])
@@ -249,6 +249,9 @@ input_button:
                     from practical_acceptance_probe import exercise_practical
                     result['practical_acceptance']=await exercise_practical(hass,core,ws,launcher,path,user,models,'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions',token)
                     assert result['practical_acceptance']['passed']
+                    from trial_budget_probe import exercise_trial
+                    result['trial_budget']=await exercise_trial(path,core,ws,launcher,user,models,'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions')
+                    assert result['trial_budget']['passed']
                 finally:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()

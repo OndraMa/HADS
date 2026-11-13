@@ -64,7 +64,7 @@ class HealthCaseTests(unittest.TestCase):
         self.assertEqual(self.app.system.status()['active_findings'],0)
         self.assertEqual(self.case('system_health_failure')['incident']['status'],'open')
     def test_memory_measurement_is_preserved_without_jitter_occurrences_or_AI(self):
-        calls=[];self.app.investigations.start=lambda *args:calls.append(args)
+        calls=[];self.app.investigations.start=lambda *args,**kwargs:calls.append(args)
         self.app.detection.consent(True,'fixture-owner')
         self.scan(373);before=self.case('system_resource_pressure')
         self.assertEqual(before['evidence'][0]['payload']['available_bytes'],373*1024*1024)

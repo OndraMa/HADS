@@ -34,7 +34,7 @@ async def exercise_managed(hass,core,ws,launcher,path,user,models,endpoint):
     try:
         app.enroll_owner(user.id)
         model=ManagedModel();models['hads-managed-contract']=model
-        app.investigations.provider.configure(endpoint=endpoint,model='hads-managed-contract',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id)
+        app.investigations.provider.configure(endpoint=endpoint,model='hads-managed-contract',api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id,mode='bounded')
         app.detection.consent(True,user.id)
         app.detection.configure({'entity_id':TARGET,'kind':'response','trigger_entity':'input_button.hads_next_test_run','automation_entity':'automation.hads_next_reference_test','expected':'on','grace_seconds':1},user.id)
         for _ in range(100):

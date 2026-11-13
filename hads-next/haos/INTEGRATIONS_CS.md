@@ -20,3 +20,21 @@ a nezvyšuje oprávnění kvůli tomu, aby položka v seznamu zezelenala.
 
 Při aktuálně doloženém nedostatku paměti nech AI vypnutou. Rezerva 576 MiB
 zůstává povinná; její pouhé těsné překročení není přejímka při zátěži.
+
+## RC4: automatické pokračování bez klíče AI
+
+Core a Supervisor statistiky se čtou přímo přes dokumentované GET `/core/stats`
+a `/supervisor/stats`, běžící aplikace přes `/addons/{slug}/stats`. Kontrakty
+ověřeny v Supervisor 2026.11.0, commit c1c6f0a754c0656eb1af189f11009f1cfc4b3e28.
+Jde o vlastní nativní API, není třeba instalovat HA-MCP, Spook nebo další server
+jen kvůli těmto údajům. Fronta je trvalá, sériová, omezená na 24 aplikací,
+failed read se nejvýše jednou zopakuje s odstupem a neznámý údaj není nula.
+Veřejný HEAD smí pouze na pevné `https://github.com/`, bez auth, cookies,
+redirectů, obsahu odpovědi nebo dat domácnosti v URL. Jeho síťový kontext je
+aplikace HADS; úspěch nedokazuje přístup integrace v Core.
+
+Po prvním sběru paměti následuje po pěti minutách ještě jedno automatické
+porovnání Core, Supervisora a nejvýše tří aplikací. Další měřicí smyčka se
+neopakuje bez nového skutečného výskytu. Po úvodní instalaci/přihlášení HADS
+sám ověří nativní zdroje a pokusí se ověřit izolovaný Hermes bez modelu;
+paměťová brána stále platí.

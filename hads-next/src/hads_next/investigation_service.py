@@ -63,8 +63,12 @@ class InvestigationService:
         threading.Thread(target=run,daemon=True,name='hads-hermes-readiness').start()
         return True
 
-    def start(self,incident_id,principal,*,ack_unknown=False):
+    def start(self,incident_id,principal,*,ack_unknown=False,automatic=False):
         with self._schedule_lock:
+            if not principal or principal!=self.app.owner():raise JobBlocked('Vyšetřování může spustit pouze ověřený vlastník.')
+            trial=self.provider.public_status().get('mode')=='trial'
+            if automatic and trial:return None
+            if trial and self._slot.locked():raise JobBlocked('Právě probíhá jiný test. Testovací rozpočet nepovoluje automatickou frontu modelových volání.')
             if self._probe['state']=='running':raise JobBlocked('Právě se ověřuje Hermes bez volání modelu. Po dokončení spusť vyšetřování znovu.')
             return self._start(incident_id,principal,ack_unknown=ack_unknown)
 
@@ -92,17 +96,19 @@ class InvestigationService:
         except ProviderDisabled:
             self.jobs.transition(identity,'waiting_for_user','AI je vypnutá. Nejdříve nastav poskytovatele a potvrď souhlas s voláním a předáním redigovaných důkazů.')
             return identity
-        self._kick()
+        self._kick(only_job=identity if self.provider.public_status().get('mode')=='trial' else None)
         return identity
 
-    def _kick(self):
+    def _kick(self,only_job=None):
+        trial=self.provider.public_status().get('mode')=='trial'
+        if trial and only_job is None:return
         with self._schedule_lock:
             if not self._slot.acquire(blocking=False):return
         def run():
             try:
                 while True:
                     with self.app.store._connect() as db:
-                        row=db.execute("SELECT id FROM investigation_jobs WHERE state IN ('new','reopened') ORDER BY created_at LIMIT 1").fetchone()
+                        row=db.execute("SELECT id FROM investigation_jobs WHERE state IN ('new','reopened') AND (? IS NULL OR id=?) ORDER BY created_at LIMIT 1",(only_job,only_job)).fetchone()
                     if row is None:break
                     current=self.jobs.get(row[0])
                     if current['attempts']>=2:
@@ -118,12 +124,13 @@ class InvestigationService:
                         if failed['state'] in {'new','reopened'}:
                             self.jobs.transition(row[0],'blocked','Vyšetřování nelze zahájit; další automatické pokusy jsou zastavené.')
                     finally:self._active_job=None
+                    if trial:break
             finally:
                 with self._schedule_lock:
                     self._slot.release()
                     with self.app.store._connect() as db:
                         pending=db.execute("SELECT 1 FROM investigation_jobs WHERE state IN ('new','reopened') LIMIT 1").fetchone()
-                    if pending:self._kick()
+                    if pending and not trial:self._kick()
         threading.Thread(target=run,daemon=True,name='hads-hermes-investigation').start()
 
     def for_case(self,incident_id):

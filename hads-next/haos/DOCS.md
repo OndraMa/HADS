@@ -1,73 +1,71 @@
-# HADS Next 1.0.0-rc3 — opravný instalační kandidát
+# HADS Next 1.0.0-rc4 — automatické čtení a omezený test AI
 
-Obsahuje opravený český přehled, rozlišení samotných stavů aplikací od funkčních
-poruch, původní Hermes a dosavadní HA/MCP adaptéry. [Přesný obsah integrací](INTEGRATIONS_CS.md).
-RC3 HADS Next není starý Hermes 2.0.0-rc3; ten se nepřepisuje. RC3 není přijaté
-produkční vydání: živé zařízení, skutečný LLM a měření RPi stále potřebují ověření.
+RC4 samo navazuje na paměťový incident: přečte Core, Supervisor a nejvýše
+24 běžících aplikací, porovná spotřebu a uloží český výsledek do spisu.
+U Marketplace/github_web samo opakuje nativní System Health a související
+protokol a jednou ověří pevnou veřejnou adresu GitHubu z aplikace HADS.
+Příkazy ani ruční shánění důkazů od uživatele nejsou běžnou diagnostickou cestou.
+Není potřeba další aplikace ani API klíč pro tato čtení. Původní Hermes,
+HA čtení a MCP adaptéry jsou součástí balíčku; [přesný rozsah](INTEGRATIONS_CS.md).
 
-## Stažení
+## Stažení a aktualizace běžícího RC3
 
-V přihlášeném GitHubu otevři větev `codex/hads-next-rc3`, složku
-`KE_STAZENI/HADS_Next_1.0.0-rc3`. Použij Download raw file u instalačního skriptu
-nebo kompletního ZIPu. ZIP obsahuje aktuální zdroje HADS Next, návody a protokoly;
-neobsahuje rekurzivní kopie historických vydaných ZIPů, které zůstávají na GitHubu.
-Při stavbě je potřeba internet pro připnutý base image, Hermes a constraints.
-
-```powershell
-Get-FileHash .\HADS_Next_install_1.0.0-rc3.sh -Algorithm SHA256
-```
-
-Skript nespouštěj ve Windows. V terminálové aplikaci HAOS je potřeba `ha`, `bash`,
-`python3`, `base64`, `mktemp` a připojené `/addons` nebo `/local_apps`. Chybějící
-nástroje zastaví instalaci; neinstaluj je do hostitele HAOS.
-
-## Přechod ze stávajícího Next RC2 — zachování dat
-
-Tento režim zvol, pokud už máš `local_hads_next_practical` verze 1.0.0-rc2.
-Nedělej uninstall ani nemaž data. Předem exportuj důležité spisy, ponech AI
-vypnutou a v HA zastav **pouze HADS Next RC2**. Core, Supervisor a ostatní
-aplikace se nezastavují. Aktualizátor vyžaduje skutečně potvrzený stav `stopped`;
-`error` nepovažuje automaticky za zastavení. Je-li stav nejasný, nic nepřepisuje.
+V přihlášeném GitHubu otevři vydání `hads-next-1.0.0-rc4`, soubory jsou
+v `KE_STAZENI/HADS_Next_1.0.0-rc4`. Stáhni instalační skript přes **Download raw file**
+a ulož do `/config`. Ve stejném terminálu jako při původní instalaci spusť:
 
 ```sh
-bash HADS_Next_install_1.0.0-rc3.sh --verify
-bash HADS_Next_install_1.0.0-rc3.sh --upgrade-rc2
+bash /config/HADS_Next_install_1.0.0-rc4.sh --verify
+bash /config/HADS_Next_install_1.0.0-rc4.sh --upgrade-rc3
 ```
 
-Aktualizátor ověří přesný původ vydaných RC2 zdrojů, všechny jejich hashe,
-identitu a zastavení aplikace. Cizí nebo ručně upravené zdroje odmítne.
-Vytvoří a přečtením ověří archiv původních zdrojů. Potom zavolá podporovaný
-`ha apps update local_hads_next_practical --backup`: Supervisor před aktualizací
-vytvoří částečnou zálohu **této aplikace**. Data `/data`, nastavení vlastníka,
-poskytovatele a spisy se nemažou; schéma se nemigruje. Aplikace zůstává zastavená.
-Po potvrzení 1.0.0-rc3 ji spusť ručně přes HA. Při prvním spuštění ověř verzi,
-přehled a Zdroje a připravenost; AI zatím nepovoluj.
+To je pouze úvodní aktualizace aplikace. RC3 nech běžet; aktualizátor ověří
+přesné vydané zdroje RC3, zachová jejich ověřenou kopii a požádá nativní
+Supervisor o aktualizaci **pouze HADS Next** s částečnou zálohou jeho dat.
+Předchozí stav started/stopped zachová. Stav error se nevydává za stopped.
+Neprováděj uninstall, nemaž adresáře ani data. Při chybě zachovej hlášku;
+nejasný zásah zůstane označený a automaticky se neopakuje.
 
-Archiv zdrojů není záloha dat. Nativní částečná záloha není nezávisle prokázaná
-obnova celé HAOS/OneDrive instalace. Aktualizátor nedělá automatický restore.
-Při selhání po zaznamenání záměru zachová marker, původní zdroje a archiv;
-další automatické spuštění odmítne. Zachovej výstup a nejprve zjisti stav aplikace.
-Nevypínej ochrany, nemaž marker a nespouštěj opakované aktualizace naslepo.
+Nativní update zachovává soukromá data aplikace; živý restore není tímto
+kandidátem nezávisle doložený. Zdrojový archiv není datová záloha ani obnova
+celého HAOS/OneDrive. Dosavadní ochrany rizikových oprav se nemění.
 
-## Nová instalace bez Next RC2
+## Nová instalace
 
-Stejný slug `local_hads_next_practical` předchází souběhu dvou Next aplikací
-na zařízení s malou pamětí. Pokud tento slug ještě neexistuje:
+Pokud Next nikdy nainstalovaný nebyl a nemá ponechané zdroje:
 
 ```sh
-bash HADS_Next_install_1.0.0-rc3.sh --verify
-bash HADS_Next_install_1.0.0-rc3.sh --install-dev
+bash /config/HADS_Next_install_1.0.0-rc4.sh --install-dev
 ```
 
-Existující aplikaci tento režim odmítne. Čistě pro kontrolu bez HA CLI:
+Ponechané neznámé nebo upravené zdroje se nepřepisují. Starý HADS Hermes
+2.0.0-rc3 je jiná aplikace a instalační skript jej nemění. Potřeba je `ha`,
+`bash`, `python3`, `base64`, `mktemp` a připojené `/addons` nebo `/local_apps`.
+Chybějící nástroj se neinstaluje do hostitele HAOS. Při stavbě je potřeba
+internet pro připnuté základní obrazy a originální Hermes.
 
-```sh
-bash HADS_Next_install_1.0.0-rc3.sh --extract-only /absolutni/novy-adresar
-```
+## Malý test AI bez nekontrolovaného účtování
 
-Nejsou nutné další konfigurace mountů, Docker socket, host network nebo vypnutí
-AppArmor. Nastavená oprávnění se nezvyšují. Uživatel nemá oddělený testovací HAOS;
-první živá etapa proto ověří čtení a diagnostiku se zakázanými opravami a AI.
+Nativní čtení nech fungovat bez API klíče. Pro pozdější test v HADS otevři
+**Zdroje a připravenost → Nastavit poskytovatele AI**. Klíč zadej pouze tam,
+nikoli do chatu nebo zdrojů. OpenAI endpoint je
+`https://api.openai.com/v1/chat/completions`; zvol model dostupný ve svém účtu.
+Výchozí režim **Omezený test** má nejvýše 3 odeslané požadavky za klouzavých
+24 hodin, nejvýše 48 000 bajtů vstupu a 512 výstupních tokenů na požadavek.
+Rozpočet přežije restart i výměnu klíče a započítá nejasný výsledek. Test se
+spustí pouze výslovně pro jeden případ; automatická placená fronta je v něm zakázaná.
+
+To je limit požadavků a objemu, nikoli garantovaný dolarový strop: cenu určuje
+konkrétní model a tarif. HADS nemá nezávislý přístup k účtování poskytovatele.
+Tři požadavky mohou stačit na krátké vyšetření, složitější případ se při dosažení
+limitu zastaví s důkazy. Rozšířený režim a automatické modelové vyšetřování
+vyžadují další výslovnou volbu. Staré poskytovatelské nastavení z RC3 vyžaduje
+nové potvrzení testovacího rozpočtu; jeho dřívější souhlas model sám nezapne.
+
+Paměťová brána 576 MiB zůstává zachovaná. Při 373 MiB se Hermes nespustí,
+i když je model vzdálený. HADS nejprve samo prověří spotřebu; příkazy od tebe
+nepotřebuje. Nový kandidát nepředstírá opravenou kapacitu zařízení ani únik
+paměti z jediného měření. Bez doložené příčiny neprovádí restart nebo změnu DNS.
 
 ## První nastavení
 
@@ -87,8 +85,8 @@ se celková rezerva musí změřit při současném Core/ZHA/MA; kontejner to ne
 Pokud chceš AI, nastav HTTPS OpenAI-compatible chat/completions API a vlastní
 model, potom výslovně potvrď případné náklady a předání redigovaných důkazů.
 ChatGPT Plus není API účet. Klíče patří jen do privátního nastavení, nikdy do
-chatu, YAML zdrojů nebo GitHubu. Nejvýše 8 volání na případ / 12 denně,
-1024 výstupních tokenů na požadavek. Nejasné dokončení blokuje tiché opakování.
+chatu, YAML zdrojů nebo GitHubu. V rozšířeném režimu nejvýše 8 volání na případ / 12 za klouzavých 24 hodin,
+1024 výstupních tokenů na požadavek. Výchozí omezený test má 3 požadavky / 24 hodin a 512 výstupních tokenů. Nejasné dokončení blokuje tiché opakování.
 Veřejný výzkum má zvláštní souhlas, pevné zdroje a limit 6 nových dotazů denně.
 
 ## Autonomní detekce a vyšetřování

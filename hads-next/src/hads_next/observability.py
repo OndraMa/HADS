@@ -34,6 +34,7 @@ def project_supervisor_read(kind,value):
     import math
     if kind not in SUPERVISOR_FIELDS or not isinstance(value,dict):raise ValueError('invalid_supervisor_contract')
     result={key:value[key] for key in SUPERVISOR_FIELDS[kind] if key in value}
+    if kind=='app_stats' and result.get('cpu_percent','missing') is None:result.pop('cpu_percent')
     if not result:raise ValueError('missing_supervisor_fields')
     if kind=='app_stats' and any(type(x) not in {int,float} or not math.isfinite(x) or x<0 for x in result.values()):
         raise ValueError('invalid_supervisor_statistics')
@@ -407,6 +408,12 @@ class SupervisorReader(_Reader):
 
     def host_info(self):
         return self._supervised('/host/info')
+
+    def core_stats(self):
+        return self._supervised('/core/stats')
+
+    def supervisor_stats(self):
+        return self._supervised('/supervisor/stats')
 
     def app_logs(self, slug):
         if not re.fullmatch(r"[a-z0-9_]+", slug):

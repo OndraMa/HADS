@@ -134,14 +134,14 @@ class InvestigationJobs:
         if self.after_read:self.after_read(name,result)
         return result
 
-    def model_intent(self,identity,body,*,daily_limit=12):
+    def model_intent(self,identity,body,*,daily_limit=12,case_limit=8):
         with self.store._connect() as db:
             db.execute('BEGIN IMMEDIATE')
             job=db.execute('SELECT state,deadline FROM investigation_jobs WHERE id=?',(identity,)).fetchone()
             if job is None or job[0]!='investigating' or self.clock()>job[1]:raise JobBlocked('Vyšetřování není aktivní.')
             if db.execute("SELECT 1 FROM investigation_model_calls WHERE job_id=? AND state='intent'",(identity,)).fetchone():
                 raise JobBlocked('Předchozí volání má neznámý výsledek; automatický retry je zakázaný.')
-            if db.execute('SELECT count(*) FROM investigation_model_calls WHERE job_id=?',(identity,)).fetchone()[0]>=8:
+            if db.execute('SELECT count(*) FROM investigation_model_calls WHERE job_id=?',(identity,)).fetchone()[0]>=case_limit:
                 raise JobBlocked('Vyčerpán rozpočet modelu pro případ.')
             day=int(self.clock()//86400)*86400
             usage=db.execute('SELECT count FROM investigation_daily_usage WHERE day=?',(day,)).fetchone()

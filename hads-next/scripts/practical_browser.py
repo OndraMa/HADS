@@ -31,14 +31,18 @@ def main():
                 app._summary.update(available=True,entity_count=837,version='2026.11.1',last_error=None)
                 for slug in ('fixture_radio','fixture_backup'):
                     app.system._finding('app:'+slug,'application_failure','Aplikace hlásí neúspěšný běh.',['supervisor',slug],{'slug':slug,'state':'error'})
-                app.system._finding('memory-reserve','system_resource_pressure','Paměť je pod rezervou.',['hads_runtime'],{'reserve_bytes':576*1024*1024})
+                memory_case=app.system._finding('memory-reserve','system_resource_pressure','Paměť je pod rezervou.',['hads_runtime'],{'reserve_bytes':576*1024*1024},observations={'available_bytes':373*1024*1024})
+                app.store.record(memory_case,'automatic_read_report',{'state':'completed','summary_cs':'HADS statistiky načetl automaticky. Největší dosud přečtený spotřebitel: Home Assistant Core (822 MiB). Příčina není z jediného měření doložená.','measured':[
+                    {'component':'core_stats','target':'','label':'Home Assistant Core','memory_usage':862142464,'memory_limit':1931440128,'observed_at':app.clock()},
+                    {'component':'app_stats','target':'local_hads_next_practical','label':'HADS Next','memory_usage':43352064,'memory_limit':1931440128,'observed_at':app.clock()}],
+                    'gaps':[],'root_cause_proven':False,'model_calls':0,'next_test_cs':'HADS doplní další porovnávací měření samo; diagnostické příkazy od uživatele nepotřebuje.'})
                 app.system._finding('health:marketplace','system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:marketplace'],{'domain':'marketplace','failed_fields':['github_web']})
                 health_case=next(c['id'] for c in app.snapshot()['cases'] if c['kind']=='system_health_failure')
                 app.system.last=app.clock()
                 app._entities=[{'entity_id':'automation.entry','name':'Světlo na chodbě – ukázka prohlížeče','state':'off'}]
                 for width in [1280,390]:
                     page.set_viewport_size({'width':width,'height':900})
-                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/case/'+case['incident']['id'],'/case/'+health_case]:
+                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
                         assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'
@@ -48,7 +52,8 @@ def main():
                             assert page.get_by_role('heading',name='Stream Player potřebuje kontrolu').count()==1
                             assert page.get_by_role('heading',name='Backup Agent potřebuje kontrolu').count()==1
                             assert 'AI je vypnutá' in page.inner_text('body')
-                            assert 'Rezerva pro AI nebyla splněná' in page.inner_text('body')
+                            assert 'Důkazy automaticky načtené' in page.inner_text('body')
+                            assert '822 MiB' in page.inner_text('body')
                             assert page.locator('#diagnostic-observations').get_by_role('heading',name='Marketplace: neúspěšná diagnostická kontrola').count()==1
                             assert page.locator('#investigation .case-card').count()==0
                             page.evaluate('window.scrollTo(0,0)')
@@ -57,7 +62,14 @@ def main():
                             assert 'github_web' in page.inner_text('body')
                             assert page.get_by_role('button',name='Zopakovat nativní diagnostiku bez AI').count()==1
                             assert page.get_by_role('link',name='Ověřit a vybrat bezpečný světelný cíl').count()==0
-                        assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0].split(health_case)[0],'passed':True})
+                        if path=='/case/'+memory_case:
+                            assert 'Co HADS sám přečetl' in page.inner_text('body')
+                            assert '822 MiB' in page.inner_text('body') and '41 MiB' in page.inner_text('body')
+                        if path=='/setup/ai':
+                            assert page.locator('select[name=mode]').input_value()=='trial'
+                            assert not page.locator('input[name=consent]').is_checked()
+                            assert '512' in page.inner_text('body')
+                        assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0].split(health_case)[0].split(memory_case)[0],'passed':True})
                     page.goto(origin+'/acceptance');page.locator('input[name=isolated]').check();page.get_by_role('button',name='Založit přejímkový protokol').click();page.wait_for_url('**/acceptance?session=*')
                     assert page.get_by_role('button',name='Provést tento test').count()==12
                     assert not page.locator('input[name=cost_consent]').is_checked()

@@ -79,7 +79,7 @@ class HAOSInstallerTests(unittest.TestCase):
             self.assertEqual(len(names), len(set(names)))
             self.assertIn("config.yaml", names)
             self.assertIn("Dockerfile", names)
-            for required in ('INTEGRATIONS_CS.md','hads_next/hermes_worker.py','hads_next/music_assistant.py','hads_next/observability.py','hads_next/native_repair.py','hads_next/dashboard.py'):
+            for required in ('INTEGRATIONS_CS.md','hads_next/hermes_worker.py','hads_next/music_assistant.py','hads_next/observability.py','hads_next/native_repair.py','hads_next/dashboard.py','hads_next/automatic_reads.py','hads_next/ai_budget.py'):
                 self.assertIn(required,names)
             self.assertIn(b'd923a5eb487a17c0a68801bba9ef0f56c81040a8',archive.extractfile('Dockerfile').read())
             self.assertIn('hermes-constraints.txt',names)

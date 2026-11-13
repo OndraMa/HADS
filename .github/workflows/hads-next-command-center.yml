@@ -1,7 +1,7 @@
 name: HADS Next Command Center review
 on:
   push:
-    branches: [codex/hads-next-command-center, codex/hads-next-rc3, codex/hads-next-health-evidence]
+    branches: [codex/hads-next-command-center, codex/hads-next-rc3, codex/hads-next-health-evidence, codex/hads-next-rc4]
     paths:
       - hads-next/src/**
       - hads-next/tests/**
