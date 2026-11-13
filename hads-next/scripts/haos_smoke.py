@@ -112,7 +112,7 @@ print(json.dumps({'fake_supervisor_only':True,'commands':calls,'reinstallation_r
             fake.write_text('''#!/usr/local/bin/python3
 import json,pathlib,sys
 args=sys.argv[1:];p=pathlib.Path('/tmp/upgrade-state.json');v=json.loads(p.read_text()) if p.exists() else {'version':'1.0.0-rc2','version_latest':'1.0.0-rc2','state':'stopped'}
-with open('/tmp/upgrade-calls.jsonl','a') as out:out.write(json.dumps(args)+'\n')
+with open('/tmp/upgrade-calls.jsonl','a') as out:out.write(json.dumps(args)+'\\n')
 if args in [['apps','--help'],['apps','update','--help']]:pass
 elif args==['apps','info','local_hads_next_practical','--raw-json']:print(json.dumps({'data':v}))
 elif args==['store','reload']:v['version_latest']='1.0.0-rc3'

@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-11-13T06:18:00.260290+00:00",
+  "recorded_at": "2026-11-13T06:19:27.754082+00:00",
   "scope": "offline",
   "live_haos": false,
   "python": "3.12.14",
@@ -16,7 +16,7 @@
     "scripts/build_investigation_download.py": "90943da9ae84f76a3b84ce41624d330c899ca10827c83d89939ddfc6f126c03a",
     "scripts/check.py": "2a045c94e4b0b316be75513e9be53c9319f8c7c0fa4dc358dafdf98be461bc62",
     "scripts/export_previous_next.py": "57280f42c85551efcc03274947e03790b3b39db27ccd7fdbd435933a68f2e021",
-    "scripts/haos_smoke.py": "60106d9c070a5099d0882ff5160dcdac699bb6f7d3e5f9e8af38d5e3c913838f",
+    "scripts/haos_smoke.py": "d286fb073acda88ec19c902c6c137a2113c9ca02f1b592f1e6f975e5c50336f0",
     "scripts/hermes_smoke.py": "72a9e653b1227b657a91b8ef11b49d6f358adfa94a78d95d30d913c79f0f3f94",
     "scripts/hermes_smoke_run.py": "2315c93ee96d67eaedf71187f5af015866882bf24fc490d2dc5551dc081a36cd",
     "scripts/investigation_context.py": "0b4ea1dc22e44cd807ccd31e893129c22a421f20325035ce79e18145978ab67e",
