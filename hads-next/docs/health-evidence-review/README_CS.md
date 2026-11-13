@@ -76,3 +76,12 @@ Zajímají nás zejména `memory_usage` a `memory_limit`. Příkazy samy nebyly
 v uživatelově HAOS z cloudu spuštěné. Nečtou konfigurační options, nemění stav
 a nepotřebují vložení klíče do chatu. Vazba na konkrétní upstream soubory je
 v `cli-memory-contract.json`. Samy ještě neurčí spotřebu všech dalších aplikací.
+
+## Dokončené izolované ověření
+
+Testovaný zdroj: `026743e7f8c7e469ddb5f45610c6c1e63a4ee5e0`.
+[ARM64 i AMD64: 203 testů na každé architektuře](https://github.com/OndraMa/HADS/actions/runs/43426011425).
+[Prohlížeč: 12 desktopových a mobilních zobrazení](https://github.com/OndraMa/HADS/actions/runs/43426011242).
+Kontrolní součty stažených CI artefaktů ověřeny. Vazba na zdroje a hranice
+přejímky jsou v `ACCEPTANCE.json`; obrázky pocházejí výhradně z anonymizované
+fixture. Vydané instalační soubory ani uživatelova instalace se tím nemění.
