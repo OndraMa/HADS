@@ -252,7 +252,8 @@ class Handler(BaseHTTPRequestHandler):
             from .command_center import repair_cards
             suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
             automation_case=any(component.startswith('automation.') for component in case['incident']['components'])
-            if self.server.app.repairs.status()['enabled'] and automation_case:
+            reference_case=bool({'input_boolean.hads_next_test_target','automation.hads_next_reference_test'} & set(case['incident']['components']))
+            if self.server.app.repairs.status()['enabled'] and reference_case:
                 suggestion_html+='<form method="post" action="../repair/prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><button>Připravit přesnou opravu vlastní testovací reference</button></form>'
             for target in case['incident']['components']:
                 if target.startswith('automation.'):

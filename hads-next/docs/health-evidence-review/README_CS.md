@@ -63,3 +63,16 @@ Nezastavovat náhodně aplikace a neměnit DNS podle samotného názvu kontroly.
 Po případném vlastníkem zvoleném uvolnění prostředků znovu změřit paměť a
 provést kontrolu izolovaného Hermesu bez modelu. Rizikové zásahy, placené
 volání modelu nebo změna domácích automatizací nejsou součástí těchto kroků.
+
+Pro prvotní read-only měření jsou v upstream CLI revizi
+`a9bea5764909a7592500a1483efaf2f5a1cc7440` ověřeny tyto příkazy:
+
+```sh
+ha core stats
+ha apps stats local_hads_next_practical
+```
+
+Zajímají nás zejména `memory_usage` a `memory_limit`. Příkazy samy nebyly
+v uživatelově HAOS z cloudu spuštěné. Nečtou konfigurační options, nemění stav
+a nepotřebují vložení klíče do chatu. Vazba na konkrétní upstream soubory je
+v `cli-memory-contract.json`. Samy ještě neurčí spotřebu všech dalších aplikací.
