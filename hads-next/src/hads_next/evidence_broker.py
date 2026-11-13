@@ -216,6 +216,11 @@ class EvidenceBroker:
         elif name=='hads_get_incident':
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
+            automatic=[r['content'] for r in case['records'] if r['kind']=='automatic_read_report']
+            if automatic:
+                latest=automatic[-1]
+                value['automatic_diagnostics']={key:latest.get(key) for key in ('summary_cs','state','probe','root_cause_proven')}
+                value['automatic_diagnostics'].update(measured=latest.get('measured',[])[:8],comparison=latest.get('comparison',[])[:8],gaps=latest.get('gaps',[])[:8],measured_total=len(latest.get('measured',[])),ai_view_truncated=len(latest.get('measured',[]))>8)
         elif name=='hads_get_related_incidents':
             with self.store._connect() as db:
                 rows=db.execute('SELECT id,kind,symptom,components,first_seen,last_seen,status FROM incidents WHERE id!=? AND kind=? ORDER BY last_seen DESC LIMIT 10',

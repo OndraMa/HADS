@@ -36,7 +36,7 @@ async def exercise_negative(path,core,ws,launcher,user,endpoint,models):
     for label,name,args,missing in scenarios:
         scenario=ToolScenario(name,args,missing=missing);model_name='hads-negative-'+label;models[model_name]=scenario
         app=Application(path/label,core,core_ws=ws,launcher=launcher);app.enroll_owner(user.id)
-        app.investigations.provider.configure(endpoint=endpoint,model=model_name,api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id)
+        app.investigations.provider.configure(endpoint=endpoint,model=model_name,api_key='SYNTHETIC_TEST_KEY',consent=True,principal=user.id,mode='bounded')
         case=app.store.open_incident('negative_contract','Bezpečnostní zkouška čtecího vyšetřování.',
             ['automation.hads_lab_reference'],time.time())
         identity=app.investigations.start(case['id'],user.id)

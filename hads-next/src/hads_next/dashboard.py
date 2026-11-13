@@ -78,6 +78,9 @@ def render_dashboard(app,csrf):
         if c['id'] in observation_ids and not latest:label='Stav bez potvrzeného dopadu'
         if c['status']=='open' and c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components']:label='Rezerva pro AI nebyla splněná'
         summary='Funkční ověření potvrdilo výsledek. Podrobnosti jsou v reportu.' if c['status']=='resolved' else case_summary(c)
+        automatic=app.system.automatic.report(c['id']) if c['id'] in diagnostic_ids else None
+        if automatic:
+            summary=automatic['summary_cs'];label='HADS sbírá další důkazy' if automatic['state']=='reading' else 'Automatické čtení dokončeno s omezením' if automatic['gaps'] else 'Důkazy automaticky načtené'
         return '<article class="case-card"><div class="case-top"><span class="case-kind">'+('Aplikace HAOS' if c['kind']=='application_failure' else 'Diagnostická kontrola' if c['kind']=='system_health_failure' else 'Prostředky pro AI' if c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components'] else 'Zachycený případ')+'</span><span class="badge">'+esc(label)+'</span></div><h3>'+esc(case_title(c,applications))+'</h3><p>'+esc(summary)+'</p><div class="case-footer"><span>Výskytů: '+str(c['occurrence_count'])+' · '+esc(display_time(c['last_seen'],value['timezone']))+'</span><a href="case/'+esc(c['id'])+'">Otevřít důkazy spisu <span aria-hidden="true">→</span></a></div></article>'
     def cards(rows,empty):return ''.join(card(c) for c in rows) if rows else '<div class="empty-state">'+esc(empty)+'</div>'
     findings=health['active_findings']
@@ -85,9 +88,10 @@ def render_dashboard(app,csrf):
     source_count=sum(bool(v.get('read_succeeded')) for v in value['sources'].values());source_total=len(value['sources'])
     source_text=str(source_count)+' z '+str(source_total)+' zdrojů přečteno' if source_total else 'Čtení zdrojů zatím není ověřené'
     ai_text=('Probíhá '+str(active)+' čtecí vyšetřování.' if active else 'AI je povolená. Žádné vyšetřování právě neběží.') if provider['enabled'] else 'AI je vypnutá. Sběr důkazů a místní diagnostika pokračují.'
+    if provider['enabled'] and provider.get('mode')=='trial':ai_text='Testovací AI má samostatný omezený rozpočet a spouští se pouze výslovně pro vybraný případ. Nativní čtení HADS provádí automaticky bez placeného modelu.'
     if provider['enabled'] and not runtime['runtime_installed']:ai_text='Poskytovatel je povolený, ale runtime Hermes není dostupný. AI vyšetřování nemůže běžet.'
     elif provider['enabled'] and runtime['runtime_probe']['state']!='ready':ai_text+=' Kontrola runtime zatím nepotvrdila připravenost.'
-    tiles=''.join('<a class="metric" href="#'+anchor+'"><span>'+label+'</span><strong>'+str(count)+'</strong><small>'+detail+'</small></a>' for anchor,label,count,detail in [('investigation','Otevřené případy',len(opened),'Zachycené problémy'),('waiting','Čeká na tebe',len(waiting),'Souhlas nebo další test'),('resolved','Ověřené výsledky',len(resolved),'Potvrzená funkce'),('recurring','Opakované závady',len(recurring),'Více než jeden výskyt')])
+    tiles=''.join('<a class="metric" href="#'+anchor+'"><span>'+label+'</span><strong>'+str(count)+'</strong><small>'+detail+'</small></a>' for anchor,label,count,detail in [('investigation','Otevřené funkční případy',len(opened),'Zachycené problémy'),('waiting','Čeká na tebe',len(waiting),'Souhlas nebo další test'),('resolved','Ověřené výsledky',len(resolved),'Potvrzená funkce'),('recurring','Opakované závady',len(recurring),'Více než jeden výskyt')])
     body='<div class="page-heading"><div><p class="eyebrow">PŘEHLED DOMÁCNOSTI</p><h1>Co se děje u tebe doma</h1><p class="muted">Důležité problémy, průběh vyšetřování a ověřené výsledky na jednom místě.</p></div><span class="connection '+('connected' if core['available'] else '')+'">'+('Core čtení funguje' if core['available'] else 'Čtení Core není ověřené')+'</span></div>'
     body+='<div class="health-strip"><div><strong>'+esc(health_message)+'</strong><p>Nejde o celkové hodnocení zdraví domácnosti. Nepřečtené zdroje zůstávají neověřené.</p></div><a href="setup">'+esc(source_text)+' →</a></div><div class="metrics">'+tiles+'</div>'
     if len(cases)==50:body+='<p class="muted">Přehled zobrazuje posledních 50 spisů; počty se vztahují k této zobrazené sadě.</p>'

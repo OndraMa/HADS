@@ -48,8 +48,8 @@ def build(ref, package, output, version=VERSION):
             if data != original or hashlib.sha256(data).hexdigest() != metadata["sha256"]:
                 raise ValueError("Payload source mismatch: " + name)
         assets["HADS_Next_" + VERSION + "-navod-CS.md"] = archive.extractfile("DOCS.md").read()
-    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/RC3_DELIVERY_CS.md" if VERSION=="1.0.0-rc3" else "hads-next/docs/PRACTICAL_ACCEPTANCE.md" if VERSION=="1.0.0-rc2" else "hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
-    if VERSION in {"1.0.0-rc1","1.0.0-rc2","1.0.0-rc3"}:
+    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/RC4_DELIVERY_CS.md" if VERSION=="1.0.0-rc4" else "hads-next/docs/RC3_DELIVERY_CS.md" if VERSION=="1.0.0-rc3" else "hads-next/docs/PRACTICAL_ACCEPTANCE.md" if VERSION=="1.0.0-rc2" else "hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
+    if VERSION in {"1.0.0-rc1","1.0.0-rc2","1.0.0-rc3","1.0.0-rc4"}:
         companion=io.BytesIO()
         with tarfile.open(fileobj=io.BytesIO(assets[source]),mode="r:gz") as archive,zipfile.ZipFile(companion,"w",compression=zipfile.ZIP_DEFLATED) as target:
             for member in archive:
@@ -75,22 +75,37 @@ def build(ref, package, output, version=VERSION):
         "Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.\n"
         "Návody a stav přejímky čti nejprve v kořeni tohoto balíčku.\n")
     if VERSION=="1.0.0-rc1":quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné produkční zápisy jsou zakázané.");quick+="\nJediná podporovaná zapisovací oprava mění vlastní virtuální referenci přes companion CAS. Potřebuje instalaci přiložené integrace a zvláštní schválení každého plánu. Nativní automatizace se obecně nepřepisují.\n"
-    if VERSION in {"1.0.0-rc2","1.0.0-rc3"}:
+    if VERSION in {"1.0.0-rc2","1.0.0-rc3","1.0.0-rc4"}:
         quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné a rizikové zápisy jsou zakázané.")
         quick+="\nPraktická oprava umí po přesném schválení zapnout vybranou jednoduchou světelnou automatizaci nativní službou. Konfiguraci nepřepisuje; služba nemá CAS. Potřebuje výlučnou práci s cílem a funkční i fyzické ověření. Návrat vypne budoucí triggery, nevrací fyzické účinky. Živá přejímka je v UI.\n"
     assets["CTI_ME_NEJDRIVE_CS.txt"] = quick.encode("utf-8-sig")
-    if VERSION=="1.0.0-rc3":
+    if VERSION in {"1.0.0-rc3","1.0.0-rc4"}:
         assets['INTEGRATIONS_CS.md']=blob('hads-next/haos/INTEGRATIONS_CS.md')
         quick=quick.replace('Nová aplikace zachovává RC3 i starý Next.','Starý Hermes 2.0.0-rc3 se nemění. RC3 lze výslovně aktualizovat z ověřeného zastaveného Next RC2.')
         quick=quick.replace('Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.','ZIP obsahuje aktuální HADS Next zdroje a dokumentaci; historické release ZIPy zůstávají samostatně na GitHubu.')
         quick+='\nPro existující RC2 nejprve zastav pouze HADS Next a použij --upgrade-rc2. Data se zachovají; nativní update vytváří částečnou zálohu aplikace. Potom spusť HADS Next ručně. Nepoužívej uninstall ani mazání /data. Úplná nezávislá obnovitelnost HAOS/OneDrive tím není doložená.\n'
         assets['CTI_ME_NEJDRIVE_CS.txt']=quick.encode('utf-8-sig')
+    if VERSION=="1.0.0-rc4":
+        quick=("HADS Next 1.0.0-rc4 — automatická nativní diagnostika\n\n"
+            "Pro běžící RC3 ulož instalátor do /config a spusť pouze úvodní aktualizaci:\n"
+            "  bash /config/HADS_Next_install_1.0.0-rc4.sh --verify\n"
+            "  bash /config/HADS_Next_install_1.0.0-rc4.sh --upgrade-rc3\n\n"
+            "RC3 předem nezastavuj ani neodinstalovávej. Supervisor aktualizuje jen HADS Next s částečnou zálohou.\n"
+            "Potom otevři HADS. Nativní zdroje, statistiky a diagnostické pokračování čte samo.\n"
+            "Další diagnostické příkazy od tebe nepotřebuje; AI klíč pro tato čtení není potřeba.\n"
+            "Původní Hermes je v obrazu. Jeho načtení hlídá paměťová rezerva 576 MiB.\n"
+            "Malý AI test povol až později v nastavení: 3 požadavky / klouzavých 24 h, max. 512 výstupních tokenů; bez automatické placené fronty.\n"
+            "Limit požadavků není dolarový strop. Klíč neposílej do chatu nebo GitHubu.\n"
+            "Zdrojový commit: "+accepted['source_commit']+"\n"
+            "Nativní kontejnery ARM64 i AMD64 a skutečný Hermes se skriptovaným modelem jsou ověřené; živý HAOS, LLM a fyzické přístroje stále čekají.\n"
+            "Podrobný návod: HADS_Next_1.0.0-rc4-navod-CS.md. Při chybě zachovej hlášku a marker; nic nemaž a neodinstalovávej.\n")
+        assets['CTI_ME_NEJDRIVE_CS.txt']=quick.encode('utf-8-sig')
     files = dict(assets)
     archive_args=["archive","--format=zip","--prefix=zdrojovy-repozitar/",commit]
-    if VERSION=="1.0.0-rc3":archive_args+=['--','hads-next','.github','README.md']
+    if VERSION in {"1.0.0-rc3","1.0.0-rc4"}:archive_args+=['--','hads-next','.github','README.md']
     with zipfile.ZipFile(io.BytesIO(git(*archive_args))) as archive:
         for member in archive.infolist():
-            if not member.is_dir() and not (VERSION=="1.0.0-rc3" and member.filename.startswith("zdrojovy-repozitar/hads-next/releases/")):
+            if not member.is_dir() and not (VERSION in {"1.0.0-rc3","1.0.0-rc4"} and member.filename.startswith("zdrojovy-repozitar/hads-next/releases/")):
                 files[member.filename] = archive.read(member)
     if len(files) > 3000 or sum(map(len, files.values())) > 50 * 1024 * 1024:
         raise ValueError("Unexpected bundle size")
@@ -121,7 +136,7 @@ def build(ref, package, output, version=VERSION):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ref", default="HEAD")
-    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1","1.0.0-rc2","1.0.0-rc3"])
+    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1","1.0.0-rc2","1.0.0-rc3","1.0.0-rc4"])
     parser.add_argument("--package-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()

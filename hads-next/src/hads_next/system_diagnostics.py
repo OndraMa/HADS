@@ -13,6 +13,8 @@ class SystemDiagnostics:
             CREATE TABLE IF NOT EXISTS health_episodes(key TEXT PRIMARY KEY,active INTEGER NOT NULL,episode INTEGER NOT NULL,incident_id TEXT);
             CREATE TABLE IF NOT EXISTS resource_samples(at REAL PRIMARY KEY,document TEXT NOT NULL);''')
         self._cpu=(time.monotonic(),time.process_time());self._scan_cursor=0
+        from .automatic_reads import AutomaticReads
+        self.automatic=AutomaticReads(app)
     def status(self):
         with self.app.store._connect() as db:
             active=db.execute('SELECT count(*) FROM health_episodes WHERE active=1').fetchone()[0]
@@ -29,7 +31,7 @@ class SystemDiagnostics:
             changed=old is None or old[0]!=serialized
             episode=1 if row is None else row['episode']+(not row['active'])
             db.execute('INSERT OR REPLACE INTO health_observations VALUES(?,?,?)',(key,serialized,now))
-            if row and row['active'] and not changed:return
+            if row and row['active'] and not changed:return row['incident_id']
         incident=self.app.store.open_incident(kind,symptom,components,now,correlation_key='health:'+key,occurrence_id=hashlib.sha256((key+':'+str(episode)).encode()).hexdigest())
         event_id=hashlib.sha256((key+':'+str(episode)+':'+fingerprint).encode()).hexdigest()
         with self.app.store._connect() as db:
@@ -43,8 +45,9 @@ class SystemDiagnostics:
         if update and 0<=now-update[1]<=86400:
             self.app.store.record(incident['id'],'version_correlation',{'version_change':json.loads(update[0]),'changed_at':update[1],'causality_proven':False})
         if kind not in {'automation_reference','source_unavailable','application_failure','system_health_failure','system_resource_pressure'} and self.app.detection.snapshot()['autonomous_ai']:
-            try:self.app.investigations.start(incident['id'],self.app.owner())
+            try:self.app.investigations.start(incident['id'],self.app.owner(),automatic=True)
             except ValueError:pass
+        return incident['id']
     def sample_resources(self):
         from .readiness import memory_available
         current=time.monotonic();cpu=time.process_time();elapsed=current-self._cpu[0]
@@ -64,7 +67,9 @@ class SystemDiagnostics:
     def inspect(self):
         now=self.app.clock();resources=self.sample_resources();deadline=time.monotonic()+25
         available=resources['available_bytes']
-        if type(available) is int:self._finding('memory-reserve','system_resource_pressure','Zbývá méně paměti než bezpečná rezerva pro Hermes. AI se nespustí; základní diagnostika pokračuje.',['hads_runtime'],{'worker_admission':'insufficient_memory_reserve','reserve_bytes':resources['worker_reserve_bytes']},active=available<resources['worker_reserve_bytes'],observations={'available_bytes':available})
+        if type(available) is int:
+            memory_case=self._finding('memory-reserve','system_resource_pressure','Zbývá méně paměti než bezpečná rezerva pro Hermes. AI se nespustí; základní diagnostika pokračuje.',['hads_runtime'],{'worker_admission':'insufficient_memory_reserve','reserve_bytes':resources['worker_reserve_bytes']},active=available<resources['worker_reserve_bytes'],observations={'available_bytes':available})
+            if memory_case and self.app.supervisor is not None:self.automatic.schedule_memory(memory_case)
         if self.app.core is None:
             self.last=now;self.last_error='Core není nakonfigurovaný; funkční poruchu z toho nelze dovodit.';return
         with self.app._read_lock:
@@ -124,7 +129,8 @@ class SystemDiagnostics:
                     errors=project_health_errors(info)
                     # A partial stream cannot clear a previous failed check.
                     if errors or isinstance(value,dict) and isinstance(value.get('info'),dict) and isinstance(health,dict) and health.get('complete') is True:
-                        self._finding('health:'+domain,'system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:'+domain],{'domain':domain,'failed_fields':[row['field'] for row in errors],'errors':errors},active=bool(errors))
+                        health_case=self._finding('health:'+domain,'system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:'+domain],{'domain':domain,'failed_fields':[row['field'] for row in errors],'errors':errors},active=bool(errors))
+                        if health_case and domain=='marketplace' and any(row['field']=='github_web' for row in errors) and self.app.supervisor is not None:self.automatic.schedule_marketplace(health_case)
                 logs=self.app.core_ws.system_log()
                 if isinstance(logs,list):
                     # Reuse this already-supported read for targeted follow-up.

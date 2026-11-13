@@ -78,8 +78,9 @@ def explain_health_case(case):
         return {'summary_cs': summary, 'root_cause_proven': False,
                 'needed': ['Nové čtení stejné kontroly a její chybový kód.',
                            'Při opakování časově související protokol integrace; odlišit DNS, spojení, TLS a odpověď serveru.'],
-                'next_test_cs': 'Zopakuj nativní diagnostiku tlačítkem níže. Pokud chyba trvá, zkontroluj protokol integrace '
-                                + name + ' ve stejném čase. Úspěch v prohlížeči Windows neověřuje přístup z HAOS. '
+                'next_test_cs': 'HADS při další automatické kontrole znovu přečte System Health a protokol integrace '
+                                + name + '. U Marketplace sám ověří přístup ke GitHubu ze své aplikace. '
+                                'Úspěch v prohlížeči Windows neověřuje přístup z HAOS. Diagnostické příkazy od uživatele nepotřebuji. '
                                 'Bez příčiny nenavrhuji změnu DNS, restart ani konfigurační opravu.'}
     if incident['kind'] == 'system_resource_pressure' and 'hads_runtime' in incident.get('components', []):
         available, reserve = payload.get('available_bytes'), payload.get('reserve_bytes')
@@ -93,8 +94,7 @@ def explain_health_case(case):
                 'root_cause_proven': False,
                 'needed': ['Aktuální dostupná paměť a statistiky spotřeby Core a běžících aplikací.',
                            'Nové měření po případném vlastníkem zvoleném uvolnění prostředků.'],
-                'next_test_cs': 'Obnov nativní diagnostiku. Ve Zdroje a připravenost ověř aktuální paměť. '
-                                'Spotřebu konkrétní aplikace přečti přes Vyšetřit konkrétní aplikaci HAOS. '
-                                'Aplikace automaticky nezastavuji. Až bude rezerva splněná i s provozní rezervou, '
-                                'použij Ověřit Hermes bez volání modelu. Paměťovou ochranu nesnižuj.'}
+                'next_test_cs': 'HADS sám načte statistiky Core, Supervisora a běžících aplikací a porovná jejich spotřebu. '
+                                'Výsledky doplní do tohoto spisu bez modelu a bez diagnostických příkazů od uživatele. '
+                                'Případnou konkrétní opravu předloží samostatně ke schválení. Paměťová ochrana zůstává zachovaná.'}
     return None

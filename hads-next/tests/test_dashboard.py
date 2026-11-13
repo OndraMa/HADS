@@ -72,7 +72,7 @@ class DashboardTests(unittest.TestCase):
         html=render_dashboard(self.app,'csrf')
         self.assertIn('Stream Player: Rádio se přerušuje.',html[:html.index('id="application-observations"')])
     def test_status_only_app_observation_never_automatically_launches_paid_AI(self):
-        calls=[];self.app.investigations.start=lambda *args:calls.append(args)
+        calls=[];self.app.investigations.start=lambda *args,**kwargs:calls.append(args)
         self.app.detection.consent(True,'fixture-owner')
         self.app.system._finding('app:fixture_other','application_failure','Aplikace hlásí neúspěšný běh.',['fixture_other'],{'state':'error'})
         self.assertEqual(calls,[])

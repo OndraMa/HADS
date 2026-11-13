@@ -9,6 +9,7 @@ from .observability import redact
 from .worker_protocol import receive,send
 from .investigator_roles import RoleBroker
 from .repair_suggestions import interpret_proposal
+from .ai_budget import BudgetExceeded
 
 
 class BrokerSession:
@@ -16,6 +17,7 @@ class BrokerSession:
         self.jobs,self.job_id,self.broker,self.model_send=jobs,job_id,broker,model_send
         self.nonce=secrets.token_urlsafe(32)
         self.last_final=None;self.failures=[]
+        self.budget_exhausted=False
         owner=self
         allowed={schema['name'] for schema in broker.schemas()}
         class Handler(socketserver.BaseRequestHandler):
@@ -34,8 +36,14 @@ class BrokerSession:
                                 raise ValueError('Model context too large')
                             if any(t.get('type')!='function' or t.get('function',{}).get('name') not in allowed for t in body.get('tools',[])):
                                 raise ValueError('Unauthorized model tool schema')
-                            call_id=jobs.model_intent(job_id,body)
-                            result=redact(model_send(body))
+                            preflight=getattr(model_send,'preflight',None)
+                            if preflight:preflight(body)
+                            policy=getattr(model_send,'policy',{})
+                            call_id=jobs.model_intent(job_id,body,**policy)
+                            try:result=redact(model_send(body))
+                            except BudgetExceeded:
+                                jobs.model_result(call_id,{'sent_to_provider':False,'budget_exhausted':True})
+                                raise
                             jobs.model_result(call_id,result)
                             message=result['choices'][0]['message']
                             if not message.get('tool_calls') and isinstance(message.get('content'),str):owner.last_final=message['content']
@@ -43,6 +51,7 @@ class BrokerSession:
                         try:send(self.request,{'ok':True,'result':result})
                         except OSError:return
                     except Exception as error:
+                        if isinstance(error,BudgetExceeded):owner.budget_exhausted=True
                         owner.failures.append(type(error).__name__)
                         try:send(self.request,{'ok':False,'error':'Broker požadavek odmítl: '+type(error).__name__})
                         except OSError:return
@@ -121,5 +130,6 @@ def run_investigation(jobs,job_id,broker,launcher,model_send,*,model):
             jobs.store.record(job['incident_id'],'hermes_investigation',{'job_id':job_id,**conclusion})
             return {**result,'job':jobs.get(job_id)}
     except Exception:
-        jobs.transition(job_id,'blocked','Vyšetřování bylo zastaveno; důkazy jsou zachované. Neznámé modelové volání se automaticky neopakuje.')
+        reason='Testovací rozpočet AI je vyčerpaný. Další požadavek nebyl odeslán; důkazy zůstávají uložené a nativní čtení pokračují.' if 'session' in locals() and session.budget_exhausted else 'Vyšetřování bylo zastaveno; důkazy jsou zachované. Neznámé modelové volání se automaticky neopakuje.'
+        if jobs.get(job_id)['state']!='blocked':jobs.transition(job_id,'blocked',reason)
         raise
