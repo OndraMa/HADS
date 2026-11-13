@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "tested_source_commit": "026743e7f8c7e469ddb5f45610c6c1e63a4ee5e0",
+  "scope": "offline_native_architecture_wire_and_browser_fixtures",
+  "live_haos": false,
+  "source_update_installed_in_owner_HAOS": false,
+  "installer_rebuilt": false,
+  "live_Hermes_acceptance": "pending_memory_and_owner_environment",
+  "Marketplace_root_cause_proven": false,
+  "memory_consuming_component_proven": false,
+  "memory_gate_bytes": 603979776,
+  "unit_wire_tests_each": 203,
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "browser_views": 12,
+  "contracts_ci": "https://github.com/OndraMa/HADS/actions/runs/43426011425",
+  "browser_ci": "https://github.com/OndraMa/HADS/actions/runs/43426011242",
+  "artifacts": [
+    {
+      "id": 14038250681,
+      "digest": "sha256:22a9b3fa3a44ebbedf77a2864e75b4f552010b73944398bf41af77c2c55dc530",
+      "name": "health-evidence-arm64-026743e7f8c7e469ddb5f45610c6c1e63a4ee5e0"
+    },
+    {
+      "id": 14038015807,
+      "digest": "sha256:29b818543a883a81fd75f5573f748eb9c9ff4ffb2c5c622ce287db2c110fa652",
+      "name": "health-evidence-amd64-026743e7f8c7e469ddb5f45610c6c1e63a4ee5e0"
+    },
+    {
+      "id": 14036942215,
+      "digest": "sha256:854a74c4c8690e111e1cd190322c5416fdb8ab97fd7e68f8a0ac35dd20c15cf4",
+      "name": "command-center-026743e7f8c7e469ddb5f45610c6c1e63a4ee5e0"
+    }
+  ],
+  "evidence_sha256": {
+    "cli-memory-contract.json": "289f770efeb3f38a11975847c9057292ef39ed27b73d6f325103486523617266",
+    "dashboard-desktop.png": "84410f8aa1fe1239f8048d3be8adf15541e2a4ffb400e51ec338d6fbc3976f9f",
+    "dashboard-mobile.png": "9e8f473f687c7ef5429c1a05d54c37f9cc83756e7f44dd97d3fca552eff1d6b5",
+    "practical-browser.json": "2c84228f166035bc92d7f28baf56f076c18d5e0bc74ffdb4d338b9d351a5a6dd",
+    "tests-amd64.json": "ce715642e001319f75cd55f62f3d878c99c823c712303c1f38a573315a92eb78",
+    "tests-arm64.json": "72f8b191746523ecd98fcf82c814a3737e6b95b3c19a14109bbab8147b1b1ddf"
+  },
+  "passed": true
+}

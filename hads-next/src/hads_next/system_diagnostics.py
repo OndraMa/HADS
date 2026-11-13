@@ -3,6 +3,7 @@ import hashlib,json,time,resource,os
 from datetime import datetime
 from .evidence import canonical
 from .observability import project_supervisor_read
+from .health_cases import project_health_errors,project_health_log,explain_health_case
 
 class SystemDiagnostics:
     def __init__(self,app):
@@ -17,7 +18,7 @@ class SystemDiagnostics:
             active=db.execute('SELECT count(*) FROM health_episodes WHERE active=1').fetchone()[0]
             sample=db.execute('SELECT document FROM resource_samples ORDER BY at DESC LIMIT 1').fetchone()
         return {'last_check_at':self.last,'last_error':self.last_error,'capabilities':dict(self.capabilities),'core_read_latency_ms':getattr(self,'core_latency_ms',None),'active_findings':active,'resources':json.loads(sample[0]) if sample else None,'host_metrics':getattr(self,'host_metrics',None),'ai_required':False,'restart_proof':'Only explicit supported source evidence; a disconnected socket is not a restart.'}
-    def _finding(self,key,kind,symptom,components,data,*,active=True):
+    def _finding(self,key,kind,symptom,components,data,*,active=True,observations=None):
         now=self.app.clock();serialized=canonical(data);fingerprint=hashlib.sha256(serialized.encode()).hexdigest()
         with self.app.store._connect() as db:
             row=db.execute('SELECT * FROM health_episodes WHERE key=?',(key,)).fetchone()
@@ -34,12 +35,14 @@ class SystemDiagnostics:
         with self.app.store._connect() as db:
             old=db.execute('SELECT observed_at FROM evidence WHERE source=? AND event_id=?',('native_system_health',event_id)).fetchone()
             db.execute('INSERT OR REPLACE INTO health_episodes VALUES(?,1,?,?)',(key,episode,incident['id']))
-        self.app.store.add_evidence(incident['id'],{'source':'native_system_health','kind':kind,'event_id':event_id,'observed_at':old[0] if old else now,'payload':data})
-        self.app.store.record(incident['id'],'deterministic_investigation',{'summary_cs':symptom+' Příčinu je potřeba ověřit cíleným čtením.','root_cause_proven':False})
+        evidence={'source':'native_system_health','kind':kind,'event_id':event_id,'observed_at':old[0] if old else now,'payload':{**data,**(observations or {})}}
+        self.app.store.add_evidence(incident['id'],evidence)
+        explanation=explain_health_case({'incident':incident,'evidence':[evidence]})
+        self.app.store.record(incident['id'],'deterministic_investigation',explanation or {'summary_cs':symptom+' Příčinu je potřeba ověřit cíleným čtením.','root_cause_proven':False})
         with self.app.store._connect() as db:update=db.execute("SELECT document,changed_at FROM health_observations WHERE key='last-update'").fetchone()
         if update and 0<=now-update[1]<=86400:
             self.app.store.record(incident['id'],'version_correlation',{'version_change':json.loads(update[0]),'changed_at':update[1],'causality_proven':False})
-        if kind not in {'automation_reference','source_unavailable','application_failure'} and self.app.detection.snapshot()['autonomous_ai']:
+        if kind not in {'automation_reference','source_unavailable','application_failure','system_health_failure','system_resource_pressure'} and self.app.detection.snapshot()['autonomous_ai']:
             try:self.app.investigations.start(incident['id'],self.app.owner())
             except ValueError:pass
     def sample_resources(self):
@@ -61,7 +64,7 @@ class SystemDiagnostics:
     def inspect(self):
         now=self.app.clock();resources=self.sample_resources();deadline=time.monotonic()+25
         available=resources['available_bytes']
-        if type(available) is int:self._finding('memory-reserve','system_resource_pressure','Zbývá méně paměti než bezpečná rezerva pro Hermes. AI se nespustí; základní diagnostika pokračuje.',['hads_runtime'],{'worker_admission':'insufficient_memory_reserve','reserve_bytes':resources['worker_reserve_bytes']},active=available<resources['worker_reserve_bytes'])
+        if type(available) is int:self._finding('memory-reserve','system_resource_pressure','Zbývá méně paměti než bezpečná rezerva pro Hermes. AI se nespustí; základní diagnostika pokračuje.',['hads_runtime'],{'worker_admission':'insufficient_memory_reserve','reserve_bytes':resources['worker_reserve_bytes']},active=available<resources['worker_reserve_bytes'],observations={'available_bytes':available})
         if self.app.core is None:
             self.last=now;self.last_error='Core není nakonfigurovaný; funkční poruchu z toho nelze dovodit.';return
         with self.app._read_lock:
@@ -118,10 +121,24 @@ class SystemDiagnostics:
                 self.capabilities['recorder_health']='read' if 'recorder' in domains else 'not_exposed'
                 for domain,value in list(domains.items())[:64]:
                     info=value.get('info',{}) if isinstance(value,dict) else {}
-                    errors=[str(key)[:80] for key,result in info.items() if isinstance(result,dict) and result.get('error')]
-                    self._finding('health:'+domain,'system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:'+domain],{'domain':domain,'failed_fields':errors},active=bool(errors))
+                    errors=project_health_errors(info)
+                    # A partial stream cannot clear a previous failed check.
+                    if errors or isinstance(value,dict) and isinstance(value.get('info'),dict) and isinstance(health,dict) and health.get('complete') is True:
+                        self._finding('health:'+domain,'system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:'+domain],{'domain':domain,'failed_fields':[row['field'] for row in errors],'errors':errors},active=bool(errors))
                 logs=self.app.core_ws.system_log()
                 if isinstance(logs,list):
+                    # Reuse this already-supported read for targeted follow-up.
+                    # Persist only source/time/exception types, never remote prose.
+                    with self.app.store._connect() as db:
+                        health_cases=db.execute("SELECT key,incident_id FROM health_episodes WHERE active=1 AND key LIKE 'health:%' LIMIT 64").fetchall()
+                    for row in health_cases:
+                        domain=row['key'].partition(':')[2]
+                        for entry in logs[:100]:
+                            projected=project_health_log(entry,domain,now)
+                            if projected:
+                                event_id=hashlib.sha256(canonical(projected).encode()).hexdigest()
+                                added=self.app.store.add_evidence(row['incident_id'],{'source':'native_system_health','kind':'system_health_log','observed_at':projected['observed_at'],'event_id':event_id,'payload':projected})
+                                if added:self.app.store.record(row['incident_id'],'deterministic_investigation',explain_health_case(self.app.store.case(row['incident_id'])))
                     for row in logs[:100]:
                         if not isinstance(row,dict) or not str(row.get('name','')).startswith('homeassistant.components.recorder'):continue
                         stamp=row.get('timestamp',0)

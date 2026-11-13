@@ -2,6 +2,7 @@
 from html import escape
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from .health_cases import diagnostic_observation,health_domain
 
 GENERIC_APP_SYMPTOM='Aplikace hlásí neúspěšný běh.'
 
@@ -14,6 +15,9 @@ def application_name(case, applications):
 
 def case_title(case, applications):
     if case.get('kind')=='system_resource_pressure' and 'hads_runtime' in case.get('components',[]):return 'Pro spuštění Hermes chyběla paměť'
+    if case.get('kind')=='system_health_failure':
+        domain=health_domain(case)
+        return ('Marketplace' if domain=='marketplace' else domain or 'Integrace')+': neúspěšná diagnostická kontrola'
     if case.get('kind')!='application_failure':return case['symptom']
     name=application_name(case,applications)
     if case['symptom']==GENERIC_APP_SYMPTOM:return name+' potřebuje kontrolu'
@@ -33,6 +37,7 @@ def case_summary(case):
     return {
         'application_failure':'Je zaznamenaná chyba běhu aplikace. Příčinu a dopad na domácnost je ještě potřeba ověřit.',
         'source_unavailable':'Některý zdroj nelze přečíst. To samo neprokazuje poruchu zařízení.',
+        'system_health_failure':'Neprošla diagnostická kontrola integrace. Příčina a dopad na funkce domácnosti nejsou doložené. Konkrétní kontrola a další postup jsou ve spisu.',
         'automation_disabled':'Automatizace, která má být podle vlastníka zapnutá, je vypnutá.',
         'integration_repair':'Home Assistant požaduje kontrolu integrace. Podrobnosti jsou ve spisu.',
         'automation_reference':'Automatizace odkazuje na entitu bez doloženého aktuálního stavu.',
@@ -58,9 +63,11 @@ def render_dashboard(app,csrf):
     plans={c['id']:app.repairs.plans(c['id']) for c in cases}
     observations=[c for c in cases if application_observation(c) and c['status']=='open' and not plans[c['id']]]
     observation_ids={c['id'] for c in observations}
-    opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids]
+    diagnostics=[c for c in cases if diagnostic_observation(c) and c['status']=='open' and not plans[c['id']]]
+    diagnostic_ids={c['id'] for c in diagnostics}
+    opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids|diagnostic_ids]
     resolved=[c for c in cases if c['status']=='resolved']
-    recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids]
+    recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids]
     waiting=[c for c in cases if c['id'] not in observation_ids and (any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans[c['id']]) or jobs[c['id']] and jobs[c['id']][0]['state'] in {'waiting_for_user','blocked','waiting_for_source'})]
     active=sum(bool(jobs[c['id']] and jobs[c['id']][0]['state']=='investigating') for c in cases)
     esc=lambda x:escape(str(x),quote=True)
@@ -71,7 +78,7 @@ def render_dashboard(app,csrf):
         if c['id'] in observation_ids and not latest:label='Stav bez potvrzeného dopadu'
         if c['status']=='open' and c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components']:label='Rezerva pro AI nebyla splněná'
         summary='Funkční ověření potvrdilo výsledek. Podrobnosti jsou v reportu.' if c['status']=='resolved' else case_summary(c)
-        return '<article class="case-card"><div class="case-top"><span class="case-kind">'+('Aplikace HAOS' if c['kind']=='application_failure' else 'Prostředky pro AI' if c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components'] else 'Funkční případ')+'</span><span class="badge">'+esc(label)+'</span></div><h3>'+esc(case_title(c,applications))+'</h3><p>'+esc(summary)+'</p><div class="case-footer"><span>Výskytů: '+str(c['occurrence_count'])+' · '+esc(display_time(c['last_seen'],value['timezone']))+'</span><a href="case/'+esc(c['id'])+'">Otevřít důkazy spisu <span aria-hidden="true">→</span></a></div></article>'
+        return '<article class="case-card"><div class="case-top"><span class="case-kind">'+('Aplikace HAOS' if c['kind']=='application_failure' else 'Diagnostická kontrola' if c['kind']=='system_health_failure' else 'Prostředky pro AI' if c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components'] else 'Zachycený případ')+'</span><span class="badge">'+esc(label)+'</span></div><h3>'+esc(case_title(c,applications))+'</h3><p>'+esc(summary)+'</p><div class="case-footer"><span>Výskytů: '+str(c['occurrence_count'])+' · '+esc(display_time(c['last_seen'],value['timezone']))+'</span><a href="case/'+esc(c['id'])+'">Otevřít důkazy spisu <span aria-hidden="true">→</span></a></div></article>'
     def cards(rows,empty):return ''.join(card(c) for c in rows) if rows else '<div class="empty-state">'+esc(empty)+'</div>'
     findings=health['active_findings']
     health_message='Systémová kontrola ještě neproběhla.' if health['last_check_at'] is None else plural_findings(findings) if findings else 'Poslední kontrola nezachytila aktivní systémový nález.'
@@ -86,6 +93,7 @@ def render_dashboard(app,csrf):
     if len(cases)==50:body+='<p class="muted">Přehled zobrazuje posledních 50 spisů; počty se vztahují k této zobrazené sadě.</p>'
     body+='<div class="overview-grid"><section id="investigation"><div class="section-heading"><div><p class="eyebrow">PROBLÉMY A VYŠETŘOVÁNÍ</p><h2>Co nefunguje</h2></div><span class="count">'+str(len(opened))+'</span></div>'+cards(opened,'Zatím tu není otevřený případ. To samo o sobě nepotvrzuje, že všechny funkce domácnosti fungují.')+'</section><aside><section id="waiting"><p class="eyebrow">DALŠÍ KROK</p><h2>Co ode mě potřebuje</h2>'+cards(waiting,'Žádná čekající rozhodnutí.')+'</section><section class="assistant-panel"><span class="badge">VYŠETŘOVÁNÍ</span><h2>Jak právě pracuje HADS</h2><p>'+esc(ai_text)+'</p><a href="setup/ai">Nastavení AI →</a><p class="muted">Povolení AI a případných nákladů je samostatné rozhodnutí. Návrh opravy sám nic nemění.</p></section></aside></div>'
     if observations:body+='<details id="application-observations"><summary>Stavy aplikací k ověření ('+str(len(observations))+')</summary><p>Tyto údaje nepočítám jako potvrzené funkční problémy. Samotný stav error může následovat i po záměrném zastavení. Evidence zůstává uložená a není označená jako vyřešená.</p>'+cards(observations,'')+'</details>'
+    if diagnostics:body+='<section id="diagnostic-observations"><h2>Diagnostika a připravenost ('+str(len(diagnostics))+')</h2><p>Tyto nálezy vyžadují prověření nebo omezují HADS. Samy nepotvrzují poruchu funkce domácnosti. Spisy a důkazy zůstávají otevřené.</p>'+cards(diagnostics,'')+'</section>'
     body+='<div class="results-grid"><section id="resolved"><p class="eyebrow">POTVRZENÁ NÁPRAVA</p><h2>Co se podařilo vyřešit</h2>'+cards(resolved,'Dosud žádný ověřený výsledek. Pouhý úspěch příkazu případ neuzavírá.')+'</section><section id="recurring"><p class="eyebrow">DLOUHODOBÉ SOUVISLOSTI</p><h2>Co se opakuje</h2>'+cards(recurring,'Zatím nejsou opakované případy. Stejné načtení důkazu se nepočítá znovu.')+'</section></div>'
     entities=''.join('<option value="'+esc(e['entity_id'])+'">'+esc(e.get('name',e['entity_id']))+'</option>' for e in value['entities'])
     apps=''.join('<option value="'+esc(a['slug'])+'">'+esc(a['name'])+'</option>' for a in applications)

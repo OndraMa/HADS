@@ -32,11 +32,13 @@ def main():
                 for slug in ('fixture_radio','fixture_backup'):
                     app.system._finding('app:'+slug,'application_failure','Aplikace hlásí neúspěšný běh.',['supervisor',slug],{'slug':slug,'state':'error'})
                 app.system._finding('memory-reserve','system_resource_pressure','Paměť je pod rezervou.',['hads_runtime'],{'reserve_bytes':576*1024*1024})
+                app.system._finding('health:marketplace','system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:marketplace'],{'domain':'marketplace','failed_fields':['github_web']})
+                health_case=next(c['id'] for c in app.snapshot()['cases'] if c['kind']=='system_health_failure')
                 app.system.last=app.clock()
                 app._entities=[{'entity_id':'automation.entry','name':'Světlo na chodbě – ukázka prohlížeče','state':'off'}]
                 for width in [1280,390]:
                     page.set_viewport_size({'width':width,'height':900})
-                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/case/'+case['incident']['id']]:
+                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/case/'+case['incident']['id'],'/case/'+health_case]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
                         assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'
@@ -47,9 +49,15 @@ def main():
                             assert page.get_by_role('heading',name='Backup Agent potřebuje kontrolu').count()==1
                             assert 'AI je vypnutá' in page.inner_text('body')
                             assert 'Rezerva pro AI nebyla splněná' in page.inner_text('body')
+                            assert page.locator('#diagnostic-observations').get_by_role('heading',name='Marketplace: neúspěšná diagnostická kontrola').count()==1
+                            assert page.locator('#investigation .case-card').count()==0
                             page.evaluate('window.scrollTo(0,0)')
                             page.screenshot(path=str(ROOT/('.test-tmp/dashboard-'+('mobile' if width==390 else 'desktop')+'.png')),full_page=True)
-                        assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0],'passed':True})
+                        if path=='/case/'+health_case:
+                            assert 'github_web' in page.inner_text('body')
+                            assert page.get_by_role('button',name='Zopakovat nativní diagnostiku bez AI').count()==1
+                            assert page.get_by_role('link',name='Ověřit a vybrat bezpečný světelný cíl').count()==0
+                        assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0].split(health_case)[0],'passed':True})
                     page.goto(origin+'/acceptance');page.locator('input[name=isolated]').check();page.get_by_role('button',name='Založit přejímkový protokol').click();page.wait_for_url('**/acceptance?session=*')
                     assert page.get_by_role('button',name='Provést tento test').count()==12
                     assert not page.locator('input[name=cost_consent]').is_checked()

@@ -227,6 +227,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_body(404, "Spis nebyl nalezen.")
             investigations=[r['content'] for r in case['records'] if r['kind'] in {'deterministic_investigation','investigation'}]
             result=investigations[-1] if investigations else {}
+            from .health_cases import explain_health_case
+            explanation=explain_health_case(case)
+            if explanation:result=explanation
             jobs=self.server.app.investigations.for_case(case['incident']['id'])
             if jobs and jobs[0]['conclusion']:result=jobs[0]['conclusion']
             suggestion=result.get('repair_suggestion')
@@ -248,12 +251,16 @@ class Handler(BaseHTTPRequestHandler):
                 for r in case['records'] if r['kind']=='investigator_selected' and jobs and r['content'].get('job_id')==jobs[0]['id'])
             from .command_center import repair_cards
             suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
-            if self.server.app.repairs.status()['enabled']:
+            automation_case=any(component.startswith('automation.') for component in case['incident']['components'])
+            reference_case=bool({'input_boolean.hads_next_test_target','automation.hads_next_reference_test'} & set(case['incident']['components']))
+            if self.server.app.repairs.status()['enabled'] and reference_case:
                 suggestion_html+='<form method="post" action="../repair/prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><button>Připravit přesnou opravu vlastní testovací reference</button></form>'
             for target in case['incident']['components']:
                 if target.startswith('automation.'):
                     suggestion_html+='<form method="post" action="../repair/native_prepare"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+case['incident']['id']+'"><input type="hidden" name="entity_id" value="'+escape(target,quote=True)+'"><label><input type="checkbox" name="exclusive" value="yes" required>Potvrzuji, že tuto světelnou automatizaci nyní nikdo současně neupravuje.</label><button>Připravit ověřené opětovné zapnutí světelné automatizace</button></form>'
-            suggestion_html+='<a href="../setup/lighting">Ověřit a vybrat bezpečný světelný cíl</a>'
+            if automation_case:suggestion_html+='<a href="../setup/lighting">Ověřit a vybrat bezpečný světelný cíl</a>'
+            if explanation:
+                suggestion_html+='<form method="post" action="../setup/check"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Zopakovat nativní diagnostiku bez AI</button></form><a href="../setup">Zdroje a připravenost</a><p>Proběhne čtení dostupných nativních zdrojů na pozadí. Model ani oprava se nespustí. Po dokončení otevři spis znovu. Zmizení diagnostické chyby samo spis neuzavírá.</p>'
             suggestion_html+='<a href="../export/' +case['incident']['id']+'">Exportovat spis JSON</a>'
             stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
