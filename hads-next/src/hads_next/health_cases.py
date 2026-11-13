@@ -1,10 +1,26 @@
 """Deterministic explanations of native diagnostics, with no repair authority."""
-import re
+import re,math
 
 MIB = 1024 * 1024
 _IDENTIFIER = re.compile(r'[a-z0-9_]{1,80}')
 # Persist diagnostic codes, never arbitrary remote messages, URLs or headers.
 _ERROR_CODES = {'unreachable', 'timeout', 'unknown', 'cannot_connect', 'cannot_resolve'}
+_EXCEPTIONS = ('ClientConnectorDNSError','ClientConnectorCertificateError','ClientConnectorError','TimeoutError','SSLError')
+
+
+def project_health_log(row,domain,now):
+    if not isinstance(row,dict) or not _IDENTIFIER.fullmatch(domain):return None
+    logger=row.get('name');stamp=row.get('timestamp')
+    roots=('homeassistant.components.'+domain,'custom_components.'+domain)
+    if not isinstance(logger,str) or len(logger)>200:return None
+    source=next((root for root in roots if logger==root or logger.startswith(root+'.')),None)
+    if source is None:return None
+    if row.get('level') not in {'ERROR','CRITICAL','WARNING'}:return None
+    if type(stamp) not in {int,float} or not math.isfinite(stamp) or not now-900<=stamp<=now+5:return None
+    message=row.get('message');message=' '.join(x[:8192] for x in message[:8] if isinstance(x,str)) if isinstance(message,list) else message[:8192] if isinstance(message,str) else ''
+    exception=row.get('exception');text=message+' '+(exception[:8192] if isinstance(exception,str) else '')
+    classes=[name for name in _EXCEPTIONS if re.search(r'\b'+name+r'\b',text)]
+    return {'logger':source,'observed_at':stamp,'level':row['level'],'exception_types':classes,'causality_proven':False}
 
 
 def project_health_errors(info):
@@ -55,6 +71,10 @@ def explain_health_case(case):
         summary += (' Zaznamenaný chybový kód: ' + ', '.join(sorted(set(codes))) + '.' if codes
                     else ' Původní důkaz neobsahuje konkrétní chybový kód.')
         summary += ' Příčina ani dopad na funkce domácnosti nejsou doložené.'
+        classes=sorted({name for row in case.get('evidence',[]) if row.get('source')=='native_system_health'
+                        and row.get('kind')=='system_health_log'
+                        for name in (row.get('payload',{}).get('exception_types') or []) if name in _EXCEPTIONS})
+        if classes:summary+=' V časově souvisejícím protokolu integrace jsou typy chyb: '+', '.join(classes)+'. Je to vodítko, nikoli důkaz společné příčiny.'
         return {'summary_cs': summary, 'root_cause_proven': False,
                 'needed': ['Nové čtení stejné kontroly a její chybový kód.',
                            'Při opakování časově související protokol integrace; odlišit DNS, spojení, TLS a odpověď serveru.'],

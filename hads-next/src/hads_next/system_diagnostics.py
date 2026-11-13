@@ -3,7 +3,7 @@ import hashlib,json,time,resource,os
 from datetime import datetime
 from .evidence import canonical
 from .observability import project_supervisor_read
-from .health_cases import project_health_errors,explain_health_case
+from .health_cases import project_health_errors,project_health_log,explain_health_case
 
 class SystemDiagnostics:
     def __init__(self,app):
@@ -123,10 +123,22 @@ class SystemDiagnostics:
                     info=value.get('info',{}) if isinstance(value,dict) else {}
                     errors=project_health_errors(info)
                     # A partial stream cannot clear a previous failed check.
-                    if errors or isinstance(health,dict) and health.get('complete') is True:
+                    if errors or isinstance(value,dict) and isinstance(value.get('info'),dict) and isinstance(health,dict) and health.get('complete') is True:
                         self._finding('health:'+domain,'system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:'+domain],{'domain':domain,'failed_fields':[row['field'] for row in errors],'errors':errors},active=bool(errors))
                 logs=self.app.core_ws.system_log()
                 if isinstance(logs,list):
+                    # Reuse this already-supported read for targeted follow-up.
+                    # Persist only source/time/exception types, never remote prose.
+                    with self.app.store._connect() as db:
+                        health_cases=db.execute("SELECT key,incident_id FROM health_episodes WHERE active=1 AND key LIKE 'health:%' LIMIT 64").fetchall()
+                    for row in health_cases:
+                        domain=row['key'].partition(':')[2]
+                        for entry in logs[:100]:
+                            projected=project_health_log(entry,domain,now)
+                            if projected:
+                                event_id=hashlib.sha256(canonical(projected).encode()).hexdigest()
+                                added=self.app.store.add_evidence(row['incident_id'],{'source':'native_system_health','kind':'system_health_log','observed_at':projected['observed_at'],'event_id':event_id,'payload':projected})
+                                if added:self.app.store.record(row['incident_id'],'deterministic_investigation',explain_health_case(self.app.store.case(row['incident_id'])))
                     for row in logs[:100]:
                         if not isinstance(row,dict) or not str(row.get('name','')).startswith('homeassistant.components.recorder'):continue
                         stamp=row.get('timestamp',0)

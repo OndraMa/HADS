@@ -10,7 +10,7 @@ from hads_next.dashboard import render_dashboard
 class HealthCaseTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
-        self.now=100.;self.health={'complete':True,'domains':{'marketplace':{'info':{'github_web':{'error':'unreachable'}}}}}
+        self.now=100.;self.logs=[];self.health={'complete':True,'domains':{'marketplace':{'info':{'github_web':{'error':'unreachable'}}}}}
         def http(path):
             if path=='/api/config':return {'version':'2026.11.1'}
             if path=='/api/states':return []
@@ -18,7 +18,7 @@ class HealthCaseTests(unittest.TestCase):
         def ws(command):
             if command['type']=='system_health/info':return self.health
             if command['type']=='repairs/list_issues':return {'issues':[]}
-            if command['type']=='system_log/list':return []
+            if command['type']=='system_log/list':return self.logs
             raise AssertionError(command)
         self.app=Application(self.temp.name,CoreReader(http),core_ws=CoreWSReader(ws),clock=lambda:self.now)
         self.app.enroll_owner('fixture-owner');self.addCleanup(self.app.detection.close)
@@ -42,6 +42,19 @@ class HealthCaseTests(unittest.TestCase):
         self.assertNotIn('DO_NOT_STORE',json.dumps(case));self.assertNotIn('private.invalid',json.dumps(case))
         self.assertEqual(case['evidence'][0]['payload']['errors'][0]['error'],'unclassified')
         self.assertEqual(project_health_errors({'<script>':{'error':'timeout'}}),[])
+    def test_targeted_log_followup_is_time_scoped_deduplicated_and_has_no_private_prose(self):
+        self.logs=[{'name':'custom_components.marketplace','level':'ERROR','timestamp':100.,
+                    'message':['ClientConnectorDNSError: https://private.invalid/?token=NEVER_COPY'],
+                    'exception':'TimeoutError: household private details'},
+                   {'name':'custom_components.other','level':'ERROR','timestamp':100.,'message':['SSLError']},
+                   {'name':'custom_components.marketplace','level':'ERROR','timestamp':-1000.,'message':['SSLError']}]
+        self.scan();case=self.case('system_health_failure')
+        logs=[e for e in case['evidence'] if e['kind']=='system_health_log'];self.assertEqual(len(logs),1)
+        self.assertEqual(logs[0]['payload']['exception_types'],['ClientConnectorDNSError','TimeoutError'])
+        for private in ('private.invalid','NEVER_COPY','household private details','SSLError'):
+            self.assertNotIn(private,json.dumps(case))
+        self.assertIn('vodítko',case['records'][-1]['content']['summary_cs'])
+        self.scan();self.assertEqual(case,self.case('system_health_failure'))
     def test_repeated_reads_deduplicate_and_partial_stream_cannot_clear_failure(self):
         self.scan();before=self.case('system_health_failure');self.scan()
         self.assertEqual(before,self.case('system_health_failure'))

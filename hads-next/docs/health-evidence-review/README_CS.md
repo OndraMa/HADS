@@ -26,6 +26,11 @@ odkaz se do fixtures ani této dokumentace nekopírují.
   pole `error` odpovědi `system_health/info`. Volné zprávy, hlavičky a URL se
   neukládají. Nerozpoznaný kód se označí jako `unclassified`, nevykládá se.
   Nepřibývá žádný endpoint, webový scraping ani externí síťová sonda.
+- HADS z již načítaného System Log automaticky dohledá časově související
+  záznamy pouze konkrétní integrace. Uchová čas, úroveň a vybrané veřejné typy
+  výjimek, nikoli text zprávy, URL nebo libovolný podlogger. Opakované čtení
+  stejného záznamu nevytváří nové důkazy. Typ výjimky je vodítko, nikoli
+  prokázaná příčina. Jiné integrace a staré zprávy se s nálezem nespojují.
 - Neúplný System Health stream nesmí deaktivovat dříve neúspěšnou kontrolu.
   Ani úspěšné nové diagnostické čtení automaticky neuzavírá funkční spis.
 - Paměťový důkaz uchová skutečné měření při prvním nálezu a po novém výskytu.
