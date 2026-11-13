@@ -1,10 +1,9 @@
-# HADS Next 1.0.0-rc2 — kandidát praktické opravy
+# HADS Next 1.0.0-rc3 — opravný kandidát
 
-Původní Hermes, spisy a broker doplňuje systémová diagnostika, schvalované
-opětovné zapnutí jednoduché světelné automatizace a dvanáctikroková živá přejímka.
-Konfigurace automatizací se nepřepisuje. Nativní stavová služba nemá CAS;
-vyžaduje přesný plán, potvrzení výlučné práce a funkční i fyzický test.
+Nový přehled, správné odlišení stavových pozorování aplikací od doložených
+funkčních poruch, původní Hermes a nativní HA/MCP diagnostické adaptéry.
+Bezpečný výslovný přechod z ověřeného zastaveného RC2 zachovává data a identitu
+`local_hads_next_practical`; nevytváří druhou současně běžící Next aplikaci.
 
-Nová identita `local_hads_next_practical` zachová RC3 i předchozí Next.
-Bez AI funguje deterministická diagnostika. Skutečný HAOS, fyzická zařízení,
-reálný úsudek LLM a RPi čekají na měření. [Český návod](DOCS.md).
+[Český návod](DOCS.md) · [Co je součástí a co potřebuje externí připojení](INTEGRATIONS_CS.md).
+Živý HAOS, fyzická zařízení, skutečný model a RPi stále potřebují přejímku.

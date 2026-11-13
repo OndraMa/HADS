@@ -1,57 +1,73 @@
-# HADS Next 1.0.0-rc2 — kandidát pro omezenou přejímku
+# HADS Next 1.0.0-rc3 — opravný instalační kandidát
 
-Tento kandidát není produkčně ověřený. Původní Hermes, broker, kontinuální
-funkční monitory, schvalování, CAS reference, verifier, rollback a české UI
-jsou propojené. Přibyla praktická nativní oprava: opětovná aktivace vlastníkem
-vybrané jednoduché světelné automatizace. Obecná editace konfigurací není povolená.
+Obsahuje opravený český přehled, rozlišení samotných stavů aplikací od funkčních
+poruch, původní Hermes a dosavadní HA/MCP adaptéry. [Přesný obsah integrací](INTEGRATIONS_CS.md).
+RC3 HADS Next není starý Hermes 2.0.0-rc3; ten se nepřepisuje. RC3 není přijaté
+produkční vydání: živé zařízení, skutečný LLM a měření RPi stále potřebují ověření.
 
-## Stažení a bezpečná instalace
+## Stažení
 
-V soukromém GitHubu otevři větev `codex/hads-next-practical-acceptance`, adresář
-`KE_STAZENI/HADS_Next_1.0.0-rc2`. Kompletní ZIP obsahuje instalační soubor,
-český návod, companion integraci, zdroje a protokoly. Ve Windows použij
-Download raw file a porovnej SHA-256 s přiloženým manifestem:
+V přihlášeném GitHubu otevři větev `codex/hads-next-rc3`, složku
+`KE_STAZENI/HADS_Next_1.0.0-rc3`. Použij Download raw file u instalačního skriptu
+nebo kompletního ZIPu. ZIP obsahuje aktuální zdroje HADS Next, návody a protokoly;
+neobsahuje rekurzivní kopie historických vydaných ZIPů, které zůstávají na GitHubu.
+Při stavbě je potřeba internet pro připnutý base image, Hermes a constraints.
 
 ```powershell
-Get-FileHash .\HADS_Next_install_1.0.0-rc2.sh -Algorithm SHA256
+Get-FileHash .\HADS_Next_install_1.0.0-rc3.sh -Algorithm SHA256
 ```
 
-Skript se nespouští ve Windows. Pro instalaci použij **oddělený testovací HAOS**
-s Core alespoň 2026.11.0. Terminál potřebuje `ha`, `bash`, `python3`, `base64`,
-`mktemp` a existující připojené `/local_apps` nebo `/addons`. Chybějící Python
-zastaví instalaci před změnou; neinstaluj vývojové balíčky do hostitele HAOS.
-Alternativou je extrakce v Linuxu/WSL a ruční přenos do místních aplikací.
-Stavba potřebuje internet pro připnutý base image, Hermes a constraints.
+Skript nespouštěj ve Windows. V terminálové aplikaci HAOS je potřeba `ha`, `bash`,
+`python3`, `base64`, `mktemp` a připojené `/addons` nebo `/local_apps`. Chybějící
+nástroje zastaví instalaci; neinstaluj je do hostitele HAOS.
+
+## Přechod ze stávajícího Next RC2 — zachování dat
+
+Tento režim zvol, pokud už máš `local_hads_next_practical` verze 1.0.0-rc2.
+Nedělej uninstall ani nemaž data. Předem exportuj důležité spisy, ponech AI
+vypnutou a v HA zastav **pouze HADS Next RC2**. Core, Supervisor a ostatní
+aplikace se nezastavují. Aktualizátor vyžaduje skutečně potvrzený stav `stopped`;
+`error` nepovažuje automaticky za zastavení. Je-li stav nejasný, nic nepřepisuje.
 
 ```sh
-bash HADS_Next_install_1.0.0-rc2.sh --verify
-bash HADS_Next_install_1.0.0-rc2.sh --install-dev
+bash HADS_Next_install_1.0.0-rc3.sh --verify
+bash HADS_Next_install_1.0.0-rc3.sh --upgrade-rc2
 ```
 
-Pouhá inspekce, bez volání HA CLI a bez vykonání obsahu:
+Aktualizátor ověří přesný původ vydaných RC2 zdrojů, všechny jejich hashe,
+identitu a zastavení aplikace. Cizí nebo ručně upravené zdroje odmítne.
+Vytvoří a přečtením ověří archiv původních zdrojů. Potom zavolá podporovaný
+`ha apps update local_hads_next_practical --backup`: Supervisor před aktualizací
+vytvoří částečnou zálohu **této aplikace**. Data `/data`, nastavení vlastníka,
+poskytovatele a spisy se nemažou; schéma se nemigruje. Aplikace zůstává zastavená.
+Po potvrzení 1.0.0-rc3 ji spusť ručně přes HA. Při prvním spuštění ověř verzi,
+přehled a Zdroje a připravenost; AI zatím nepovoluj.
+
+Archiv zdrojů není záloha dat. Nativní částečná záloha není nezávisle prokázaná
+obnova celé HAOS/OneDrive instalace. Aktualizátor nedělá automatický restore.
+Při selhání po zaznamenání záměru zachová marker, původní zdroje a archiv;
+další automatické spuštění odmítne. Zachovej výstup a nejprve zjisti stav aplikace.
+Nevypínej ochrany, nemaž marker a nespouštěj opakované aktualizace naslepo.
+
+## Nová instalace bez Next RC2
+
+Stejný slug `local_hads_next_practical` předchází souběhu dvou Next aplikací
+na zařízení s malou pamětí. Pokud tento slug ještě neexistuje:
 
 ```sh
-bash HADS_Next_install_1.0.0-rc2.sh --extract-only /absolutni/novy-adresar
+bash HADS_Next_install_1.0.0-rc3.sh --verify
+bash HADS_Next_install_1.0.0-rc3.sh --install-dev
 ```
 
-Nový slug je `local_hads_next_practical`. RC3, 0.1, 0.2 i RC1 mají vlastní identitu
- a data a nepřepisují se. Existující cíl, symlink nebo opakovanou instalaci
-instalátor odmítne. Neprovádí automatický uninstall, migraci databáze ani restart
-Core. Selže-li sestavení, zachovej výstup a nezvyšuj oprávnění aplikace.
-
-Pro ruční instalaci ze zdrojů v místních aplikacích:
+Existující aplikaci tento režim odmítne. Čistě pro kontrolu bez HA CLI:
 
 ```sh
-ha store reload
-ha apps install local_hads_next_practical
-ha apps start local_hads_next_practical
-ha apps info local_hads_next_practical
+bash HADS_Next_install_1.0.0-rc3.sh --extract-only /absolutni/novy-adresar
 ```
 
-Starší CLI může používat alias `addons`; ověř jeho `--help`. Aplikace má ruční
-start. Otevři její ingress přes Nastavení → Aplikace. Nevyžaduje Docker socket,
-konfigurační mount, host network, další privileged capabilities nebo vypnutí
-AppArmor/protection mode. Skutečná kompatibilita HAOS profilu ještě čeká.
+Nejsou nutné další konfigurace mountů, Docker socket, host network nebo vypnutí
+AppArmor. Nastavená oprávnění se nezvyšují. Uživatel nemá oddělený testovací HAOS;
+první živá etapa proto ověří čtení a diagnostiku se zakázanými opravami a AI.
 
 ## První nastavení
 
@@ -197,8 +213,9 @@ nikoli důkaz ztraceného fyzického stisku. Verze před novou závadou se uchov
 výskyty ani znovu nevolá AI. Automatické Hermes vyšetřování významných nálezů má
 samostatný výslovný souhlas a původní denní rozpočet.
 
-Zastavená aplikace může být záměr; automatický incident vzniká pouze pro
-explicitní stav `error`/`failed`. Samotný výpadek socketu nedokazuje restart Core
+Zastavená aplikace může být záměr. Samotný stav `error`/`failed` je nyní
+stavové pozorování k ověření, nikoli potvrzená funkční porucha; sám nespouští
+automatické placené AI vyšetřování. Samotný výpadek socketu nedokazuje restart Core
 nebo Supervisora. Pokud API neposkytne konkrétní údaj, schopnost zůstane
 neověřená; globální „všechno zdravé“ se z toho neodvozuje. Spook nálezy v Repairs
 se čtou nativně. Watchman bez strukturovaného zdroje není vydáván za přečtený.

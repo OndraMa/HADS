@@ -92,7 +92,7 @@
     "src/hads_next/migration.py": "080bdea688947b438ab1463163f088b9250234fd996a73d404d5780cc42443c2",
     "src/hads_next/live_acceptance.py": "d5fdd80650c0a0df99ef91357a829b21304978c4a785ef8aa2e4165936c47c3d",
     "src/hads_next/zha_observer.py": "16d50044c3e608802ae84a540cdbfb3de431b2ce1931a9a20265b3961a28bc1e",
-    "src/hads_next/haos_application.py": "077cf0d1f6f2ba98568096a2a95a6ad8116e7adfec54ce777e0d71a37b261808",
+    "src/hads_next/haos_application.py": "fa7de43a80de28ed642d14873046bc22224c1175df48a444739cfe4f050d9d83",
     "src/hads_next/worker_protocol.py": "f7a8bdf0cfaba528e7c167067cdd67b04e26b84f574e6c51abd544a383f715c6",
     "src/hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
     "src/hads_next/research.py": "a9abf2d889af700d53a283ea50d7dece66b51fa6acf675f161e47c6efe9ed8ae",
