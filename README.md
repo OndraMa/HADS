@@ -1,21 +1,19 @@
-# HADS Next — praktický přejímkový kandidát
+# HADS Next 1.0.0-rc3 — opravný kandidát pro HAOS
 
-Aktuální práce: [PR 8](https://github.com/OndraMa/HADS/pull/8), větev
-**codex/hads-next-practical-acceptance**. Main, RC3 a vydané archivy se nepřepisují.
+Aktuální větev: **codex/hads-next-rc3** · [PR 10](https://github.com/OndraMa/HADS/pull/10).
 
-- [Souhrn změn, ověření a skutečných omezení](hads-next/docs/PRACTICAL_ACCEPTANCE.md)
-- [Instalační kandidát, kompletní ZIP a české návody](KE_STAZENI/HADS_Next_1.0.0-rc2/)
-- [Instalace a první nastavení](hads-next/haos/DOCS.md)
-- [Pozdější živé ověření bez testovacího HAOS](hads-next/docs/LIVE_WITHOUT_TEST_HAOS_CS.md)
+- [Instalátor, kompletní ZIP, návody a kontrolní součty](KE_STAZENI/HADS_Next_1.0.0-rc3/)
+- [Instalace a aktualizace z RC2 bez uninstallu](hads-next/haos/DOCS.md)
+- [Co přesně obsahují HA, MCP a Hermes integrace](hads-next/haos/INTEGRATIONS_CS.md)
+- [Souhrn oprav a zbývajících přejímek](hads-next/docs/RC3_DELIVERY_CS.md)
 
-Ve Windows otevři tuto větev v přihlášeném GitHubu a u ZIPu použij Download raw
-file. Cloudový panel ChatGPT není potřeba. Main může obsahovat starý HADS 4.6.3.
+RC3 obsahuje opravený přehled a správně rozlišuje samotný stav aplikace od
+potvrzeného funkčního problému. Původní Hermes je přímo ve výsledné image;
+HA a Music Assistant MCP adaptéry jsou součástí HADS. Externí MCP server a
+poskytovatel modelu vyžadují vlastní privátní nastavení, nezapínají se automaticky.
 
-Nově je připravená praktická oprava mimo HADS virtuální referenci: schvalované
-zapnutí jednoduché světelné automatizace nativní službou, následované skutečným
-triggerem, sledováním a potvrzením vlastníka. Konfigurace se nepřepisuje;
-nativní stavová služba nemá CAS a vyžaduje potvrzenou výlučnou práci s cílem.
-
-Systémová diagnostika, původní Hermes, schvalování, report a živý přejímkový
-průvodce jsou propojené. Skutečný HAOS, fyzická zařízení, RPi a úsudek reálného
-LLM stále potřebují přejímku. Kandidát není produkčně ověřený.
+Stávající Next RC2 se aktualizuje explicitním `--upgrade-rc2` při potvrzeném
+zastavení aplikace. Data a identita se zachovají. Starý Hermes 2.0.0-rc3, main
+ani historické archivy se nepřepisují. První živé ověření ponechá AI a opravy
+vypnuté. Jde o kandidát; skutečný model, fyzická zařízení a úplná HAOS přejímka
+nejsou dosud označené jako ověřené.

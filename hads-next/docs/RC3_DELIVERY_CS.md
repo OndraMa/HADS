@@ -59,3 +59,21 @@ Přesný nativně testovaný zdroj, hashe instalátoru a výsledky obou architek
 jsou ve verzovaném `docs/evidence/installation-1.0.0-rc3/ACCEPTANCE.json`.
 Kandidát se publikuje až po úspěchu dostupných kontrol. Instalace a opravy
 nebyly prováděné v uživatelově domácnosti.
+
+## Dostupné kontroly dokončené
+
+Nativní [běh 43378322470](https://github.com/OndraMa/HADS/actions/runs/43378322470)
+prošel na AMD64 i ARM64 nad revizí `02fad0672de32f0edda264196800f9f80a3ed482`.
+Na každé architektuře prošlo 185 regresí, skutečný Core s původním Hermes,
+praktická schvalovaná oprava a verifier, produkční image, paměťová brána, restart,
+čistá instalace a celý aktualizační skript nad přesným vydaným RC2 zdrojem.
+Aktualizační HA CLI a jeho částečná záloha byly simulované; zdroje, skript,
+filesystem kontroly a zachování datového sentinel souboru byly skutečné.
+
+[Prohlížečový běh 43378322338](https://github.com/OndraMa/HADS/actions/runs/43378322338)
+také prošel. Snímky jsou z anonymní fixture, ne z domácnosti uživatele.
+
+Obě architektury vytvořily stejný instalátor, SHA-256:
+`8a23625c688b4282f2661e6b24000a8e5ce3e7886705b4dd02f33805fe5b13d1`.
+Všechny payload soubory odpovídají přesnému testovanému commitu. Trvalé
+protokoly a manifest jsou ve složce `evidence/installation-1.0.0-rc3/`.
