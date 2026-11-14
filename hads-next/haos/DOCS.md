@@ -1,20 +1,20 @@
-# HADS Next 1.0.0-rc5 — nativní ověření doplňků
+# HADS Next 1.0.0-rc6 — oprava inventáře a podrobnosti Watchmanu
 
 Jde o instalační kandidát. Rozlišuje přítomnost integrace/aplikace, stav procesu,
 přečtené vlastní entity a dosud neověřenou funkci doplňku. Aktualizace nepředstírá
 plnou funkčnost všech externích konektorů.
 
-## Přechod z běžícího Next RC4
+## Přechod z běžícího Next RC5
 
-V přihlášeném GitHubu otevři vydání `hads-next-1.0.0-rc5`, adresář
-`KE_STAZENI/HADS_Next_1.0.0-rc5`. Stáhni instalační .sh přes **Download raw file**
+V přihlášeném GitHubu otevři vydání `hads-next-1.0.0-rc6`, adresář
+`KE_STAZENI/HADS_Next_1.0.0-rc6`. Stáhni instalační .sh přes **Download raw file**
 do /config. Nespouští se ve Windows.
 
 ```sh
-bash /config/HADS_Next_install_1.0.0-rc5.sh --upgrade-rc4
+bash /config/HADS_Next_install_1.0.0-rc6.sh --upgrade-rc5
 ```
 
-RC4 předem nezastavuj ani neodinstalovávej. Skript ověří přesné vydané RC4 zdroje,
+RC5 předem nezastavuj ani neodinstalovávej. Skript ověří přesné vydané RC5 zdroje,
 uchová jejich zálohu a požádá Supervisor o aktualizaci pouze HADS Next s nativní
 částečnou zálohou. Soukromá data a identita zůstávají. Zachová stav started/stopped.
 Stav error, vlastní změny zdrojů nebo nedokončený zásah se neobcházejí.
@@ -30,7 +30,7 @@ kandidát nepodporuje. Původní Hermes 2.0.0-rc3 se nemění. Záloha zdrojů a
 Po ověřeném přihlášení vlastníka HADS spustí nativní kontrolu a opakuje ji při
 pravidelné kontrole. Stránka **Doplňky a ověření** ukáže Spook, HA-MCP,
 Automation Inspector, HADocs, Entity Availability, Hamster MCP, HAGHS, Watchman
-a Music Assistant. HASK je podle zadání vynechaný.
+a Music Assistant. HASK není automaticky aktivovaný; jeho experimentální možnosti popisuje přiložený návod.
 
 Čtení využívá existující API Core a Supervisoru, entity registry a Repairs.
 Neodhaduje URL podle názvu, nestahuje stránky UI, nevyvolává Watchman report,
@@ -56,7 +56,7 @@ s oprávněním 0600. Zobrazuje se pouze seznam konektorů, nikoli URL nebo toke
 Nepřenášejí se souhlasy, AI klíče/náklady, oprávnění, historický stav „funguje“
 ani staré chyby. Původní data se nemění.
 
-Tento návrh v RC5 ještě neaktivuje HA-MCP, Hamster, HADocs nebo Inspector
+Tento návrh ani v RC6 ještě neaktivuje HA-MCP, Hamster, HADocs nebo Inspector
 adaptér. Jejich úplné funkční připojení je další nedokončená část. Pro známý JSON
 export existuje soukromý formulář; nepatří do chatu ani GitHubu. Výpis historického
 přehledu není export připojovacích údajů. Importují se pouze pole z ověřené RC3
@@ -75,3 +75,9 @@ jednoduchou světelnou aktivaci. Obecné zápisy Spook/HA-MCP, registrů, YAML
 a statistik nejsou tímto vydáním implementované. Každá podporovaná oprava potřebuje
 konkrétní souhlas a funkční ověření. Požadavky na ověřenou zálohu se nemění.
 Živá HAOS přejímka, skutečný model a fyzické rádio/Zigbee čekají na ověření.
+
+## Nové konkrétní opravy sběru
+
+Platné Supervisor slugy s pomlčkou, tečkou a velkými písmeny nevyřadí ostatní aplikace. Neplatné položky jsou vynechané s viditelným omezením. HADS čte existující podrobnosti Watchmanu podle identity v registru, včetně zdrojových souborů a řádků. Nevyvolává report ani neukrývá nálezy. Jeden společný diagnostický spis zachovává důkazy bez umělých opakování a bez automatického uzavření při poklesu počtu. Starší nepodporovaná identita nebo neúplné atributy zůstávají neověřené.
+
+Úplný návod připojení: [HAMCP_HERMES_CS.md](HAMCP_HERMES_CS.md). Přehled skutečně chybějících adaptérů a posouzení Orchestratoru je v dodané dokumentaci; instalace RC6 je automaticky nedoplní.

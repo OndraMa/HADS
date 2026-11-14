@@ -1,0 +1,14 @@
+{
+  "scope": "offline_source_extracted_unit_functions",
+  "live_haos": false,
+  "upstream_commit": "cebfdff5d5a950ea9ad2cd166f7768af997e4d3b",
+  "source_sha256": {
+    "plan_executor.py": "b46038aca8cfccb037affd0f68d2719ed21ad71cbce56f16fd95a05e5c5c0e35",
+    "main.py": "82f1d768af91f9d6f890560fc17b89497f8a4620f842006c12a1c36d974d51a4"
+  },
+  "checks": {
+    "unknown_result_assumed_success": true,
+    "ingress_header_alone_bypasses_optional_bearer_gate_in_extracted_middleware": true
+  },
+  "limits": "Only extracted upstream functions, no deployment probe, no complete dependency suite or network access. Other deployment controls not assessed."
+}

@@ -11,9 +11,9 @@ import time
 
 from .diagnostics import investigate_radio
 from .evidence import IncidentStore
-from .observability import redact,project_supervisor_read
+from .observability import redact,project_supervisor_read,is_app_slug
 
-VERSION = "1.0.0-rc5"
+VERSION = "1.0.0-rc6"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -123,7 +123,7 @@ class Application:
                 if name == 'applications' and isinstance(value,dict) and isinstance(value.get('addons'),list):
                     with self._lock:
                         self._apps = [{'slug':a['slug'],'name':str(a.get('name',a['slug']))[:120]} for a in value['addons']
-                                      if isinstance(a,dict) and re.fullmatch(r'[a-z0-9_]+',str(a.get('slug','')))][:200]
+                                      if isinstance(a,dict) and is_app_slug(a.get('slug'))][:200]
                 valid = value is not None
                 if name in {'core_config','supervisor','haos'}:
                     valid=isinstance(value,dict) and isinstance(value.get('version'),str)
@@ -148,7 +148,7 @@ class Application:
         return sources
 
     def report_app_incident(self, symptom, slug, principal):
-        if not re.fullmatch(r'[a-z0-9_]+', str(slug)) or not 3 <= len(symptom) <= 1000 or not principal:
+        if not is_app_slug(slug) or not 3 <= len(symptom) <= 1000 or not principal:
             raise ValueError('Neplatné hlášení aplikace.')
         if self.supervisor is None:
             raise ValueError('Supervisor není připojen; nelze ověřit cílovou aplikaci.')

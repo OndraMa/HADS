@@ -14,7 +14,7 @@ import threading
 from urllib.parse import parse_qs, urlsplit
 
 from .haos_application import Application, VERSION
-from .observability import CoreReader, CoreWSReader, NativeHTTP, NativeWebSocket, SupervisorReader
+from .observability import CoreReader, CoreWSReader, NativeHTTP, NativeWebSocket, SupervisorReader, is_app_slug
 from .investigation_jobs import JobBlocked
 from .repair import RepairBlocked
 from .legacy_connectors import LegacySettingsError
@@ -26,7 +26,8 @@ class SupervisorTransport:
 
     def __call__(self, path):
         import re
-        if path not in {'/supervisor/info','/supervisor/stats','/core/stats','/os/info','/host/info','/addons'} and not re.fullmatch(r'/addons/[a-z0-9_]+/(info|stats|logs)',path):
+        app_read = re.fullmatch(r'/addons/([^/]+)/(info|stats|logs)', path)
+        if path not in {'/supervisor/info','/supervisor/stats','/core/stats','/os/info','/host/info','/addons'} and not (app_read and is_app_slug(app_read[1])):
             raise ValueError('Unsupported Supervisor read')
         return self._http(path, raw=path.endswith('/logs'))
 
