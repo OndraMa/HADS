@@ -112,6 +112,14 @@ def persist_watchman(app, report):
         existing = db.execute('SELECT id FROM incidents WHERE correlation_key=?', (key,)).fetchone()
     if not report['findings'] and existing is None:
         return None
+    if existing:
+        previous = app.store.case(existing['id'])['evidence']
+        snapshots = [r['payload'] for r in previous if r['source'] == 'watchman_native']
+        # A new scan timestamp alone adds no new explanation or configuration
+        # evidence. The provider document still retains the latest source times.
+        substantive = lambda value: {k: v for k, v in value.items() if k not in {'last_update_at', 'last_parse_at'}}
+        if snapshots and substantive(snapshots[-1]) == substantive(report):
+            return existing['id']
     event_id = hashlib.sha256(canonical(report).encode()).hexdigest()
     with app.store._connect() as db:
         old = db.execute("SELECT observed_at FROM evidence WHERE source='watchman_native' AND event_id=?", (event_id,)).fetchone()
@@ -125,8 +133,8 @@ def persist_watchman(app, report):
     if added:
         counts = report['counts']
         summary = ('HADS přečetl podrobnosti existujícího hlášení Watchmanu. '
-                   + 'Chybějící entity: ' + str(counts.get('missing_entities'))
-                   + '; akce: ' + str(counts.get('missing_actions')) + '. '
+                   + 'Chybějící entity: ' + (str(counts['missing_entities']) if counts.get('missing_entities') is not None else 'nezjištěno')
+                   + '; akce: ' + (str(counts['missing_actions']) if counts.get('missing_actions') is not None else 'nezjištěno') + '. '
                    + ('Čtení je neúplné; chybějící údaje nepovažuji za nulu. ' if report['gaps'] else '')
                    + 'Jde o statické odkazy, nikoli důkaz poruchy zařízení. Zakázaná entita může být záměrná; '
                    'logger.log a script.execute mohou patřit ESPHome. Bez kontextu nic nepřepisuji ani nezapínám.')

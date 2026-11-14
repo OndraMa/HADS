@@ -92,6 +92,9 @@ class CollectorContracts(unittest.TestCase):
         from hads_next.health_cases import diagnostic_observation
         self.assertTrue(diagnostic_observation(case['incident']))
         self.assertIn('switch.fixture_disabled', render_providers(self.app, 'fixture'))
+        states[2]['state'] = '2026-11-14T21:06:36+01:00'
+        self.app.providers.update(values, states)
+        self.assertEqual(len(self.app.store.case(native['incident_id'])['evidence']), 1)
         states[0]['state'] = '0'; states[0]['attributes'] = {'entities': []}
         self.app.providers.update(values, states)
         self.assertEqual(self.app.store.case(native['incident_id'])['incident']['status'], 'open')
