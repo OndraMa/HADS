@@ -210,6 +210,9 @@ class EvidenceBroker:
             system=getattr(self,'runtime_system',None)
             if system is None:return self._result(incident_id,name,'hads_controller','unavailable',None,now,'Měření není dostupné.')
             source='hads_controller';value=system.status()
+            providers=getattr(getattr(system,'app',None),'providers',None)
+            if providers is not None:
+                value['diagnostic_providers']=[{k:r[k] for k in ('provider_id','presence_confirmed','native_state_read_succeeded','functional_verified','gaps','checked_at','stale')} for r in providers.snapshot()]
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()
@@ -217,6 +220,9 @@ class EvidenceBroker:
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
             automatic=[r['content'] for r in case['records'] if r['kind']=='automatic_read_report']
+            system=getattr(self,'runtime_system',None)
+            followup=system.followup.report(incident_id) if system is not None else None
+            if followup:value['native_followup']=followup
             if automatic:
                 latest=automatic[-1]
                 value['automatic_diagnostics']={key:latest.get(key) for key in ('summary_cs','state','probe','root_cause_proven')}

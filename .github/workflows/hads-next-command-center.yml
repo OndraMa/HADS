@@ -1,7 +1,7 @@
 name: HADS Next Command Center review
 on:
   push:
-    branches: [codex/hads-next-command-center, codex/hads-next-rc3, codex/hads-next-health-evidence, codex/hads-next-rc4]
+    branches: [codex/hads-next-command-center, codex/hads-next-rc3, codex/hads-next-health-evidence, codex/hads-next-rc4, codex/hads-next-rc5]
     paths:
       - hads-next/src/**
       - hads-next/tests/**
@@ -38,9 +38,11 @@ jobs:
         if: ${{ always() }}
         with:
           name: command-center-${{ github.sha }}
+          include-hidden-files: true
           path: |
             hads-next/docs/evidence/offline-tests.json
             hads-next/docs/evidence/practical-browser.json
             hads-next/.test-tmp/dashboard-desktop.png
             hads-next/.test-tmp/dashboard-mobile.png
+            hads-next/.test-tmp/providers-*.png
           retention-days: 7

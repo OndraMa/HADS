@@ -8,6 +8,7 @@ def page(content,path):
     prefix='../'*max(0,path.count('/')-1)
     content=re.sub(r'<!doctype[^>]*>|</?(?:html|head|body)[^>]*>|<title>.*?</title>|<style>.*?</style>','',content,flags=re.I|re.S)
     links=[('./','Domácnost'),('setup','Zdroje a připravenost'),('setup/monitors','Sledované funkce'),('setup/repair','Opravy'),('setup/history','Historie a migrace'),('setup/lighting','Světelné opravy'),('acceptance','Živá přejímka')]
+    links.insert(2,('setup/providers','Doplňky a ověření'))
     nav=''.join('<a href="'+prefix+href+'"'+(' aria-current="page"' if path in {'/','/index.html'} and href=='./' or path=='/'+href else '')+'>'+label+'</a>' for href,label in links)
     return '<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HADS Next</title><style>'+STYLE+'</style></head><body><header class="app-header"><a class="brand" href="'+prefix+'./"><span class="brand-mark" aria-hidden="true">H</span><strong>HADS Next</strong></a><small>Domácnost pod dohledem</small></header><nav class="main-nav" aria-label="Hlavní navigace">'+nav+'</nav><main>'+content+'</main></body></html>'
 

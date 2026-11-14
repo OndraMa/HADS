@@ -14,6 +14,7 @@ def application_name(case, applications):
 
 
 def case_title(case, applications):
+    if case.get('kind')=='integration_repair' and health_domain(case):return health_domain(case)+': požadavek Home Assistantu na opravu'
     if case.get('kind')=='system_resource_pressure' and 'hads_runtime' in case.get('components',[]):return 'Pro spuštění Hermes chyběla paměť'
     if case.get('kind')=='system_health_failure':
         domain=health_domain(case)
@@ -79,8 +80,13 @@ def render_dashboard(app,csrf):
         if c['status']=='open' and c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components']:label='Rezerva pro AI nebyla splněná'
         summary='Funkční ověření potvrdilo výsledek. Podrobnosti jsou v reportu.' if c['status']=='resolved' else case_summary(c)
         automatic=app.system.automatic.report(c['id']) if c['id'] in diagnostic_ids else None
+        followup=app.system.followup.report(c['id']) if c['id'] in diagnostic_ids else None
+        if followup and not latest:
+            summary=followup['summary_cs']
+            label={'still_failing':'Znovu přečteno; nález trvá','check_passed':'Kontrola již nález nepotvrzuje','unavailable':'Další čtení je neúplné'}[followup['state']]
         if automatic:
-            summary=automatic['summary_cs'];label='HADS sbírá další důkazy' if automatic['state']=='reading' else 'Automatické čtení dokončeno s omezením' if automatic['gaps'] else 'Důkazy automaticky načtené'
+            summary=(summary+' ' if followup else '')+automatic['summary_cs']
+            if not followup:label='HADS sbírá další důkazy' if automatic['state']=='reading' else 'Automatické čtení dokončeno s omezením' if automatic['gaps'] else 'Důkazy automaticky načtené'
         return '<article class="case-card"><div class="case-top"><span class="case-kind">'+('Aplikace HAOS' if c['kind']=='application_failure' else 'Diagnostická kontrola' if c['kind']=='system_health_failure' else 'Prostředky pro AI' if c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components'] else 'Zachycený případ')+'</span><span class="badge">'+esc(label)+'</span></div><h3>'+esc(case_title(c,applications))+'</h3><p>'+esc(summary)+'</p><div class="case-footer"><span>Výskytů: '+str(c['occurrence_count'])+' · '+esc(display_time(c['last_seen'],value['timezone']))+'</span><a href="case/'+esc(c['id'])+'">Otevřít důkazy spisu <span aria-hidden="true">→</span></a></div></article>'
     def cards(rows,empty):return ''.join(card(c) for c in rows) if rows else '<div class="empty-state">'+esc(empty)+'</div>'
     findings=health['active_findings']

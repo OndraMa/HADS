@@ -17,6 +17,7 @@ from .haos_application import Application, VERSION
 from .observability import CoreReader, CoreWSReader, NativeHTTP, NativeWebSocket, SupervisorReader
 from .investigation_jobs import JobBlocked
 from .repair import RepairBlocked
+from .legacy_connectors import LegacySettingsError
 
 
 class SupervisorTransport:
@@ -171,6 +172,9 @@ class Handler(BaseHTTPRequestHandler):
             from .readiness import checklist
             gates=''.join('<article><h3>'+escape(g['label'])+' — '+('Ověřeno' if g['passed'] else 'Čeká / omezeno')+'</h3><p>'+escape(g['detail'])+'</p></article>' for g in checklist(self.server.app))
             return self.send_body(200,'<h1>Průvodce připraveností</h1>'+gates+'<ul>' + rows + '</ul><p>Izolovaný Hermes launcher: '+('dostupný; izolace se ověří před prvním modelovým voláním' if runtime['runtime_installed'] else 'není dostupný; AI je zablokovaná')+'</p><p>'+escape(runtime['runtime_probe']['summary_cs'])+'</p><form method="post" action="setup/runtime"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Ověřit Hermes bez volání modelu</button></form><p>Živá HAOS a reálná modelová přejímka čekají. Obecné zásahy jsou zakázané. Dostupný je vlastní CAS test a zvlášť povolená jednoduchá světelná aktivace.</p><a href="setup/ai">Nastavit poskytovatele AI</a><form method="post" action="setup/check"><input type="hidden" name="csrf" value="' + self.server.csrf + '"><button>Ověřit skutečná čtení zdrojů</button></form><a href="./">Přehled domácnosti</a>')
+        if path == '/setup/providers':
+            from .provider_ui import render_providers
+            return self.send_body(200,render_providers(self.server.app,self.server.csrf))
         if path == '/setup/lighting':
             entities=[s for s in self.server.app.snapshot()['entities'] if s['entity_id'].startswith('automation.')]
             options=''.join('<option value="'+escape(s['entity_id'],quote=True)+'">'+escape(s.get('name',s['entity_id']))+' — '+escape(s['state'])+'</option>' for s in entities)
@@ -231,6 +235,8 @@ class Handler(BaseHTTPRequestHandler):
             from .health_cases import explain_health_case
             explanation=explain_health_case(case)
             if explanation:result=explanation
+            followup=self.server.app.system.followup.report(case['incident']['id'])
+            if followup:result={**result,'summary_cs':followup['summary_cs'],'next_test_cs':followup['next_test_cs'],'needed':[]}
             automatic=self.server.app.system.automatic.report(case['incident']['id'])
             if automatic:
                 result={**result,'summary_cs':result.get('summary_cs','')+' '+automatic['summary_cs'],
@@ -314,7 +320,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(415, "Nepodporovaný formát.")
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= (2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
+            limit=2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 128*1024 if urlsplit(self.path).path=='/setup/provider-settings' else 8192
+            if not 0 < size <= limit:
                 raise ValueError()
             form = parse_qs(self.rfile.read(size).decode(), max_num_fields=10, strict_parsing=True)
             if form.get("csrf") != [self.server.csrf]:
@@ -380,6 +387,12 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/setup/repair':
                 self.server.app.repairs.configure(form.get('enabled')==['yes'],self.headers['X-Remote-User-Id'])
                 self.send_response(303);self.send_header('Location','repair');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/provider-previous':
+                self.server.app.legacy_connectors.stage_previous(self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','providers');self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/provider-settings':
+                self.server.app.legacy_connectors.stage(json.loads(form.get('document',[''])[0]),self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','providers');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/import':
                 from .migration import import_case
                 value=json.loads(form.get('document',[''])[0]);import_case(self.server.app.store,value)
@@ -410,6 +423,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.report_incident(form.get("symptom", [""])[0], form.get("entity_id", [""])[0], self.headers["X-Remote-User-Id"],occurred_at=stamp)
             else:
                 return self.send_body(404, "Tato operace není dostupná.")
+        except LegacySettingsError as error:
+            return self.send_body(400,escape(str(error)))
         except (JobBlocked,RepairBlocked) as error:
             return self.send_body(409,escape(str(error)))
         except (ValueError, KeyError, UnicodeError):

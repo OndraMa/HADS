@@ -1,4 +1,11 @@
-# Co obsahuje HADS Next RC3 a co vyžaduje připojení
+# Integrace HADS Next — aktuální stav RC5
+
+RC5 přidává nativní přehled devíti zdrojů a soukromý **neaktivní návrh** přenosu
+připojení z původního Hermes RC3. Nepřidává hotové MCP/HTTP diagnostické adaptéry
+pro HA-MCP, Hamster MCP, HADocs nebo Automation Inspector a nepovoluje jejich
+obecné zápisy. HASK je vynechaný. Viz DOCS.md a RC5_DELIVERY_CS.md.
+Následující původní tabulka popisuje převzaté komponenty a jejich hranice;
+historické údaje o přejímce nejsou novým ověřením jednotlivých doplňků.
 
 | Součást | V balíčku HADS | Stav ověření a potřebné nastavení |
 |---|---|---|

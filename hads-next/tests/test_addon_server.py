@@ -92,6 +92,27 @@ class IngressTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 transport(path)
 
+    def test_provider_settings_require_owner_csrf_and_never_echo_private_values(self):
+        self.app.enroll_owner('owner-id')
+        document=json.dumps({'ha_mcp_url':'https://mcp.invalid/private_PATH_SECRET','ha_mcp_token':'PRIVATE_TOKEN','ai_api_key':'IGNORE_ME'})
+        data={'csrf':self.server.csrf,'document':document}
+        self.assertEqual(self.request('POST','/setup/provider-settings',urlencode(data),owner='other')[0],403)
+        self.assertEqual(self.request('POST','/setup/provider-settings',urlencode({**data,'csrf':'bad'}))[0],403)
+        self.assertFalse(self.app.legacy_connectors.path.exists())
+        self.assertEqual(self.request('POST','/setup/provider-settings',urlencode(data))[0],303)
+        status,page=self.request('GET','/setup/providers');self.assertEqual(status,200)
+        for private in ('PATH_SECRET','PRIVATE_TOKEN','IGNORE_ME'):self.assertNotIn(private,page)
+        self.assertIn('žádný adaptér neaktivuje',page)
+        from hads_next.legacy_connectors import FIELDS
+        large={key:('https://fixture.invalid/mcp' if key.endswith('url') else 'X'*2048) for fields in FIELDS.values() for key in fields}
+        data['document']=json.dumps(large)
+        self.assertGreater(len(urlencode(data)),8192)
+        self.assertEqual(self.request('POST','/setup/provider-settings',urlencode(data))[0],303)
+        self.assertNotIn('X'*2048,self.request('GET','/setup/providers')[1])
+        status,message=self.request('POST','/setup/provider-previous',urlencode({'csrf':self.server.csrf}))
+        self.assertEqual(status,400);self.assertIn('Supervisor není dostupný',message)
+        self.assertNotIn('entity_id',message)
+
     def test_health_case_has_native_read_next_step_and_no_unrelated_lighting_repair(self):
         self.app.enroll_owner('owner-id')
         self.app.system._finding('health:marketplace','system_health_failure','Obecný starý symptom.',

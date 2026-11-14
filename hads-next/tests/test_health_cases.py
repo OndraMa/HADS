@@ -10,14 +10,14 @@ from hads_next.dashboard import render_dashboard
 class HealthCaseTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
-        self.now=100.;self.logs=[];self.health={'complete':True,'domains':{'marketplace':{'info':{'github_web':{'error':'unreachable'}}}}}
+        self.now=100.;self.logs=[];self.issues={'issues':[]};self.health={'complete':True,'domains':{'marketplace':{'info':{'github_web':{'error':'unreachable'}}}}}
         def http(path):
             if path=='/api/config':return {'version':'2026.11.1'}
             if path=='/api/states':return []
             raise AssertionError(path)
         def ws(command):
             if command['type']=='system_health/info':return self.health
-            if command['type']=='repairs/list_issues':return {'issues':[]}
+            if command['type']=='repairs/list_issues':return self.issues
             if command['type']=='system_log/list':return self.logs
             raise AssertionError(command)
         self.app=Application(self.temp.name,CoreReader(http),core_ws=CoreWSReader(ws),clock=lambda:self.now)
@@ -31,7 +31,7 @@ class HealthCaseTests(unittest.TestCase):
     def test_native_failure_keeps_safe_code_and_specific_noncausal_explanation(self):
         self.scan();case=self.case('system_health_failure');payload=case['evidence'][0]['payload']
         self.assertEqual(payload['errors'],[{'field':'github_web','error':'unreachable'}])
-        result=case['records'][-1]['content']
+        result=next(r['content'] for r in case['records'] if r['kind']=='deterministic_investigation')
         self.assertIn('Marketplace',result['summary_cs']);self.assertIn('github_web',result['summary_cs'])
         self.assertFalse(result['root_cause_proven']);self.assertTrue(result['needed'])
         self.assertIn('Windows',result['next_test_cs']);self.assertEqual(case['incident']['status'],'open')
@@ -84,6 +84,53 @@ class HealthCaseTests(unittest.TestCase):
         self.assertNotIn('unreachable',result['summary_cs']);self.assertFalse(result['root_cause_proven'])
         result=explain_health_case({'incident':{'kind':'system_resource_pressure','components':['hads_runtime']},'evidence':[]})
         self.assertIn('neobsahuje změřenou',result['summary_cs']);self.assertNotIn('373',result['summary_cs'])
+    def test_hassio_cloud_reads_report_actual_status_without_model_or_new_occurrences(self):
+        self.health={'complete':True,'domains':{d:{'info':{'connection':{'error':'timeout'}}} for d in ['hassio','cloud']}}
+        self.app.investigations.start=lambda *a,**k:self.fail('Native continuation must not call AI')
+        self.scan();cases=self.app.snapshot()['cases']
+        before={c['id']:self.app.store.case(c['id']) for c in cases}
+        reports={c['id']:self.app.system.followup.report(c['id']) for c in cases}
+        self.scan()
+        for c in cases:
+            self.assertEqual(before[c['id']],self.app.store.case(c['id']))
+            report=self.app.system.followup.report(c['id'])
+            self.assertEqual(report['state'],'still_failing')
+            self.assertGreater(report['checked_at'],reports[c['id']]['checked_at'])
+        html=render_dashboard(self.app,'csrf')
+        self.assertIn('Znovu přečteno; nález trvá',html);self.assertIn('connection (timeout)',html)
+        self.assertNotIn('Čeká na vyšetření',html)
+    def test_passed_partial_and_absent_health_are_distinguished_without_closing_incident(self):
+        self.scan();identity=self.case('system_health_failure')['incident']['id']
+        self.health={'complete':False,'domains':{'marketplace':{'info':{}}}};self.scan()
+        self.assertEqual(self.app.system.followup.report(identity)['state'],'unavailable')
+        self.health['complete']=True;self.scan()
+        self.assertEqual(self.app.system.followup.report(identity)['state'],'check_passed')
+        self.assertEqual(self.app.store.case(identity)['incident']['status'],'open')
+        self.health['domains']={};self.scan()
+        self.assertEqual(self.app.system.followup.report(identity)['state'],'unavailable')
+    def test_repairs_are_specific_diagnostic_observations_and_collect_only_matching_safe_logs(self):
+        self.issues={'issues':[{'domain':'fixture','issue_id':'repair_needed','severity':'error','is_fixable':True}]}
+        self.logs=[{'name':'homeassistant.components.fixture','level':'ERROR','timestamp':100.,'message':['TimeoutError private-token']},
+                   {'name':'homeassistant.components.other','level':'ERROR','timestamp':100.,'message':['SSLError']}]
+        self.scan();case=self.case('integration_repair');identity=case['incident']['id']
+        report=self.app.system.followup.report(identity)
+        self.assertIn('repair_needed',report['summary_cs']);self.assertEqual(report['state'],'still_failing')
+        self.assertEqual(len([e for e in case['evidence'] if e['kind']=='system_health_log']),1)
+        self.assertNotIn('private-token',json.dumps(case));self.assertNotIn('SSLError',json.dumps(case))
+        html=render_dashboard(self.app,'csrf');self.assertIn('fixture: požadavek Home Assistantu',html)
+        functional=html[html.index('id="investigation"'):html.index('id="diagnostic-observations"')]
+        self.assertNotIn('class="case-card"',functional)
+        self.issues=None;self.scan();self.assertEqual(self.app.system.followup.report(identity)['state'],'unavailable')
+        self.issues={'issues':[]};self.scan();self.assertEqual(self.app.system.followup.report(identity)['state'],'check_passed')
+        self.assertEqual(self.app.store.case(identity)['incident']['status'],'open')
+    def test_followup_survives_restart_and_unavailable_log_is_visible(self):
+        self.logs=None;self.scan();identity=self.case('system_health_failure')['incident']['id']
+        before=self.app.system.followup.report(identity)
+        self.assertIn('system_log_unavailable',before['gaps'])
+        from hads_next.native_followup import NativeFollowup
+        self.assertEqual(NativeFollowup(self.app).report(identity),before)
+        result=self.app.investigations.broker.read(identity,'hads_get_incident',{})
+        self.assertEqual(result['data']['native_followup'],before)
     def test_diagnostics_remain_visible_but_do_not_count_as_household_function_failures(self):
         self.scan(373);before=[self.app.store.export(c['id']) for c in self.app.snapshot()['cases']]
         html=render_dashboard(self.app,'csrf')

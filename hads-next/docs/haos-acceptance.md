@@ -1,4 +1,4 @@
-# Živá přejímka RC4 — automatická diagnostika, stav ČEKÁ
+# Živá přejímka RC5 — automatická diagnostika, stav ČEKÁ
 
 Tento dokument je protokol pro skutečný HAOS. Kontejnerové testy, obrázky
 z anonymizované fixture ani předaný text se nevydávají za nezávislou živou přejímku.
@@ -7,13 +7,13 @@ Cloud při přípravě kandidáta neměl autentizovaný přístup k cílové ins
 
 ## 1. Pouze úvodní aktualizace
 
-Stáhnout přesný RC4 instalátor a porovnat SHA-256 s ACCEPTANCE.json.
-Běžící RC3 předem nezastavovat ani neodinstalovávat. Postup je v přiloženém
-českém návodu: --verify a --upgrade-rc3. Nativní update má vyžadovat částečnou
+Stáhnout přesný RC5 instalátor a porovnat SHA-256 s ACCEPTANCE.json.
+Běžící RC4 předem nezastavovat ani neodinstalovávat. Postup je v přiloženém
+českém návodu: --verify a --upgrade-rc4. Nativní update má vyžadovat částečnou
 zálohu jen HADS Next a zachovat spisy a vlastníka. Při nejistém výsledku
 zůstane marker a další zásah se nesmí opakovat automaticky.
 
-Zaznamenat skutečnou verzi Core, Supervisor, OS, architekturu a verzi RC4
+Zaznamenat skutečnou verzi Core, Supervisor, OS, architekturu a verzi RC5
 z HADS. Dokončení aktualizace není funkční ověření a záloha sama není důkaz restore.
 
 ## 2. HADS samo přečte zdroje
@@ -72,6 +72,21 @@ Rádio/Music Assistant a Zigbee vyžadují skutečné dostupné zdroje, očekáv
 chování zvolené vlastníkem a konkrétní událost. Nepřečtený FastMCP ani nezaznamenaný
 fyzický stisk se nevydávají za ověřené. Nenastavuje se hlasitost ani přehrávání
 jako nevyžádaný diagnostický test.
+
+## 8. Doplňky a soukromý přenos nastavení
+
+Na stránce Doplňky a ověření ověřit skutečnou přítomnost a stavy po automatické
+kontrole. Nativní data nesmějí potvrdit vlastní funkční API doplňku. U entity
+sensor.system_ha_global_health_score oddělit načtený stav od identity balíčku.
+Čas entity je čas změny stavu, nikoli důkaz nového skenu. HASK je vynechaný.
+
+Volitelný úvodní přenos z původního Hermes RC3 smí přečíst jen pevný Supervisor
+endpoint ověřené aplikace/verze. Soukromý návrh musí zůstat neaktivní; UI nesmí
+zobrazit URL ani tokeny. Pokud není původní nastavení dostupné, žádné adresy
+se nesmějí odhadnout z protokolů a žádný starý souhlas se nesmí převzít.
+Úplné funkční adaptéry HA-MCP/Hamster/HADocs/Inspector a jejich schvalované
+zápisy nejsou v RC5 hotové. Tyto kroky zůstávají PENDING a nelze je uzavřít
+jako PASS pouhým importem návrhu. Při prvním pilotu neprovádět produkční změny.
 
 ## Výstup přejímky
 

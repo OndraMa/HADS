@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hads-next"
-version = "1.0.0rc4"
+version = "1.0.0rc5"
 description = "HADS Next autonomous native diagnostics and approved repairs"
 requires-python = ">=3.12"
 dependencies = []
