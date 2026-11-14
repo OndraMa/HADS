@@ -45,6 +45,7 @@ def health_domain(incident):
 def diagnostic_observation(incident):
     key = str(incident.get('correlation_key') or '')
     return (incident.get('kind') == 'system_health_failure' and key.startswith('health:health:')
+            or incident.get('kind') == 'integration_repair' and key.startswith('health:repair:')
             or incident.get('kind') == 'system_resource_pressure'
             and 'hads_runtime' in incident.get('components', []) and key == 'health:memory-reserve')
 

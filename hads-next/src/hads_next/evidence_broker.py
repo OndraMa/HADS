@@ -217,6 +217,9 @@ class EvidenceBroker:
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
             automatic=[r['content'] for r in case['records'] if r['kind']=='automatic_read_report']
+            system=getattr(self,'runtime_system',None)
+            followup=system.followup.report(incident_id) if system is not None else None
+            if followup:value['native_followup']=followup
             if automatic:
                 latest=automatic[-1]
                 value['automatic_diagnostics']={key:latest.get(key) for key in ('summary_cs','state','probe','root_cause_proven')}

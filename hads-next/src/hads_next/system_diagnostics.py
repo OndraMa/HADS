@@ -15,6 +15,8 @@ class SystemDiagnostics:
         self._cpu=(time.monotonic(),time.process_time());self._scan_cursor=0
         from .automatic_reads import AutomaticReads
         self.automatic=AutomaticReads(app)
+        from .native_followup import NativeFollowup
+        self.followup=NativeFollowup(app)
     def status(self):
         with self.app.store._connect() as db:
             active=db.execute('SELECT count(*) FROM health_episodes WHERE active=1').fetchone()[0]
@@ -132,19 +134,21 @@ class SystemDiagnostics:
                         health_case=self._finding('health:'+domain,'system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:'+domain],{'domain':domain,'failed_fields':[row['field'] for row in errors],'errors':errors},active=bool(errors))
                         if health_case and domain=='marketplace' and any(row['field']=='github_web' for row in errors) and self.app.supervisor is not None:self.automatic.schedule_marketplace(health_case)
                 logs=self.app.core_ws.system_log()
+                self.followup.update(health,repairs,logs)
                 if isinstance(logs,list):
                     # Reuse this already-supported read for targeted follow-up.
                     # Persist only source/time/exception types, never remote prose.
                     with self.app.store._connect() as db:
-                        health_cases=db.execute("SELECT key,incident_id FROM health_episodes WHERE active=1 AND key LIKE 'health:%' LIMIT 64").fetchall()
+                        health_cases=db.execute("SELECT key,incident_id FROM health_episodes WHERE active=1 AND (key LIKE 'health:%' OR key LIKE 'repair:%') LIMIT 64").fetchall()
                     for row in health_cases:
-                        domain=row['key'].partition(':')[2]
+                        domain=row['key'].split(':',2)[1]
                         for entry in logs[:100]:
                             projected=project_health_log(entry,domain,now)
                             if projected:
                                 event_id=hashlib.sha256(canonical(projected).encode()).hexdigest()
                                 added=self.app.store.add_evidence(row['incident_id'],{'source':'native_system_health','kind':'system_health_log','observed_at':projected['observed_at'],'event_id':event_id,'payload':projected})
-                                if added:self.app.store.record(row['incident_id'],'deterministic_investigation',explain_health_case(self.app.store.case(row['incident_id'])))
+                                explanation=explain_health_case(self.app.store.case(row['incident_id'])) if added else None
+                                if explanation:self.app.store.record(row['incident_id'],'deterministic_investigation',explanation)
                     for row in logs[:100]:
                         if not isinstance(row,dict) or not str(row.get('name','')).startswith('homeassistant.components.recorder'):continue
                         stamp=row.get('timestamp',0)
