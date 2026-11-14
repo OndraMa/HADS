@@ -109,6 +109,9 @@ class IngressTests(unittest.TestCase):
         self.assertGreater(len(urlencode(data)),8192)
         self.assertEqual(self.request('POST','/setup/provider-settings',urlencode(data))[0],303)
         self.assertNotIn('X'*2048,self.request('GET','/setup/providers')[1])
+        status,message=self.request('POST','/setup/provider-previous',urlencode({'csrf':self.server.csrf}))
+        self.assertEqual(status,400);self.assertIn('Supervisor není dostupný',message)
+        self.assertNotIn('entity_id',message)
 
     def test_health_case_has_native_read_next_step_and_no_unrelated_lighting_repair(self):
         self.app.enroll_owner('owner-id')

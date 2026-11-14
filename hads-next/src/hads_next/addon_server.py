@@ -17,6 +17,7 @@ from .haos_application import Application, VERSION
 from .observability import CoreReader, CoreWSReader, NativeHTTP, NativeWebSocket, SupervisorReader
 from .investigation_jobs import JobBlocked
 from .repair import RepairBlocked
+from .legacy_connectors import LegacySettingsError
 
 
 class SupervisorTransport:
@@ -422,6 +423,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.report_incident(form.get("symptom", [""])[0], form.get("entity_id", [""])[0], self.headers["X-Remote-User-Id"],occurred_at=stamp)
             else:
                 return self.send_body(404, "Tato operace není dostupná.")
+        except LegacySettingsError as error:
+            return self.send_body(400,escape(str(error)))
         except (JobBlocked,RepairBlocked) as error:
             return self.send_body(409,escape(str(error)))
         except (ValueError, KeyError, UnicodeError):
