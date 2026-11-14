@@ -10,14 +10,14 @@ def render_providers(app, csrf):
         body+='<article><h2>'+escape(row['title'])+'</h2><p>'+escape(row['summary_cs'])+'</p>'
         body+='<p>Poslední čtení: '+escape(display_time(row['checked_at'],zone))+(' — výsledek je starší než 10 minut.' if row['stale'] else '')+'</p>'
         if row['last_error']:body+='<p>'+escape(row['last_error'])+'</p>'
-        body+='<p>Načtené komponenty: '+escape(', '.join(row['matched_components']) or 'nepotvrzené')+'. Vlastní entitní záznamy: '+str(row['owned_entity_count'])+'.</p>'
+        body+='<p>Načtené komponenty: '+escape(', '.join(row['matched_components']) or 'nepotvrzené')+'. Záznamy registru se shodnou platformou: '+str(row['owned_entity_count'])+'.</p>'
         for item in row['applications']:
             label={'started':'běží','stopped':'zastavená','error':'hlásí chybu','failed':'hlásí chybu','startup':'startuje'}.get(item['state'],'stav neověřený')
             body+='<p>Aplikace '+escape(item['slug'])+': '+label+'; verze '+escape(item['version'] or 'neověřená')+'. Proces není funkční test.</p>'
         if row['samples']:
             body+='<ul>'+''.join('<li>'+escape(x['entity_id'])+': '+escape(str(x['state']) if x['state'] is not None else 'soukromý nebo nepodporovaný text vynechán')+'; změna stavu '+escape(display_time(x['source_updated_at'],zone))+'</li>' for x in row['samples'])+'</ul><p>Čas změny entity není důkaz nového skenu doplňku.</p>'
         if row['matching_repairs_count'] is not None:body+='<p>Nálezy se shodnou doménou v Repairs: '+str(row['matching_repairs_count'])+'. Nula neprokazuje zdravý doplněk.</p>'
-        body+='<p>Vlastní funkční kontrakt: neověřený. '+('MCP autentizace a katalog: neověřené. ' if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'} else '')+'Zapisovací opravy: nepovolené.</p></article>'
+        body+='<p>HADS zatím neověřil vlastní diagnostiku doplňku. '+('MCP autentizace a katalog: neověřené. ' if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'} else '')+'Zapisovací opravy: nepovolené.</p></article>'
     token='<input type="hidden" name="csrf" value="'+escape(csrf,quote=True)+'">'
     body+='<form method="post" action="provider-previous">'+token+'<p>Ze starého Hermes 2.0.0-rc3 lze přes Supervisor převzít pouze vybrané připojovací položky do neaktivního soukromého návrhu. Starou aplikaci kvůli tomu nespouštím ani neměním.</p><button>Načíst návrh připojení z původního Hermes RC3</button></form>'
     try:staged=', '.join(app.legacy_connectors.public_status()['staged_providers']) or 'žádné'

@@ -70,7 +70,7 @@ def main():
                             assert 'Co HADS sám přečetl' in page.inner_text('body')
                             assert '822 MiB' in page.inner_text('body') and '41 MiB' in page.inner_text('body')
                         if path=='/setup/providers':
-                            assert 'Vlastní funkční kontrakt: neověřený' in page.inner_text('body')
+                            assert 'HADS zatím neověřil vlastní diagnostiku doplňku' in page.inner_text('body')
                             assert 'HASK' not in page.inner_text('body')
                             assert 'Hamster MCP' in page.inner_text('body')
                             page.screenshot(path=str(ROOT/('.test-tmp/providers-'+('mobile' if width==390 else 'desktop')+'.png')),full_page=True)
