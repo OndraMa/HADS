@@ -39,11 +39,12 @@ def main():
                 app.system._finding('health:marketplace','system_health_failure','System Health hlásí neúspěšný diagnostický výsledek.',['integration:marketplace'],{'domain':'marketplace','failed_fields':['github_web']})
                 health_case=next(c['id'] for c in app.snapshot()['cases'] if c['kind']=='system_health_failure')
                 app.system.followup.update({'complete':True,'domains':{'marketplace':{'info':{'github_web':{'error':'unreachable'}}}}},{'issues':[]},[])
+                app.providers.update({'core_config':{'components':['spook','watchman']},'applications':{'addons':[{'slug':'fixture_hadocs','name':'HADocs','state':'started','version':'1.0'}]},'entity_registry':[{'entity_id':'sensor.watchman_status','platform':'watchman'}],'repairs':{'issues':[]}},[{'entity_id':'sensor.watchman_status','state':'0','last_updated':'2026-11-14T00:00:00+00:00'}])
                 app.system.last=app.clock()
                 app._entities=[{'entity_id':'automation.entry','name':'Světlo na chodbě – ukázka prohlížeče','state':'off'}]
                 for width in [1280,390]:
                     page.set_viewport_size({'width':width,'height':900})
-                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case]:
+                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
                         assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'
@@ -68,6 +69,11 @@ def main():
                         if path=='/case/'+memory_case:
                             assert 'Co HADS sám přečetl' in page.inner_text('body')
                             assert '822 MiB' in page.inner_text('body') and '41 MiB' in page.inner_text('body')
+                        if path=='/setup/providers':
+                            assert 'Vlastní funkční kontrakt: neověřený' in page.inner_text('body')
+                            assert 'HASK' not in page.inner_text('body')
+                            assert 'Hamster MCP' in page.inner_text('body')
+                            page.screenshot(path=str(ROOT/('.test-tmp/providers-'+('mobile' if width==390 else 'desktop')+'.png')),full_page=True)
                         if path=='/setup/ai':
                             assert page.locator('select[name=mode]').input_value()=='trial'
                             assert not page.locator('input[name=consent]').is_checked()

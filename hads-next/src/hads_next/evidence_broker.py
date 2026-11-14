@@ -210,6 +210,9 @@ class EvidenceBroker:
             system=getattr(self,'runtime_system',None)
             if system is None:return self._result(incident_id,name,'hads_controller','unavailable',None,now,'Měření není dostupné.')
             source='hads_controller';value=system.status()
+            providers=getattr(getattr(system,'app',None),'providers',None)
+            if providers is not None:
+                value['diagnostic_providers']=[{k:r[k] for k in ('provider_id','presence_confirmed','native_state_read_succeeded','functional_verified','gaps','checked_at','stale')} for r in providers.snapshot()]
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()

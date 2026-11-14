@@ -13,7 +13,7 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read
 
-VERSION = "1.0.0-rc4"
+VERSION = "1.0.0-rc5"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -58,6 +58,10 @@ class Application:
         self.detection=DetectionEngine(self)
         from .system_diagnostics import SystemDiagnostics
         self.system=SystemDiagnostics(self)
+        from .provider_verification import ProviderVerification
+        self.providers=ProviderVerification(self)
+        from .legacy_connectors import LegacyConnectors
+        self.legacy_connectors=LegacyConnectors(self)
         self.investigations.broker.runtime_system=self.system
         from .live_acceptance import LiveAcceptance
         self.acceptance=LiveAcceptance(self)
@@ -104,7 +108,7 @@ class Application:
 
     def check_sources(self):
         """Execute actual supported reads, preserving per-read success/errors."""
-        sources = {}
+        sources = {}; values = {}
         reads = [('core_config', self.core, 'config'),
                  ('supervisor', self.supervisor, 'info'), ('haos', self.supervisor, 'os_info'),
                  ('applications', self.supervisor, 'apps'),
@@ -115,6 +119,7 @@ class Application:
         with self._read_lock:
             for name, reader, method in reads:
                 value = getattr(reader, method)() if reader else None
+                values[name] = value
                 if name == 'applications' and isinstance(value,dict) and isinstance(value.get('addons'),list):
                     with self._lock:
                         self._apps = [{'slug':a['slug'],'name':str(a.get('name',a['slug']))[:120]} for a in value['addons']
@@ -136,6 +141,8 @@ class Application:
                 if value is not None and not valid:
                     sources[name]['status']={**sources[name]['status'],'read_succeeded':False,'last_error':'Zdroj vrátil neočekávaný formát dat.'}
                 with self._lock:self._sources[name]=sources[name]
+            states = self.core.states() if self.core else None
+            self.providers.update(values,states)
         with self._lock:
             self._sources = sources
         return sources
