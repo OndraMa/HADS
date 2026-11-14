@@ -231,6 +231,8 @@ class Handler(BaseHTTPRequestHandler):
             from .health_cases import explain_health_case
             explanation=explain_health_case(case)
             if explanation:result=explanation
+            followup=self.server.app.system.followup.report(case['incident']['id'])
+            if followup:result={**result,'summary_cs':followup['summary_cs'],'next_test_cs':followup['next_test_cs'],'needed':[]}
             automatic=self.server.app.system.automatic.report(case['incident']['id'])
             if automatic:
                 result={**result,'summary_cs':result.get('summary_cs','')+' '+automatic['summary_cs'],
