@@ -38,6 +38,7 @@ jobs:
         if: ${{ always() }}
         with:
           name: command-center-${{ github.sha }}
+          include-hidden-files: true
           path: |
             hads-next/docs/evidence/offline-tests.json
             hads-next/docs/evidence/practical-browser.json
