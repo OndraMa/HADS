@@ -12,7 +12,7 @@ import re
 import threading
 import time
 
-from .observability import redact,project_supervisor_read
+from .observability import redact,project_supervisor_read,is_app_slug
 from .evidence import canonical
 
 
@@ -133,9 +133,10 @@ class EvidenceBroker:
             raise BrokerDenied('Nepovolený nástroj nebo parametry.')
         for key,kind in _PARAMS[name].items():
             value=args[key]
-            pattern={'entity':r'[a-z][a-z0-9_]*\.[a-z0-9_]+','id':r'[A-Za-z0-9_-]{1,128}','slug':r'[a-z0-9_]{1,128}'}.get(kind)
+            pattern={'entity':r'[a-z][a-z0-9_]*\.[a-z0-9_]+','id':r'[A-Za-z0-9_-]{1,128}','slug':r'[-_.A-Za-z0-9]{1,128}'}.get(kind)
             if not isinstance(value,str) or len(value)>128 or (pattern and not re.fullmatch(pattern,value)):
                 raise BrokerDenied('Neplatný parametr '+key)
+            if kind=='slug' and not is_app_slug(value):raise BrokerDenied('Neplatný identifikátor aplikace.')
             if kind=='section' and value not in {'player','health','events','buffer','logs'}:raise BrokerDenied('Nepovolené čtení Music Assistantu.')
         if 'start' in args:
             try:

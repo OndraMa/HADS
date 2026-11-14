@@ -6,6 +6,8 @@ entity read is never relabelled as a functional test of the provider.
 import json, math, re
 from datetime import datetime
 from .evidence import canonical
+from .observability import is_app_slug
+from .watchman_contract import read_watchman,persist_watchman
 
 SPECS = {
     'spook': ('Spook', ('spook',), ('spook',)),
@@ -58,7 +60,9 @@ class ProviderVerification:
         components = set(loaded) if components_ok else set()
         registry = values.get('entity_registry'); registry_ok = shape_list(registry) and len(registry)<=10000
         apps = values.get('applications'); apps = apps.get('addons') if isinstance(apps, dict) else None
-        apps_ok = shape_list(apps) and len(apps)<=1000 and all(isinstance(a.get('slug'),str) and re.fullmatch(r'[a-z0-9_]+',a['slug']) for a in apps)
+        apps_ok = isinstance(apps,list) and len(apps)<=1000
+        valid_apps = [a for a in apps if isinstance(a,dict) and is_app_slug(a.get('slug'))] if apps_ok else []
+        invalid_apps = len(apps)-len(valid_apps) if apps_ok else 0
         states_ok = shape_list(states) and len(states) <= 10000
         state_map = {r.get('entity_id'):r for r in states if isinstance(r.get('entity_id'),str)} if states_ok else {}
         repairs = values.get('repairs'); issues = repairs.get('issues') if isinstance(repairs, dict) else None
@@ -67,7 +71,7 @@ class ProviderVerification:
         documents = []
         for key, (title, domains, app_names) in SPECS.items():
             matched_components = sorted(components.intersection(domains))
-            matched_apps = [a for a in (apps or []) if normalized(a.get('name')) in app_names or a['slug'] in app_names or a['slug'].partition('_')[2] in app_names] if apps_ok else []
+            matched_apps = [a for a in valid_apps if normalized(a.get('name')) in app_names or a['slug'] in app_names or a['slug'].partition('_')[2] in app_names] if apps_ok else []
             # Entity names alone never establish which integration owns them.
             owned = [r for r in (registry or []) if r.get('platform') in domains and isinstance(r.get('entity_id'),str)
                      and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+', r['entity_id'])] if registry_ok else []
@@ -81,6 +85,7 @@ class ProviderVerification:
             gaps = []
             if not components_ok: gaps.append('loaded_components_unavailable')
             if not apps_ok: gaps.append('application_inventory_unavailable')
+            if invalid_apps: gaps.append('application_inventory_invalid_rows')
             if not registry_ok: gaps.append('entity_registry_unavailable')
             if not states_ok: gaps.append('entity_states_unavailable')
             if owned and not samples: gaps.append('owned_entities_have_no_readable_state')
@@ -100,6 +105,12 @@ class ProviderVerification:
                       'summary_cs':('Aktuální stopa nalezena.' if known else 'Aktuální přítomnost nebyla potvrzena; to neprokazuje odinstalování.')
                           + (' Vybrané entitní stavy byly přečtené.' if samples else '')
                           + ' HADS zatím neověřil vlastní diagnostiku tohoto doplňku.'}
+            if key=='watchman':
+                native=read_watchman(registry if registry_ok else [],state_map)
+                native['incident_id']=persist_watchman(self.app,native)
+                report['diagnostic_read']=native
+                if native['read_verified']:
+                    report['summary_cs']='HADS přečetl počty i podrobnosti existujícího hlášení Watchmanu. Kontext konfigurace a skutečný funkční dopad tím nejsou ověřené.'
             documents.append((key,now,canonical(report)))
         with self.app.store._connect() as db:
             db.executemany('INSERT OR REPLACE INTO provider_verifications VALUES(?,?,?)', documents)

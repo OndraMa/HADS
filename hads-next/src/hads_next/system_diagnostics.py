@@ -2,7 +2,7 @@
 import hashlib,json,time,resource,os
 from datetime import datetime
 from .evidence import canonical
-from .observability import project_supervisor_read
+from .observability import project_supervisor_read,is_app_slug
 from .health_cases import project_health_errors,project_health_log,explain_health_case
 
 class SystemDiagnostics:
@@ -103,7 +103,7 @@ class SystemDiagnostics:
                 apps=self.app.supervisor.apps()
                 if isinstance(apps,dict) and isinstance(apps.get('addons'),list):
                     for item in apps['addons'][:64]:
-                        if not isinstance(item,dict) or not isinstance(item.get('slug'),str):continue
+                        if not isinstance(item,dict) or not is_app_slug(item.get('slug')):continue
                         slug=item['slug'];state=item.get('state')
                         # Even error/failed may follow an intentional stop. Preserve the
                         # observation; it alone neither proves impact nor authorizes AI.

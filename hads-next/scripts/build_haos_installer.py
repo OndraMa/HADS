@@ -12,7 +12,7 @@ import tarfile
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.0.0-rc5"
+VERSION = "1.0.0-rc6"
 SLUG = "hads_next_practical"
 
 EXTRACTOR = r'''
@@ -74,15 +74,15 @@ Použití:
   bash HADS_Next_install_@@VERSION@@.sh --verify
   bash HADS_Next_install_@@VERSION@@.sh --extract-only /absolutni/novy-adresar
   bash HADS_Next_install_@@VERSION@@.sh --install-dev
-  bash HADS_Next_install_@@VERSION@@.sh --upgrade-rc4
-Nová instalace přidá local_@@SLUG@@. Výslovný --upgrade-rc4 aktualizuje jen ověřený Next RC4 přes nativní Supervisor update; zachová /data a vyžádá nativní částečnou zálohu. Starý Hermes 2.0.0-rc3 se nemění.
+  bash HADS_Next_install_@@VERSION@@.sh --upgrade-rc5
+Nová instalace přidá local_@@SLUG@@. Výslovný --upgrade-rc5 aktualizuje jen ověřený Next RC5 přes nativní Supervisor update; zachová /data a vyžádá nativní částečnou zálohu. Starý Hermes 2.0.0-rc3 se nemění.
 Původní Hermes je součástí balíčku. AI i vlastní testovací opravný katalog vyžadují výslovný souhlas. Obecné produkční zápisy jsou zakázané. Živá HAOS přejímka čeká.
 HADS_NEXT_USAGE
 }
 MODE="${1:-}"
 case "$MODE" in
   --help) [ "$#" = 1 ] || exit 2; usage; exit 0 ;;
-  --verify|--install-dev|--upgrade-rc4) [ "$#" = 1 ] || { usage; exit 2; } ;;
+  --verify|--install-dev|--upgrade-rc5) [ "$#" = 1 ] || { usage; exit 2; } ;;
   --extract-only) [ "$#" = 2 ] || { usage; exit 2; } ;;
   *) usage; exit 2 ;;
 esac
@@ -112,21 +112,21 @@ else echo 'Chybí připojený adresář /local_apps nebo /addons. Nic neměním.
 fi
 TARGET="$APP_ROOT/@@SLUG@@"
 if [ "$MODE" = '--install-dev' ] && { [ -e "$TARGET" ] || [ -L "$TARGET" ]; }; then
-  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC4 použij --upgrade-rc4.' >&2
+  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC5 použij --upgrade-rc5.' >&2
   exit 1
 fi
 if ha apps --help >/dev/null 2>&1; then APP_COMMAND=apps
 elif ha addons --help >/dev/null 2>&1; then APP_COMMAND=addons
 else echo 'HA CLI neposkytuje podporovanou správu aplikací.' >&2; exit 1
 fi
-if [ "$MODE" = '--upgrade-rc4' ]; then
-  extract_payload "$STAGING/rc5-source"
-  python3 - "$APP_ROOT" "$APP_COMMAND" "$STAGING/rc5-source" <<'HADS_NEXT_UPGRADE'
+if [ "$MODE" = '--upgrade-rc5' ]; then
+  extract_payload "$STAGING/rc6-source"
+  python3 - "$APP_ROOT" "$APP_COMMAND" "$STAGING/rc6-source" <<'HADS_NEXT_UPGRADE'
 @@UPGRADER@@
 HADS_NEXT_UPGRADE
   exit 0
 fi
-[ ! -e "$TARGET" ] && [ ! -L "$TARGET" ] || { echo 'HADS Next již má zdrojový adresář. Pro ověřený RC4 použij --upgrade-rc4.' >&2; exit 1; }
+[ ! -e "$TARGET" ] && [ ! -L "$TARGET" ] || { echo 'HADS Next již má zdrojový adresář. Pro ověřený RC5 použij --upgrade-rc5.' >&2; exit 1; }
 # The list must succeed. A failed authorization is never treated as absence.
 ha "$APP_COMMAND" --raw-json > "$STAGING/apps.json"
 python3 - "$STAGING/apps.json" <<'HADS_NEXT_APPS'
@@ -200,7 +200,7 @@ def build_installer(output_dir: Path) -> dict:
     archive = output_dir / f"HADS_Next_{VERSION}-source.tar.gz"
     archive.write_bytes(payload)
     encoded = base64.encodebytes(payload).decode().rstrip("\n")
-    script = TEMPLATE.replace("@@UPGRADER@@",(ROOT/"scripts/upgrade_rc4.py").read_text()).replace("@@EXTRACTOR@@", EXTRACTOR.strip()).replace("@@VERSION@@", VERSION).replace("@@SLUG@@",SLUG).replace("@@SHA@@", hashlib.sha256(payload).hexdigest()).replace("@@PAYLOAD@@", encoded)
+    script = TEMPLATE.replace("@@UPGRADER@@",(ROOT/"scripts/upgrade_rc5.py").read_text()).replace("@@EXTRACTOR@@", EXTRACTOR.strip()).replace("@@VERSION@@", VERSION).replace("@@SLUG@@",SLUG).replace("@@SHA@@", hashlib.sha256(payload).hexdigest()).replace("@@PAYLOAD@@", encoded)
     installer = output_dir / f"HADS_Next_install_{VERSION}.sh"
     installer.write_text(script)
     installer.chmod(0o755)

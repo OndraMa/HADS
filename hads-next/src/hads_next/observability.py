@@ -16,6 +16,13 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 MAX_BYTES = 1024 * 1024
+
+
+def is_app_slug(value):
+    """Supervisor apps/const.py RE_SLUG, bounded to one URL path segment."""
+    return (isinstance(value, str) and value not in {'.', '..'}
+            and re.fullmatch(r'[-_.A-Za-z0-9]{1,128}', value) is not None)
+
 _SECRET = re.compile(r"token|password|secret|authorization|api[-_]?key|access[-_]?key|private[-_]?key|credential|code", re.I)
 _BEARER = re.compile(r"Bearer\s+[^\s\"']+", re.I)
 _ASSIGNMENT = re.compile(r"((?:token|password|secret|api[-_]?key|access[-_]?key|authorization)\s*[=:]\s*)[^\s&\"'<>]+", re.I)
@@ -416,17 +423,17 @@ class SupervisorReader(_Reader):
         return self._supervised('/supervisor/stats')
 
     def app_logs(self, slug):
-        if not re.fullmatch(r"[a-z0-9_]+", slug):
+        if not is_app_slug(slug):
             raise ValueError('invalid app slug')
         return self._read(f'/addons/{slug}/logs')
 
     def app_info(self, slug):
-        if not re.fullmatch(r"[a-z0-9_]+", slug):
+        if not is_app_slug(slug):
             raise ValueError("invalid app slug")
         return self._supervised(f"/addons/{slug}/info")
 
     def app_stats(self, slug):
-        if not re.fullmatch(r"[a-z0-9_]+", slug):
+        if not is_app_slug(slug):
             raise ValueError("invalid app slug")
         return self._supervised(f"/addons/{slug}/stats")
 

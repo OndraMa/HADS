@@ -3,7 +3,7 @@ import hashlib,json,re,threading,socket,ssl
 from urllib.request import Request,build_opener
 from urllib.error import HTTPError,URLError
 from .evidence import canonical
-from .observability import project_supervisor_read,_NoRedirect,ReadFailure
+from .observability import project_supervisor_read,_NoRedirect,ReadFailure,is_app_slug
 
 
 def probe_github():
@@ -110,7 +110,7 @@ class AutomaticReads:
                 elif kind=='core_stats':value=reader.core_stats()
                 elif kind=='supervisor_stats':value=reader.supervisor_stats()
                 elif kind=='inventory':value=reader.apps()
-                elif kind=='app_stats' and re.fullmatch(r'[a-z0-9_]+',row['target']):value=reader.app_stats(row['target'])
+                elif kind=='app_stats' and is_app_slug(row['target']):value=reader.app_stats(row['target'])
                 else:raise ValueError('unsupported_read')
                 status=reader.status.snapshot(self.app.clock())
                 if kind!='github_head':result['source_status']={key:status.get(key) for key in ('interface_available','authenticated','last_read_at','last_response_status')}
@@ -120,12 +120,13 @@ class AutomaticReads:
                     result['http_status']=status.get('last_response_status')
                 elif row['kind']=='inventory':
                     rows=value.get('addons') if isinstance(value,dict) else None
-                    if not isinstance(rows,list) or any(not isinstance(a,dict) or not isinstance(a.get('slug'),str) or not re.fullmatch(r'[a-z0-9_]+',a['slug']) for a in rows):raise ValueError('invalid_inventory')
+                    if not isinstance(rows,list) or len(rows)>1000:raise ValueError('invalid_inventory')
+                    valid_rows=[a for a in rows if isinstance(a,dict) and is_app_slug(a.get('slug'))]
+                    result['invalid_inventory_rows']=len(rows)-len(valid_rows)
                     apps=[{'slug':a['slug'],'name':str(a.get('name',a['slug']))[:120]}
-                          for a in rows if isinstance(a,dict) and isinstance(a.get('slug'),str)
-                          and re.fullmatch(r'[a-z0-9_]+',a['slug']) and a.get('state')=='started']
+                          for a in valid_rows if a.get('state')=='started']
                     result.update(read_succeeded=True,apps=apps[:self.MAX_APPS],truncated=len(apps)>self.MAX_APPS,
-                        unverified_app_states=sum(a.get('state') not in {'started','stopped','error'} for a in rows))
+                        unverified_app_states=sum(a.get('state') not in {'started','stopped','error'} for a in valid_rows))
                 else:
                     stats=project_supervisor_read('app_stats',value)
                     if 'memory_usage' not in stats or 'memory_limit' not in stats:raise ValueError('missing_memory_statistics')
@@ -152,7 +153,7 @@ class AutomaticReads:
             gaps=[{'source':r['kind'],'target':r['target']} for r in rows if r['state']=='unavailable']
             for r in rows:
                 data=json.loads(r['result']) if r['result'] else {}
-                if r['kind']=='inventory' and (data.get('truncated') or data.get('unverified_app_states')):gaps.append({'source':'inventory','target':'','reason':'limited_coverage'})
+                if r['kind']=='inventory' and (data.get('truncated') or data.get('unverified_app_states') or data.get('invalid_inventory_rows')):gaps.append({'source':'inventory','target':'','reason':'limited_coverage'})
             state='reading' if remaining else 'completed_with_gaps' if gaps else 'completed'
             db.execute('UPDATE automatic_read_cases SET state=?,updated_at=? WHERE id=?',(state,self.app.clock(),identity))
         measured=[];inventory=None;initial={};comparison=[]
