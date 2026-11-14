@@ -2,7 +2,7 @@
   "scope": "container_with_fake_supervisor",
   "live_haos": false,
   "arm64_tested": true,
-  "installer_sha256": "1e998799eab0ae66409b989dccd9f8d497f17e77d8af9ae20abd088856c67ff4",
+  "installer_sha256": "a1f88f5e7389f9deb06374f0f707bf1a727c1d9a0e14edbdb2151ca60624260a",
   "native_runtime_readiness": {
     "scope": "isolated_container_native_Hermes_readiness",
     "live_haos": false,
@@ -18,7 +18,7 @@
       "model_calls": 0,
       "isolation_verified": true,
       "uid": 65534,
-      "peak_rss_bytes": 139063296,
+      "peak_rss_bytes": 138805248,
       "execution_authority": "none",
       "broker_requests_rejected": 0
     },
@@ -53,17 +53,17 @@
   "container_resource_snapshot": {
     "BlockIO": "0B / 32.8kB",
     "CPUPerc": "0.03%",
-    "Container": "hads-next-dev-smoke-c0bf1681d6c8",
-    "ID": "0d8a9af2f297",
-    "MemPerc": "4.31%",
-    "MemUsage": "33.13MiB / 768MiB",
-    "Name": "hads-next-dev-smoke-c0bf1681d6c8",
+    "Container": "hads-next-dev-smoke-531f37fcbdc7",
+    "ID": "aa8f93249914",
+    "MemPerc": "4.28%",
+    "MemUsage": "32.89MiB / 768MiB",
+    "Name": "hads-next-dev-smoke-531f37fcbdc7",
     "NetIO": "0B / 0B",
     "PIDs": "2"
   },
   "controller_pid1_memory_status": "VmHWM:\t   32952 kB\nVmRSS:\t   32952 kB\n",
   "image": {
-    "Id": "sha256:b02c04d565c3a653ddb50b61051b215877f3bc34ca41ef93878b3870f97abdbd",
+    "Id": "sha256:9e5eff57ef1f004182acb5da9f1ced5bf64b2ccb4e3b24cb2f6f7300c4cbf26a",
     "Architecture": "arm64",
     "Os": "linux",
     "Size": 593491486

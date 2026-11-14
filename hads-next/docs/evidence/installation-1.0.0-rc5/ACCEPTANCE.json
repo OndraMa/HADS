@@ -1,26 +1,26 @@
 {
   "schema": 1,
   "version": "1.0.0-rc5",
-  "source_commit": "a495bd1a36808cfcbb7faca087f02ff80615f8bc",
+  "source_commit": "84bb795b522c60d26b2b67e7e07fb9b0fc12bcce",
   "both_passed": true,
   "live_haos": false,
   "real_model_reasoning_tested": false,
   "paid_model_calls": 0,
   "tests_each_architecture": 249,
   "native_ci": {
-    "run_id": 43538178130,
-    "url": "https://github.com/OndraMa/HADS/actions/runs/43538178130",
+    "run_id": 43540465092,
+    "url": "https://github.com/OndraMa/HADS/actions/runs/43540465092",
     "conclusion": "success",
     "artifacts": [
       {
-        "id": 14090803225,
+        "id": 14091552592,
         "architecture": "amd64",
-        "sha256": "315f396982b2a99e57bcfb5b6075f615c48d599f20d4fab321e68c90f618394d"
+        "sha256": "c231d5100a7f450f3eae6ca92c1ada12703cd937f9a39630339874a11324a738"
       },
       {
-        "id": 14091036639,
+        "id": 14091198218,
         "architecture": "arm64",
-        "sha256": "b68f44acafd44bccb7edcefe629d3d33aa9ef94527879fa355379d6a4e634645"
+        "sha256": "a1698647796fb91a48c4d9152728f2568fce7697c26eab585e4ec08341a1794c"
       }
     ]
   },
@@ -37,12 +37,12 @@
     }
   },
   "evidence_sha256": {
-    "amd64/offline-tests.json": "794d09c316697ce639fa734b8d65525cc3bb6c728320157b87db6d1a933f7e7a",
-    "amd64/core-hermes.json": "805ff115c5059e86bec91ab001705469716427327e0a5fe01300b96adb3a78e3",
-    "amd64/package.json": "304f49c29d6e1049a0a7bf78502369703027e627aa77cba71c7d48c78b0f01f3",
-    "arm64/offline-tests.json": "8eb85dda5f0bbe3b4f0cbecb5fb5c1dcd9a4dcdcb4e94bf00ec0c82407b5d339",
-    "arm64/core-hermes.json": "94428e5eb8a77e55fa836c8d4aa0c75f9c7fc265487d9a5d0483e356a8b8c2e8",
-    "arm64/package.json": "3cd7cb9f2cad3e0b06eeaabe2b835b541db444bc849bb0427feae69681465ff4"
+    "amd64/offline-tests.json": "d562b6f437b9523af134c19db6f23f84aebf5f0fff909f33cc2f07327a393e79",
+    "amd64/core-hermes.json": "b497fb1b37b39c52dbc6f63341d8665e2285149d503d68ccaa57380d811f9769",
+    "amd64/package.json": "7298f004084da7a8ebdc217ec077231d437addad113825a89c69afcd796dd0c8",
+    "arm64/offline-tests.json": "7c00e010e2b01d612cc690be6491665d4d6966fcf74f49f8e7f42be51b088dac",
+    "arm64/core-hermes.json": "493ea8d4efe1f69233ce052c99c889f0df9cf44563d16e29f151c6bf0d5feb48",
+    "arm64/package.json": "840e581c504d8bd4b7dd01b92053ae1bd7efefecaf91acf3e07949c0c51316f1"
   },
   "source_files_compared_with_exact_git_commit": true,
   "identical_installable_bytes_across_architectures": true,
@@ -69,7 +69,7 @@
     "Real provider reasoning under actual memory load",
     "Approved Spook/HA-MCP write adapters not implemented; statistics backup/restore not verified"
   ],
-  "installer_sha256": "1e998799eab0ae66409b989dccd9f8d497f17e77d8af9ae20abd088856c67ff4",
-  "source_archive_sha256": "611f71e12388f0327df7bdeef63212882e4a1de72a94398f15970481cdde823b",
+  "installer_sha256": "a1f88f5e7389f9deb06374f0f707bf1a727c1d9a0e14edbdb2151ca60624260a",
+  "source_archive_sha256": "143d95b220e59be78347498094b278aa1bc1dce7c8ea0765c88c35804826b981",
   "payload_files_verified": 57
 }
