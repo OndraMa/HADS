@@ -319,7 +319,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(415, "Nepodporovaný formát.")
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= (2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 8192):
+            limit=2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 128*1024 if urlsplit(self.path).path=='/setup/provider-settings' else 8192
+            if not 0 < size <= limit:
                 raise ValueError()
             form = parse_qs(self.rfile.read(size).decode(), max_num_fields=10, strict_parsing=True)
             if form.get("csrf") != [self.server.csrf]:

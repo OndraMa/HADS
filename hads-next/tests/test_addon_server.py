@@ -103,6 +103,12 @@ class IngressTests(unittest.TestCase):
         status,page=self.request('GET','/setup/providers');self.assertEqual(status,200)
         for private in ('PATH_SECRET','PRIVATE_TOKEN','IGNORE_ME'):self.assertNotIn(private,page)
         self.assertIn('žádný adaptér neaktivuje',page)
+        from hads_next.legacy_connectors import FIELDS
+        large={key:('https://fixture.invalid/mcp' if key.endswith('url') else 'X'*2048) for fields in FIELDS.values() for key in fields}
+        data['document']=json.dumps(large)
+        self.assertGreater(len(urlencode(data)),8192)
+        self.assertEqual(self.request('POST','/setup/provider-settings',urlencode(data))[0],303)
+        self.assertNotIn('X'*2048,self.request('GET','/setup/providers')[1])
 
     def test_health_case_has_native_read_next_step_and_no_unrelated_lighting_repair(self):
         self.app.enroll_owner('owner-id')
