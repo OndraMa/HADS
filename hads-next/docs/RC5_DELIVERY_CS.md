@@ -69,7 +69,25 @@ chybějící data, omezení velikosti, opakování bez incidentů a soukromý im
 včetně role/CSRF a nepřenesených oprávnění. Skutečný Core/Hermes používá
 samostatnou nativní kontejnerovou přejímku se skriptovaným HTTPS modelem.
 Aktualizační test používá skutečné vydané RC4 zdroje a falešný Supervisor CLI.
-Přesné výsledky a SHA-256 instalátoru jsou přiložené až po dokončené přejímce.
+Přesné výsledky a SHA-256 instalátoru jsou přiložené níže.
+
+Přejímka zdrojové revize `a495bd1a36808cfcbb7faca087f02ff80615f8bc` je nyní
+dokončená: 249 testů na každé nativní architektuře ARM64/AMD64, skutečný Core
+a původní izolovaný Hermes se skriptovaným HTTPS modelem. Produkční image bez
+Core fixture zvládla SIGTERM s kódem 0 a zachovala data po restartu. Skutečný
+instalátor provedl aktualizaci skutečných RC4 zdrojů proti falešnému HA CLI,
+vyžadoval zálohu a odmítl opakování. Obě architektury vytvořily identický
+instalátor i zdrojový archiv. Všech 57 souborů payloadu je porovnáno s Git revizí.
+
+Prohlížeč prošel 18 zobrazeními a uchoval snímky. Jeho poslední commit
+`c07ddd8f57fffef2dfcb952c7b1f77f41c61707b` mění pouze uchování těchto artefaktů;
+vstupní soubory aplikace, testů a prohlížečového scénáře odpovídají stejné
+testované zdrojové revizi. Protokoly jsou v `docs/evidence/installation-1.0.0-rc5`
+a `docs/rc5-review`.
+
+[Nativní přejímka](https://github.com/OndraMa/HADS/actions/runs/43538178130) ·
+[Prohlížeč a snímky](https://github.com/OndraMa/HADS/actions/runs/43539064833).
+SHA-256 instalátoru: `1e998799eab0ae66409b989dccd9f8d497f17e77d8af9ae20abd088856c67ff4`.
 
 Živá HAOS aktualizace a obnova, skutečné funkce externích doplňků, reálný LLM,
 RPi při domácí zátěži a fyzické rádio/Zigbee zůstávají neověřené. Toto vydání
