@@ -49,3 +49,18 @@ a konkrétní podrobnosti Watchmanu, pokud jeho nainstalovaná verze poskytuje o
 Počty i umístění musí odpovídat stejnému zdrojovému snímku. Přejmenované entity se hledají přes registr.
 Neúplná data nebo starý čas skenu se nesmějí stát zeleným potvrzením funkčnosti doplňku.
 Žádná automatizace, spínač, hlasitost, statistika ani registr se touto kontrolou nemění.
+
+## Ověřený výsledek vydání
+
+Nativní [ARM64/AMD64 CI](https://github.com/OndraMa/HADS/actions/runs/43638589294) a
+[webové CI](https://github.com/OndraMa/HADS/actions/runs/43638592113) prošly.
+259 offline testů na každé architektuře; 18 webových pohledů. Testoval se skutečný Core a originální
+izolovaný Hermes se skriptovaným lokálním HTTPS endpointem, nikoli placený LLM.
+Přesný zdrojový commit `6a067f716b1e4870cbb21f08ed44e134800ecdff`.
+59 souborů instalačního payloadu bylo porovnáno s Git zdroji; oba nativní joby vytvořily shodné bajty.
+
+Instalátor SHA-256: `2a619874cecfc24ce3decca83646388983c26ad3bed56b19c48e5851ecde5b95`.
+Zdrojový tar SHA-256: `046bfdf8f1004611021a4f2aaa42e899b233076a8cc9cf32f8c0ca5eef98ab4e`.
+Produkční image neobsahuje laboratorní Core. Graceful SIGTERM měl exit 0, restart zachoval důkazy,
+čtvrté trial volání bylo odmítnuté před sítí a původní RC5 zdroje byly použité v testu upgradu.
+Nativní záloha je v tomto testu simulovaná Supervisorem; živá obnovitelnost tím není ověřená.

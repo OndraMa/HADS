@@ -1,3 +1,27 @@
+# HADS Next 1.0.0-rc6 — oprava sběru pro HAOS
+
+Aktuální vývojová větev: **codex/hads-next-collector-audit** · [PR 17](https://github.com/OndraMa/HADS/pull/17).
+
+- [Instalátor, kompletní ZIP, návody a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc6/)
+- [Přesný postup aktualizace z RC5](hads-next/haos/DOCS.md)
+- [Podrobný návod HA-MCP, Hermes, Watchman, Inspector, HADocs a HASK](hads-next/haos/HAMCP_HERMES_CS.md)
+- [Posouzení HASS-AI-Orchestrator 0.13.6](hads-next/docs/ORCHESTRATOR_REVIEW_CS.md)
+- [Výsledky a nedokončené části](hads-next/docs/RC6_DELIVERY_CS.md)
+
+RC6 opravuje zahazování inventáře kvůli platným názvům aplikací s pomlčkou a čte podrobnosti
+existujících hlášení Watchmanu do společného diagnostického spisu. Nativní sběr nepotřebuje AI klíč
+ani ruční diagnostické příkazy. Nezapíná zařízení, nepřepisuje konfiguraci a nespouští další AI službu.
+
+**259 testů na každé architektuře ARM64/AMD64**, skutečný Core a původní izolovaný Hermes se
+skriptovaným neplaceným modelem, aktualizace s testovacím Supervisorem a 18 webových pohledů prošly.
+Přesný zdroj: `6a067f716b1e4870cbb21f08ed44e134800ecdff`; [úplný protokol](hads-next/docs/evidence/installation-1.0.0-rc6/ACCEPTANCE.json).
+Živé HAOS a fyzické výsledky čekají. Obecné aktivní MCP konektory a opravné adaptéry Spook/registry/statistiky
+**nejsou dokončené**. Kandidát není plné splnění původního zadání.
+
+---
+
+## Předchozí vydání RC5
+
 # HADS Next 1.0.0-rc5 — automatická diagnostika pro HAOS
 
 Aktuální větev: **codex/hads-next-rc5** · [PR 16](https://github.com/OndraMa/HADS/pull/16).
