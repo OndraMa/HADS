@@ -11,11 +11,15 @@ KINDS={'ha_mcp':'mcp','native_mcp':'mcp','hamster_mcp':'mcp','automation_inspect
 class ToolConnections:
     def __init__(self,app):
         self.app=app;self.path=app.data_dir/'tool-connections.json';self.clients={};self.values={}
-        if self.path.exists():
-            if self.path.is_symlink() or not stat.S_ISREG(self.path.stat().st_mode) or self.path.stat().st_mode&0o077 or self.path.stat().st_size>32768:raise ToolDenied('Neplatné soukromé nastavení konektorů.')
-            data=json.loads(self.path.read_text())
-            if data.get('schema')!=1:raise ToolDenied('Neznámé schéma konektorů.')
-            for provider,value in data['connections'].items():self._install(provider,value)
+        self.load_error=None
+        try:
+            if self.path.exists():
+                if self.path.is_symlink() or not stat.S_ISREG(self.path.stat().st_mode) or self.path.stat().st_mode&0o077 or self.path.stat().st_size>32768:raise ToolDenied('Neplatné soukromé nastavení konektorů.')
+                data=json.loads(self.path.read_text())
+                if not isinstance(data,dict) or data.get('schema')!=1 or not isinstance(data.get('connections'),dict):raise ToolDenied('Neznámé schéma konektorů.')
+                for provider,value in data['connections'].items():self._install(provider,value)
+        except (OSError,ValueError,TypeError,KeyError):
+            self.clients={};self.values={};self.load_error='Soukromé nastavení konektorů nelze bezpečně načíst. Nativní diagnostika pokračuje; žádný neověřený konektor se neaktivoval.'
     def _install(self,provider,value):
         if provider not in KINDS or not isinstance(value,dict) or set(value)!={'endpoint','token','private_http','enabled'} or type(value['enabled']) is not bool or type(value['private_http']) is not bool:raise ToolDenied('Neplatný konektor.')
         cls=MCPConnection if KINDS[provider]=='mcp' else ReportHTTP
@@ -32,6 +36,7 @@ class ToolConnections:
         try:
             with os.fdopen(fd,'w') as f:json.dump({'schema':1,'connections':self.values},f);f.flush();os.fsync(f.fileno())
             os.replace(temp,self.path)
+            self.load_error=None
         finally:temp.unlink(missing_ok=True)
     def activate_previous(self,provider,principal):
         legacy=self.app.legacy_connectors;legacy._safe()

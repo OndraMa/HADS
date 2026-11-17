@@ -79,6 +79,12 @@ class ApprovedRepairBroker:
             return {k:value.get(k) for k in ('entity_id','unique_id','platform','device_id','config_entry_id','disabled_by')}
         raise RepairBlocked('Tato zapisovací operace není implementovaná.')
 
+    def target_identity(self,entity_id):
+        row=self.app.core_ws.transport({'type':'config/entity_registry/get','entity_id':entity_id})
+        if not isinstance(row,dict) or row.get('entity_id')!=entity_id or not all(isinstance(row.get(k),str) and row[k] for k in ('unique_id','device_id','platform')) or row.get('disabled_by') is not None:
+            raise RepairBlocked('Skutečná identita cílového zařízení není ověřená.')
+        return {k:row.get(k) for k in ('entity_id','unique_id','device_id','platform','config_entry_id','disabled_by')}
+
     @staticmethod
     def replacement(original,proposed):
         """Exactly one literal action target; no template, blueprint, Python or arbitrary patch."""
@@ -139,13 +145,16 @@ class ApprovedRepairBroker:
                 if not renamed:raise RepairBlocked('Náhradní identifikátor není doložený stabilní identitou registru. Podobný název nestačí.')
                 missing=self.app.core.states(old)
                 if missing is not None or self.app.core.status.last_response_status!=404:raise RepairBlocked('Původní reference není prokázaná jako chybějící.')
+            target_identity=self.target_identity(new) if not rollback_of else None
+            if not rollback_of and target_identity['device_id']!=renamed['device_id']:raise RepairBlocked('Náhradní entita už nepatří doloženému původnímu zařízení.')
             target=self.app.core.states(new)
             if not rollback_of and (not isinstance(target,dict) or target.get('state') not in {'on','off'}):raise RepairBlocked('Nový světelný cíl není čitelný.')
+            if rollback_of and (target is not None or self.app.core.status.last_response_status!=404):raise RepairBlocked('Původní chybějící reference už může patřit jinému zařízení. Návrat konfigurace se zastavil.')
             auto_state=self.app.core.states(parameters['entity_id'])
             config_id=(auto_state or {}).get('attributes',{}).get('id')
             if not isinstance(config_id,str) or str(original['config'].get('id'))!=config_id:raise RepairBlocked('Identita automatizace není ověřená.')
             proposed={'config':parameters['config']}
-            condition={'automation_id':config_id,'entity_id':new,'state':'on' if original['config'].get('actions',original['config'].get('action'))[0].get('action',original['config'].get('actions',original['config'].get('action'))[0].get('service'))=='light.turn_on' else 'off','watch_seconds':30,'physical_confirmation_required':True}
+            condition={'automation_id':config_id,'entity_id':new,'state':'on' if original['config'].get('actions',original['config'].get('action'))[0].get('action',original['config'].get('actions',original['config'].get('action'))[0].get('service'))=='light.turn_on' else 'off','watch_seconds':30,'physical_confirmation_required':True,'target_identity':target_identity,'missing_target_required':new if rollback_of else None}
             manual='V HA otevři uvedenou automatizaci. Změň pouze zobrazený původní target entity_id na doloženou novou identitu, ulož a ověř skutečný trigger a světlo. Při jiné konfiguraci změnu neprováděj.'
         else:
             enable=tool=='homeassistant.enable_entity'
@@ -187,6 +196,10 @@ class ApprovedRepairBroker:
         validate(row['schema'],d['parameters'])
         if b['provider']=='ha_mcp' and self._guide()!=d.get('guide_receipt'):raise RepairBlocked('Pravidla nebo potvrzení HA-MCP se změnila; je potřeba nový plán.')
         if fingerprint(self._original(b['provider'],b['tool'],d['parameters']))!=d['original_sha256']:raise RepairBlocked('Cíl se změnil; je potřeba nové schválení.')
+        if d['verification'].get('target_identity') is not None and self.target_identity(d['verification']['entity_id'])!=d['verification']['target_identity']:raise RepairBlocked('Identifikátor nyní patří jinému zařízení; je potřeba nový návrh.')
+        if d['verification'].get('missing_target_required'):
+            state=self.app.core.states(d['verification']['missing_target_required'])
+            if state is not None or self.app.core.status.last_response_status!=404:raise RepairBlocked('Původní identifikátor už není prokázaný jako chybějící. Návrat by mohl ovládat jiné zařízení.')
         receipt=self.backups.verify(d['original_sha256'])
         if fingerprint(receipt)!=d['backup']['receipt_sha256']:raise RepairBlocked('Důkaz zálohy se změnil; je potřeba nový plán.')
         return row
@@ -210,8 +223,8 @@ class ApprovedRepairBroker:
         self._owner(principal);self._preflight(plan);d=plan.document;now=self.app.clock();execution_id=secrets.token_hex(16)
         with closing(connect(self.app.store.db_path)) as db:
             db.execute('BEGIN IMMEDIATE')
-            uncertain=db.execute("SELECT 1 FROM repair_executions e JOIN repair_plans p ON p.id=e.plan_id WHERE e.status IN ('tool_intent','unknown_requires_reconciliation') AND json_extract(p.document,'$.incident_id')=?",(d['incident_id'],)).fetchone()
-            if uncertain:raise RepairBlocked('Předchozí nejistý zásah blokuje další zápisy tohoto případu.')
+            uncertain=db.execute("SELECT 1 FROM repair_executions e JOIN repair_plans p ON p.id=e.plan_id WHERE e.status IN ('tool_intent','unknown_requires_reconciliation') AND json_extract(p.document,'$.operation')='tool.approved'").fetchone()
+            if uncertain:raise RepairBlocked('Předchozí nejistý zásah blokuje další zápisy tohoto brokeru i z jiného případu.')
             registered=db.execute('SELECT document FROM repair_plans WHERE id=?',(plan.plan_id,)).fetchone()
             approval=db.execute("SELECT * FROM repair_decisions WHERE token_hash=? AND plan_id=?",(digest(token),plan.plan_id)).fetchone()
             if not registered or registered[0]!=plan.serialized or not approval or approval['principal']!=principal or approval['decision']!='approve' or approval['consumed_at'] is not None or approval['expires_at']<=now:raise RepairBlocked('Chybí platné autentické schválení přesného plánu.')
@@ -238,8 +251,12 @@ class ApprovedRepairBroker:
         return ExecutionResult(execution_id,plan.plan_id,status,now,completed)
 
     def report(self,plan,execution_id,classification):
+        summaries={'Vyřešeno a ověřeno':'Funkční podmínka a požadovaný uživatelský test byly ověřené.',
+                   'Oprava provedena, ověření čeká':'Zásah čeká na funkční důkazy.',
+                   'Oprava selhala':'Kontrolní čtení neodpovídá plánu. Zásah neuzavřel incident; další postup vyžaduje nový návrh.',
+                   'Návrat změny ověřen čtením; funkční problém zůstává':'Původní konfigurace nebo povolení entity byly znovu přečtené. Návrat nevrací fyzické účinky a nepotvrzuje vyřešení problému.'}
         value={'scope':'provider_tool_functional_observations','incident_id':plan.document['incident_id'],'execution_id':execution_id,'classification':classification,'plan_id':plan.plan_id,'provider':plan.document['binding']['provider'],'tool':plan.document['binding']['tool'],
-               'summary_cs':'Funkční podmínka a požadovaný uživatelský test byly ověřené.' if classification=='Vyřešeno a ověřeno' else 'Zásah čeká na funkční důkazy.' if classification=='Oprava provedena, ověření čeká' else 'Výsledek nelze bezpečně určit. Další zápis je zastaven; proběhne pouze kontrolní čtení.',
+               'summary_cs':summaries.get(classification,'Výsledek nelze bezpečně určit. Další zápis je zastaven; proběhne pouze kontrolní čtení.'),
                'haos_restored':False}
         with closing(connect(self.app.store.db_path)) as db:db.execute('INSERT INTO repair_reports(execution_id,created_at,classification,document) VALUES(?,?,?,?)',(execution_id,self.app.clock(),classification,canonical(value)))
         self.app.store.record(plan.document['incident_id'],'repair_report',value)
@@ -276,6 +293,7 @@ class ApprovedRepairBroker:
         if not row or row['status'] not in {'applied_verification_pending','verified','failed','recurred'}:raise RepairBlocked('Nejprve je potřeba bezpečně určit výsledek zápisu.')
         current=self._original(b['provider'],b['tool'],d['parameters'])
         matches=current.get('config')==d['proposed'].get('config') if b['provider']=='ha_mcp' else current==d['proposed']
+        if d['verification'].get('target_identity') is not None and self.target_identity(d['verification']['entity_id'])!=d['verification']['target_identity']:matches=False
         if not matches:
             with closing(connect(self.app.store.db_path)) as db:db.execute("UPDATE repair_executions SET status='failed' WHERE id=?",(row['id'],))
             return self.report(plan,row['id'],'Oprava selhala')
@@ -303,7 +321,7 @@ class ApprovedRepairBroker:
             entity=d['verification']['entity_id'];state=self.app.core.states(entity)
             from .provider_reports import stamp
             fresh=isinstance(state,dict) and (stamp(state.get('last_updated')) or 0)>row['completed_at']
-            desired=state.get('state') not in {'unknown','unavailable',None} if d['verification']['expected_enabled'] else state is None and self.app.core.status.last_response_status==404
+            desired=isinstance(state,dict) and state.get('state') not in {'unknown','unavailable',None} if d['verification']['expected_enabled'] else state is None and self.app.core.status.last_response_status==404
             breaks=[o['observed_at'] for o in observations if o.get('kind')=='tool_target_state' and o.get('payload',{}).get('state') in {'unavailable','unknown'}]
             covered=now-max([row['completed_at'],detector['continuous_since'] or now]+breaks)>=d['verification']['watch_seconds']
             report=self.report(plan,row['id'],'Vyřešeno a ověřeno' if confirmed and desired and (fresh or not d['verification']['expected_enabled']) and covered else 'Oprava provedena, ověření čeká')
@@ -317,9 +335,12 @@ class ApprovedRepairBroker:
         plan=self.plan(identity);d=plan.document;b=d['binding']
         current=self._original(b['provider'],b['tool'],d['parameters'])
         matches=current.get('config')==d['proposed'].get('config') if b['provider']=='ha_mcp' else current==d['proposed']
-        unchanged=fingerprint(current)==d['original_sha256']
-        self.app.store.record(d['incident_id'],'tool_write_reconciliation',{'plan_id':identity,'matches_proposed':matches,'matches_original':unchanged,'retry_authorized':False})
-        return {'matches_proposed':matches,'matches_original':unchanged,'requires_new_plan':True,'retry_authorized':False}
+        target=d['verification'].get('target_identity')
+        identity_matches=self.target_identity(d['verification']['entity_id'])==target if target is not None else True
+        result={'read_verified':True,'matches_proposed':matches,'matches_original':fingerprint(current)==d['original_sha256'],
+                'target_identity_matches':identity_matches,'requires_new_owner_decision':True,'retry_authorized':False}
+        self.app.store.record(d['incident_id'],'tool_write_reconciliation',{'plan_id':identity,**result})
+        return result
 
     def observe_state(self,state,when):
         with closing(connect(self.app.store.db_path)) as db:

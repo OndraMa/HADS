@@ -20,7 +20,7 @@ def repair_cards(app,identity,csrf):
         d=plan['document']
         if d['operation']=='tool.approved':
             from .tool_ui import repair_card
-            result+=repair_card(plan,csrf)
+            result+=repair_card(plan,csrf,app)
             continue
         native=d['operation']=='core.enable_lighting_automation'
         if native:original='Zapnutá' if d['original']['enabled'] else 'Vypnutá';proposed='Zapnutá' if d['proposed']['enabled'] else 'Vypnutá'

@@ -25,6 +25,7 @@ class OrchestratedWire(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.expected_auth='Bearer fixture-only-token';self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
         self.old='light.original_fixture';self.new='light.current_fixture';self.auto='automation.fixture_room'
+        self.light_identity={'entity_id':self.new,'platform':'zha','unique_id':'light_identity_fixture','device_id':'light_device_fixture','config_entry_id':'zha_fixture','disabled_by':None}
         self.config={'id':'automation_fixture_id','alias':'Fixture room','triggers':[{'trigger':'state','entity_id':'binary_sensor.fixture_button','to':'on'}],
                      'conditions':[],'actions':[{'action':'light.turn_on','target':{'entity_id':self.old}}]}
         self.entry={'entity_id':'binary_sensor.fixture_contact','unique_id':'fixture_identity','device_id':'device_fixture','platform':'zha','config_entry_id':'zha_fixture','disabled_by':'user'}
@@ -102,7 +103,7 @@ class OrchestratedWire(unittest.TestCase):
     def ws(self,command):
         if command['type']=='get_services':return {'homeassistant':{'enable_entity':{'fields':{'entity_id':{'required':True}}},'disable_entity':{'fields':{'entity_id':{'required':True}}}}}
         if command['type']=='manifest/get':return {'domain':'spook','version':'fixture-contract-1'}
-        if command['type']=='config/entity_registry/get':return copy.deepcopy(self.entry)
+        if command['type']=='config/entity_registry/get':return copy.deepcopy(self.light_identity if command['entity_id']==self.new else self.entry)
         if command['type']=='call_service':
             self.assertEqual(command['domain'],'homeassistant');self.assertIn(command['service'],{'enable_entity','disable_entity'})
             self.assertEqual(command['service_data'],{'entity_id':[self.entry['entity_id']]})
@@ -275,6 +276,72 @@ class OrchestratedWire(unittest.TestCase):
         from urllib.parse import unquote_plus
         self.assertIn('repo:ITSpecialist111/Automation-Inspector',unquote_plus(urls[0]))
         self.assertEqual(self.writes,[])
+
+    def test_corrupt_connector_configuration_does_not_disable_incident_collection(self):
+        path=self.app.data_dir/'tool-connections.json'
+        path.write_text('{broken');path.chmod(0o600)
+        from hads_next.tool_connections import ToolConnections
+        connections=ToolConnections(self.app)
+        self.assertTrue(connections.load_error);self.assertEqual(connections.clients,{})
+        self.assertEqual(path.read_text(),'{broken')
+        for content in ('[]','{"schema":1,"connections":[]}'):
+            path.write_text(content)
+            self.assertTrue(ToolConnections(self.app).load_error)
+        with tempfile.TemporaryDirectory() as directory:
+            app=Application(directory)
+            app.enroll_owner('owner-without-sources')
+            case=app.report_incident('Senzor neodpovídá','binary_sensor.fixture','owner-without-sources')
+            self.assertEqual(case['incident']['status'],'open')
+            self.assertEqual(app._source_job['state'],'idle')
+            self.assertEqual(len(app.snapshot()['cases']),1)
+
+    def test_reused_entity_id_cannot_redirect_an_approved_light_repair(self):
+        plan=self.prepare();self.light_identity['device_id']='different_device'
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.writes,[])
+
+    def test_uncertain_write_is_read_automatically_and_owner_adopts_without_replay(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.now+=1;self.app.repair_recovery.cycle()
+        report=self.app.repair_recovery.status(plan.plan_id)
+        self.assertTrue(report['matches_proposed']);self.assertTrue(report['target_identity_matches'])
+        self.assertEqual(len(self.writes),1)
+        with self.assertRaises(RepairBlocked):self.app.repair_recovery.adopt(plan.plan_id,'not-owner')
+        self.app.repair_recovery.adopt(plan.plan_id,'owner-fixture')
+        with closing(connect(self.app.store.db_path)) as db:
+            row=db.execute('SELECT status,completed_at,error FROM repair_executions WHERE plan_id=?',(plan.plan_id,)).fetchone()
+        self.assertEqual(row['status'],'applied_verification_pending');self.assertEqual(row['completed_at'],self.now)
+        self.assertIn('write_origin_uncertain',row['error']);self.assertEqual(len(self.writes),1)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+
+    def test_uncertain_write_blocks_another_case_and_a_different_provider(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
+        incident=self.app.store.open_incident('manual_functional','Kontakt nereaguje',[self.entry['entity_id']],self.now)
+        self.app.store.add_evidence(incident['id'],{'source':'native_entity_context','kind':'entity_context','event_id':'second-case','observed_at':self.now,'payload':{'entity_id':self.entry['entity_id'],'disabled_by':'user'}})
+        ids=[e['evidence_id'] for e in self.app.store.case(incident['id'])['evidence']];self.receipt(self.entry)
+        other=self.app.approved_tools.prepare(incident['id'],'spook','homeassistant.enable_entity',{'entity_id':self.entry['entity_id']},ids,'Samostatný vlastnický požadavek',exclusive=True)
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(other.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.entry['disabled_by'],'user');self.assertEqual(len(self.writes),1)
+
+    def test_actual_rollback_requires_new_approval_and_cannot_target_reused_identifier(self):
+        plan=self.prepare();self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.receipt({'config':copy.deepcopy(self.config),'config_hash':fingerprint(self.config)})
+        inverse=self.app.approved_tools.rollback_plan(plan.plan_id,exclusive=True)
+        self.assertEqual(len(self.writes),1)
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.execute(inverse,'not-an-approval','owner-fixture')
+        core=self.core
+        self.app.core=CoreReader(lambda path:{'entity_id':self.old,'state':'off'} if path=='/api/states/'+self.old else core(path))
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(inverse.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(len(self.writes),1)
+        self.app.core=CoreReader(core)
+        self.app.approved_tools.decide(inverse.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(len(self.writes),2);self.assertEqual(self.config['actions'][0]['target']['entity_id'],self.old)
+        report=self.app.approved_tools.verify(inverse.plan_id)
+        self.assertIn('Návrat změny ověřen čtením',report['classification'])
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
 
     def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
         html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)

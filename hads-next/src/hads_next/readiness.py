@@ -13,6 +13,9 @@ def memory_available():
 
 def checklist(app):
     snapshot=app.snapshot();sources=snapshot['sources'];runtime=app.investigations.status();memory=memory_available();repairs=app.repairs.status()
+    tool_rows=app.tools.registry.tools()
+    implemented=sum(r['repair_operation_implemented'] and r['available'] for r in tool_rows)
+    ready=sum(r['repair_ready_for_approval'] for r in tool_rows)
     def source(name):return bool(sources.get(name,{}).get('read_succeeded'))
     with app.store._connect() as db:
         model_read=bool(db.execute("SELECT 1 FROM investigation_model_calls WHERE state='response' LIMIT 1").fetchone())
@@ -25,6 +28,6 @@ def checklist(app):
         ('AI poskytovatel',model_read,('Přijatá skutečná odpověď poskytovatele; správnost úsudku tím není dokázaná.' if model_read else 'Nastavení existuje; skutečný úspěšný požadavek ověř v konkrétním vyšetřování.' if runtime['provider']['configured'] else 'Poskytovatel není nastavený. Lokální detekce pokračuje.')),
         ('Souhlas s náklady',runtime['provider']['enabled'],'Automatické vyšetřování má navíc vlastní samostatný souhlas.'),
         ('Zálohování',False,'Snapshot jediné reference je ověřen při přípravě plánu. HAOS/OneDrive obnovitelnost není doložená; rizikové operace jsou blokované.'),
-        ('Opravný mechanismus',bool(repairs.get('companion_checked_at')) or repairs.get('native_state_targets',0)>0,'Vlastní CAS reference nebo vlastníkem vybraná jednoduchá světelná automatizace. Nativní operace mění pouze aktivaci, nemá config CAS a vyžaduje samostatný souhlas i fyzické potvrzení.'),
+        ('Opravný mechanismus',ready>0 or bool(repairs.get('companion_checked_at')) or repairs.get('native_state_targets',0)>0,'Společný katalog: '+str(implemented)+' dostupných implementovaných opravných operací; '+str(ready)+' funkcí s připraveným plánem. HA-MCP mění jedinou doloženou světelnou referenci, Spook povolení jedné entity; vyžadují skutečný důkaz obnovitelnosti a konkrétní souhlas. Původní oddělený CAS test a světelná aktivace zůstávají dostupné podle svého nastavení.'),
         ('První funkční diagnostika',any(c['kind']=='functional_monitor' for c in snapshot['cases']),'Skutečný monitor musí zachytit nesplněnou podmínku; samotné spojení ani modelový závěr ji nenahrazují.')]
     return [{'label':label,'passed':bool(passed),'detail':detail} for label,passed,detail in checks]

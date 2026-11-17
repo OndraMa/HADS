@@ -1,4 +1,4 @@
-"""Read-only HAOS development application. No AI or repair executor imports."""
+"""HAOS controller wiring: autonomous reads, confined AI and separate approved writers."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -71,11 +71,15 @@ class Application:
         from .orchestration_cases import OrchestrationCases
         self.tools=ToolOrchestration(self)
         self.approved_tools=ApprovedRepairBroker(self)
+        from .repair_recovery import RepairRecovery
+        self.repair_recovery=RepairRecovery(self)
         self.orchestration=OrchestrationCases(self)
         from .live_acceptance import LiveAcceptance
         self.acceptance=LiveAcceptance(self)
 
     def request_source_check(self):
+        if self.core is None and self.core_ws is None and self.supervisor is None and not self.tools.connections.clients:
+            return False  # no source to read; do not spawn an orphan task
         with self._lock:
             if self._source_job['state']=='running':return False
             self._source_job['state']='running'
@@ -166,6 +170,7 @@ class Application:
                     normalized.append({'source':'system_log','observed_at':row.get('timestamp'),'component':row.get('name',row.get('logger','unknown')),'message':message})
                 self.orchestration.correlate(normalized)
             self.orchestration.cycle()
+            self.repair_recovery.cycle()
         with self._lock:
             self._sources = sources
         return sources
