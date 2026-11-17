@@ -291,4 +291,5 @@ class ToolOrchestration:
         if not set(args['evidence_ids'])<={e['evidence_id'] for e in case['evidence']}:raise ToolDenied('Návrh necituje skutečné důkazy spisu.')
         request={'incident_id':incident_id,**args,'schema_hash':row['schema_hash'],'catalog_digest':fingerprint(row),'authority':'proposal_only_no_approval'}
         self.app.store.record(incident_id,'tool_repair_proposal',request)
+        self.app.orchestration.prepare_candidates(incident_id)
         return {'status':'proposal_recorded','data':request,'evidence_ids':args['evidence_ids'],'approval_granted':False}

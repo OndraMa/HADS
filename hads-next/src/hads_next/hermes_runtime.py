@@ -91,7 +91,7 @@ def run_investigation(jobs,job_id,broker,launcher,model_send,*,model):
         with BrokerSession(jobs,job_id,broker,model_send) as session:
             result=launcher.run(port=session.port,nonce=session.nonce,model=model,prompt=prompt,schemas=broker.schemas())
             jobs.store.record(job['incident_id'],'hermes_worker_attempt',{'job_id':job_id,
-                **{key:result.get(key) for key in ('completed','error','exit_status','isolation_verified','uid','peak_rss_bytes')}})
+                **{key:result.get(key) for key in ('completed','error','at','wire_errors','exit_status','isolation_verified','uid','peak_rss_bytes')}})
             if result.get('completed') is not True or result.get('isolation_verified') is not True:
                 raise RuntimeError('Worker did not complete in verified confinement: '+canonical(result))
             if result['final_response']!=session.last_final:raise RuntimeError('Final answer is not the metered model response')

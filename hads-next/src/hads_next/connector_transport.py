@@ -79,7 +79,13 @@ class MCPConnection(MusicMCP):
     @staticmethod
     def _tool_value(result):
         if not isinstance(result,dict) or result.get("isError"):raise ReadFailure("mcp_tool_rejected")
-        if result.get("structuredContent") is not None:return result["structuredContent"]
+        if result.get("structuredContent") is not None:
+            structured=result['structuredContent']
+            meta=result.get('_meta',{}).get('fastmcp',{})
+            if isinstance(meta,dict) and meta.get('wrap_result') is True:
+                if not isinstance(structured,dict) or set(structured)!={'result'}:raise ReadFailure('mcp_invalid_wrapped_result')
+                return structured['result']
+            return structured
         blocks=result.get("content",[])
         if not isinstance(blocks,list) or len(blocks)!=1 or blocks[0].get("type")!="text":raise ReadFailure("mcp_tool_result_not_supported")
         text=blocks[0].get("text")

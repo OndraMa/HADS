@@ -105,6 +105,7 @@ class ToolRegistry:
             provider=providers.get(row['provider'],{})
             row['available']=provider.get('connected') is True and provider.get('catalog_loaded') is True and self.clock()-row['checked_at']<=900
             row['diagnostic_read_verified']=provider.get('diagnostic_read_verified') is True
+            row['repair_ready_for_approval']=row['repair_ready_for_approval'] and row['available'] and any(plan['binding']['provider']==row['provider'] and plan['binding']['tool']==row['name'] and plan['binding']['schema_hash']==row['schema_hash'] and plan['binding']['version']==provider.get('version') and plan['binding'].get('server_version')==provider.get('server_version') and plan['binding'].get('origin_digest')==provider.get('origin_digest') for _,plan in plans)
         return rows if include_blocked else [r for r in rows if r.get('policy')=='allowed' and r['available']]
 
     def get(self,provider,name,*,effect=None):

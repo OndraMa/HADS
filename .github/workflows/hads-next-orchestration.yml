@@ -31,7 +31,7 @@ jobs:
       - name: Isolated provider wire scenarios and all regressions
         working-directory: hads-next
         run: |
-          python -m pip install -e . websockets==16.0
+          python -m pip install -e . websockets==16.0 mcp==1.29.0 uvicorn==0.54.0
           python scripts/check.py
       - name: Actual Core, pinned Inspector and confined original Hermes
         working-directory: hads-next

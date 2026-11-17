@@ -99,7 +99,20 @@ class ApprovedRepairBroker:
         if not evidence_ids or not set(evidence_ids)<={e['evidence_id'] for e in case['evidence']}:raise RepairBlocked('Chybí skutečné důkazy tohoto spisu.')
         if not isinstance(reason,str) or not 1<=len(reason)<=2000:raise RepairBlocked('Chybí kontrolovatelný důvod změny.')
         if not next(p for p in self.tools.registry.providers() if p['id']==provider).get('version'):raise RepairBlocked('Skutečná verze poskytovatele není ověřená; nelze připravit zápis.')
+        if provider=='spook' and tool=='homeassistant.disable_entity' and not rollback_of:
+            raise RepairBlocked('Zakázání entity se nepoužívá jako oprava závady. Je dostupné pouze jako samostatně schválený návrat předchozího povolení.')
+        parent=None
+        if rollback_of:
+            parent=self.plan(rollback_of).document
+            with closing(connect(self.app.store.db_path)) as db:previous=db.execute('SELECT status FROM repair_executions WHERE plan_id=?',(rollback_of,)).fetchone()
+            if parent['incident_id']!=incident_id or parent['binding']['provider']!=provider or parent['parameters']['entity_id']!=parameters['entity_id'] or not previous or previous[0] not in {'applied_verification_pending','verified','failed','recurred'}:
+                raise RepairBlocked('Návrat nemá odpovídající skutečně provedený původní zásah.')
+            if provider=='ha_mcp' and parameters['config']!=parent['original']['config']:raise RepairBlocked('Návrat by změnil více než původní konfiguraci.')
+            if provider=='spook' and tool==parent['binding']['tool']:raise RepairBlocked('Návrat není inverzí původního povolení.')
         original=self._original(provider,tool,parameters)
+        if parent:
+            expected=parent['proposed']
+            if provider=='ha_mcp' and original['config']!=expected['config'] or provider=='spook' and original!=expected:raise RepairBlocked('Cíl se od původního zásahu změnil; návrat by přepsal jinou změnu.')
         if provider=='ha_mcp':
             if original['config_hash']!=parameters['config_hash']:raise RepairBlocked('Konfigurace se změnila; potřebuje nový návrh.')
             old,new=self.replacement(original['config'],parameters['config'])

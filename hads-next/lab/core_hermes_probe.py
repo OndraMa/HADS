@@ -221,7 +221,7 @@ input_button:
                             if investigations and investigations[0]['state'] in {'hypothesis_ready','blocked','failed','waiting_for_user','waiting_for_source'}:break
                             await asyncio.sleep(.1)
                         job=investigations[0]
-                        assert job['state']=='hypothesis_ready',{'state':job['state'],'calls':job['model_calls'],'requests':len(model.requests),'reads':job['reads']}
+                        assert job['state']=='hypothesis_ready',{'state':job['state'],'calls':job['model_calls'],'requests':len(model.requests),'reads':job['reads'],'steps':job['steps'],'worker':[r['content'] for r in app.store.case(incident['id'])['records'] if r['kind'] in {'hermes_worker_attempt','hermes_worker_runtime'}]}
                         suggestion=job['conclusion']['repair_suggestion']
                         assert suggestion['status']=='supported_lab_candidate' and suggestion['production_executable'] is False,suggestion
                         assert suggestion['change']=={'from':'input_boolean.hads_lab_missing','to':'input_boolean.hads_lab_target'}

@@ -73,6 +73,9 @@ class OrchestrationCases:
                 if result['status']=='available' and request['provider']=='automation_inspector':self._dependencies(incident['id'],targets,result.get('data',{}))
             self.prepare_candidates(incident['id'])
             self.app.store.record(incident['id'],'orchestration_checkpoint',self.summary(incident['id']))
+            with self.app.store._connect() as db:
+                for kind in ('orchestration_checkpoint','orchestration_repair_blocked'):
+                    db.execute('DELETE FROM case_records WHERE incident_id=? AND kind=? AND id NOT IN (SELECT id FROM case_records WHERE incident_id=? AND kind=? ORDER BY id DESC LIMIT 20)',(incident['id'],kind,incident['id'],kind))
     def _dependencies(self,identity,targets,data):
         found=[]
         for row in data.get('items',[]):
@@ -123,7 +126,28 @@ class OrchestrationCases:
         case=self.app.store.case(identity);evidence=[e['evidence_id'] for e in case['evidence']]
         if not evidence:return
         tools=self.app.tools
-        candidates=[r for r in tools.registry.tools(include_blocked=False) if r['effect']=='write' and r.get('executor')=='replace_automation_reference']
+        catalog=tools.registry.tools(include_blocked=False)
+        # An analyst request is still inert; reconstruct it independently here.
+        for record in [r for r in case['records'] if r['kind']=='tool_repair_proposal'][-2:]:
+            request=record['content']
+            try:
+                row=tools.registry.get(request['provider'],request['tool'],effect='write')
+                if row['schema_hash']!=request['schema_hash']:raise ToolDenied('Návrh používá staré schéma; je potřeba nový návrh.')
+                self.app.approved_tools.prepare(identity,request['provider'],request['tool'],request['parameters'],request['evidence_ids'],request['reason'],exclusive=True)
+            except (ValueError,KeyError,TypeError) as error:
+                self.app.store.record(identity,'orchestration_repair_blocked',{'provider':request.get('provider'),'tool':request.get('tool'),'reason_cs':str(error)[:700]})
+        # Disabled registry entries are not assumed broken. Only an actual
+        # owner-reported functional case can offer enabling as an explicit
+        # intended-behavior choice in the immutable approval plan.
+        if case['incident']['kind']=='manual_functional' and any(r['provider']=='spook' and r['name']=='homeassistant.enable_entity' for r in catalog):
+            for report in self.app.entity_context.reports(case)[:2]:
+                if report['classification']!='disabled' or (report.get('registry') or {}).get('disabled_by')!='user':continue
+                try:
+                    self.app.approved_tools.prepare(identity,'spook','homeassistant.enable_entity',{'entity_id':report['entity_id']},evidence,
+                        'U nahlášeného funkčního problému je doložené zakázání uživatelem. Schválením tohoto přesného plánu vlastník výslovně potvrzuje, že entita má být povolená; nejde o automaticky zjištěnou poruchu Zigbee.',exclusive=True)
+                except (ValueError,KeyError,TypeError) as error:
+                    self.app.store.record(identity,'orchestration_repair_blocked',{'provider':'spook','tool':'homeassistant.enable_entity','reason_cs':str(error)[:700]})
+        candidates=[r for r in catalog if r['effect']=='write' and r.get('executor')=='replace_automation_reference']
         for row in candidates:
             client=tools.connections.clients.get(row['provider'])
             if not client:continue

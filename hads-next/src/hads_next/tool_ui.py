@@ -28,7 +28,8 @@ def repair_card(plan,csrf):
         body+='<form method="post" action="../tool-repair/decide">'+form+'<label><input type="checkbox" name="exclusive" value="yes" required>Potvrzuji výlučnou práci s tímto cílem; během zásahu jej jinde neupravuji.</label><button name="decision" value="approve">Schválit přesně tuto opravu</button><button name="decision" value="reject" formnovalidate>Zamítnout</button><button name="decision" value="manual" formnovalidate>Provést ručně</button></form>'
         if plan.get('decision')=='manual':body+='<p>'+escape(d['manual_alternative'])+'</p>'
     else:
-        body+='<p>Výsledek zásahu: '+escape(plan['status'])+'</p>'
+        labels={'applied_verification_pending':'Oprava provedena, ověření čeká','verified':'Vyřešeno a ověřeno','failed':'Oprava selhala','recurred':'Problém se opakoval','unknown_requires_reconciliation':'Výsledek zápisu není jistý. Další zásahy jsou zastavené; HADS smí jen znovu přečíst stav.','tool_intent':'Zásah je rozpracovaný; neopakuje se.','rollback_reference_restored':'Návrat konfigurace ověřen; funkční výsledek se posuzuje zvlášť.'}
+        body+='<p>Výsledek zásahu: '+escape(labels.get(plan['status'],'Zásah vyžaduje kontrolu uložených důkazů.'))+'</p>'
         if plan['status']=='applied_verification_pending':body+='<form method="post" action="../repair/physical">'+form+'<p>Proveď skutečný funkční test popsaného cíle; HADS sleduje nové důkazy a dobu ověření.</p><button>Potvrzuji skutečnou odezvu správného cíle</button></form>'
         if plan['status'] in {'applied_verification_pending','verified','failed','recurred'}:body+='<form method="post" action="../tool-repair/rollback">'+form+'<label><input type="checkbox" name="exclusive" value="yes" required>Cíl nyní nikdo jiný neupravuje.</label><button>Připravit návrat změny k novému schválení</button></form>'
     return body+'</article>'

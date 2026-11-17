@@ -77,7 +77,7 @@ class OrchestratedWire(unittest.TestCase):
                             value={'success':True,'config_hash':fingerprint(outer.config)}
                         elif name=='ha_get_device':value={'success':True,'device_id':'light_device_fixture','lqi':75}
                         else:value={'success':True,'repairs':[]}
-                    result={'content':[{'type':'text','text':json.dumps(value)}]}
+                    result={'structuredContent':{'result':value},'_meta':{'fastmcp':{'wrap_result':True}}} if name=='ha_search_tools' else {'content':[{'type':'text','text':json.dumps(value)}]}
                 else:outer.fail('unexpected MCP method '+msg['method'])
                 self.output({'jsonrpc':'2.0','id':msg['id'],'result':result})
             def do_GET(self):
@@ -189,6 +189,15 @@ class OrchestratedWire(unittest.TestCase):
         self.now+=31;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now-30)
         self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
         self.assertEqual(self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')['classification'],'Vyřešeno a ověřeno')
+    def test_disable_is_not_a_repair_and_forged_rollback_cannot_bypass_identity(self):
+        self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
+        with self.assertRaises(RepairBlocked):
+            self.app.approved_tools.prepare(self.case['id'],'spook','homeassistant.disable_entity',{'entity_id':self.old},self.evidence,'Nesmí skrýt závadu',exclusive=True)
+        plan=self.prepare()
+        with self.assertRaises(RepairBlocked):
+            self.app.approved_tools.prepare(self.case['id'],'ha_mcp','ha_config_set_automation',plan.document['parameters'],self.evidence,'Falešný návrat',exclusive=True,rollback_of='not-a-plan')
+        self.assertEqual(self.writes,[])
+
     def test_C_E_shared_DNS_correlation_and_H_AI_unavailable_keep_evidence_without_cost(self):
         self.app.orchestration.correlate([{'source':'core','component':'resolver','observed_at':self.now-20,'message':'DNS name resolution failed'},
             {'source':'application','component':'radio','observed_at':self.now-15,'message':'Cannot connect to provider'},
