@@ -11,6 +11,7 @@ from .watchman_contract import read_watchman,persist_watchman
 
 SPECS = {
     'spook': ('Spook', ('spook',), ('spook',)),
+    'zha_toolkit': ('ZHA Toolkit', ('zha_toolkit',), ('zha_toolkit',)),
     'ha_mcp': ('HA-MCP', ('ha_mcp_tools', 'ha_mcp'), ('ha_mcp', 'ha_mcp_server')),
     'automation_inspector': ('Automation Inspector', ('automation_inspector',), ('automation_inspector',)),
     'hadocs': ('HADocs', ('hadocs',), ('hadocs',)),
@@ -80,7 +81,8 @@ class ProviderVerification:
             targets=[r['entity_id'] for r in owned]
             owner_hint=key=='haghs' and 'sensor.system_ha_global_health_score' in state_map
             if owner_hint and 'sensor.system_ha_global_health_score' not in targets:targets.append('sensor.system_ha_global_health_score')
-            samples = [entity_state(state_map[entity], now) for entity in targets if entity in state_map][:4]
+            preferred=sorted(targets,key=lambda entity:(not entity.startswith(('sensor.','binary_sensor.')),entity))
+            samples = [entity_state(state_map[entity], now) for entity in preferred if entity in state_map][:4]
             known = bool(matched_components or matched_apps)
             gaps = []
             if not components_ok: gaps.append('loaded_components_unavailable')
@@ -88,7 +90,8 @@ class ProviderVerification:
             if invalid_apps: gaps.append('application_inventory_invalid_rows')
             if not registry_ok: gaps.append('entity_registry_unavailable')
             if not states_ok: gaps.append('entity_states_unavailable')
-            if owned and not samples: gaps.append('owned_entities_have_no_readable_state')
+            expected=[r for r in owned if r.get('disabled_by') is None]
+            if expected and not samples: gaps.append('owned_entities_have_no_readable_state')
             gaps.append('provider_functional_contract_not_verified')
             relevant_issues = [r for r in (issues or []) if isinstance(r,dict) and r.get('domain') in domains] if isinstance(issues,list) else None
             report = {'provider_id': key, 'title': title, 'presence_confirmed': known,
@@ -101,7 +104,9 @@ class ProviderVerification:
                       'matching_repairs_count':len(relevant_issues) if relevant_issues is not None else None,
                       'mcp_authenticated':None, 'mcp_catalog_verified':False,
                       'functional_verified':False, 'gaps':gaps, 'writes_enabled':False,
-                      'last_error':'Některé nativní podklady nelze aktuálně přečíst.' if any(g!='provider_functional_contract_not_verified' for g in gaps) else None,
+                      'last_error':('Registry vlastních entit byly přečtené, ale jejich aktuální stavy chybí. To nepotvrzuje výpadek API ani nefunkční MCP.'
+                                    if set(gaps)=={'owned_entities_have_no_readable_state','provider_functional_contract_not_verified'} else
+                                    'Některé nativní podklady nelze aktuálně přečíst.' if any(g!='provider_functional_contract_not_verified' for g in gaps) else None),
                       'summary_cs':('Aktuální stopa nalezena.' if known else 'Aktuální přítomnost nebyla potvrzena; to neprokazuje odinstalování.')
                           + (' Vybrané entitní stavy byly přečtené.' if samples else '')
                           + ' HADS zatím neověřil vlastní diagnostiku tohoto doplňku.'}
@@ -121,3 +126,15 @@ class ProviderVerification:
         now = self.app.clock()
         return [{**json.loads(r['document']), 'checked_at':r['checked_at'], 'read_age_seconds':max(0,now-r['checked_at']),
                  'stale':now-r['checked_at']>600} for r in rows]
+
+    def record_toolkit(self, result):
+        if not isinstance(result,dict):return
+        with self.app.store._connect() as db:
+            row=db.execute("SELECT document FROM provider_verifications WHERE provider_id='zha_toolkit'").fetchone()
+            if not row:return
+            document=json.loads(row[0]);document['diagnostic_read']=result
+            document['summary_cs']=('ZHA Toolkit odpověděl na omezené čtení již známých zařízení. Žádný RF sken ani oprava neproběhly.'
+                if result['read_succeeded'] else 'ZHA Toolkit je načtený, ale konkrétní diagnostické čtení neprošlo.'
+                if result['component_loaded'] else 'Načtení ZHA Toolkitu nynější čtení nepotvrdilo; to neprokazuje odinstalování.')
+            document['last_error']=result.get('last_error')
+            db.execute("UPDATE provider_verifications SET checked_at=?,document=? WHERE provider_id='zha_toolkit'",(self.app.clock(),canonical(document)))

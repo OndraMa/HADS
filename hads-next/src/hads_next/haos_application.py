@@ -13,17 +13,17 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read,is_app_slug
 
-VERSION = "1.0.0-rc6"
+VERSION = "1.0.0-rc7"
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
 def project_state(row):
-    if not isinstance(row, dict) or not ENTITY.fullmatch(str(row.get("entity_id", ""))):
+    if not isinstance(row, dict) or not ENTITY.fullmatch(str(row.get("entity_id", ""))) or not isinstance(row.get('state'),str):
         return None
     context = row.get("context")
     return {"entity_id": row["entity_id"], "state": str(row.get("state", "unknown"))[:256],
             "last_updated": str(row.get("last_updated", ""))[:80],
-            "name":str((row.get("attributes") or {}).get("friendly_name",row["entity_id"]))[:120],
+            "name":str((row['attributes'] if isinstance(row.get('attributes'),dict) else {}).get("friendly_name",row["entity_id"]))[:120],
             "context": {k: str(context[k])[:128] for k in ("id", "parent_id") if context.get(k)}
                 if isinstance(context, dict) else {}}
 
@@ -43,6 +43,7 @@ class Application:
         self._read_lock = threading.Lock()
         self._last_attempt = None
         self._entities = []
+        self._entity_catalog = []
         self._summary = {"available": False, "version": None, "entity_count": 0,
                          "unavailable_count": 0, "last_refresh_at": None,
                          "last_error": "Čtení Core ještě neproběhlo.", "source_status": None}
@@ -60,6 +61,8 @@ class Application:
         self.system=SystemDiagnostics(self)
         from .provider_verification import ProviderVerification
         self.providers=ProviderVerification(self)
+        from .entity_context import EntityContext
+        self.entity_context=EntityContext(self)
         from .legacy_connectors import LegacyConnectors
         self.legacy_connectors=LegacyConnectors(self)
         self.investigations.broker.runtime_system=self.system
@@ -143,6 +146,8 @@ class Application:
                 with self._lock:self._sources[name]=sources[name]
             states = self.core.states() if self.core else None
             self.providers.update(values,states)
+            self.entity_context.update(values,states)
+            self.providers.record_toolkit(self.entity_context.toolkit)
         with self._lock:
             self._sources = sources
         return sources
@@ -230,7 +235,7 @@ class Application:
             cases.append(item)
         with self._lock:
             return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
-                    "entities": list(self._entities), "cases": cases,
+                    "entities": list(self._entity_catalog or self._entities), "cases": cases,
                     "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": (self.repairs.status()["enabled"] or self.repairs.status()["native_state_targets"]>0),
                     'investigation_service':self.investigations.status(),
                     'system_health':self.system.status(),'detection':self.detection.snapshot(),'repairs':self.repairs.status(),
@@ -323,4 +328,5 @@ class Application:
         self.store.record(incident_id, "deterministic_investigation", {**conclusion,
             "source_status": read_status, "scope": "haos_read_only_preview",
             "limitation": "Toto je deterministický rozbor historie HA. Další čtení může vyžádat samostatné vyšetřování Hermes; Music Assistant vyžaduje nastavené připojení. Žádná oprava nebyla provedena."})
+        if self.owner():self.request_source_check()
         return self.store.case(incident_id)

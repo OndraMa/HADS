@@ -263,6 +263,8 @@ class Handler(BaseHTTPRequestHandler):
                 for r in case['records'] if r['kind']=='investigator_selected' and jobs and r['content'].get('job_id')==jobs[0]['id'])
             from .command_center import repair_cards
             suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
+            from .entity_context_ui import render_context
+            suggestion_html+=render_context(self.server.app,case)
             automation_case=any(component.startswith('automation.') for component in case['incident']['components'])
             reference_case=bool({'input_boolean.hads_next_test_target','automation.hads_next_reference_test'} & set(case['incident']['components']))
             if self.server.app.repairs.status()['enabled'] and reference_case:

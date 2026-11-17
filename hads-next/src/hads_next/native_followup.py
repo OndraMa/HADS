@@ -58,3 +58,16 @@ class NativeFollowup:
         with self.app.store._connect() as db:
             row = db.execute('SELECT checked_at,document FROM native_followups WHERE incident_id=?', (incident_id,)).fetchone()
         return {**json.loads(row['document']), 'checked_at': row['checked_at']} if row else None
+
+    def collection(self,key,passed,summary):
+        with self.app.store._connect() as db:
+            row=db.execute('SELECT incident_id FROM health_episodes WHERE key=?',(key,)).fetchone()
+        if not row:return
+        document={'state':'check_passed' if passed else 'still_failing','summary_cs':summary,'checks':[],'gaps':[] if passed else [key],
+                  'root_cause_proven':False,'repair_performed':False,
+                  'next_test_cs':'HADS sám obnovuje a ověřuje diagnostický sběr. Historickou mezeru nesmí doplnit odhadem; samotná mezera není důvod k opravě zařízení.'}
+        serialized=canonical(document)
+        with self.app.store._connect() as db:
+            old=db.execute('SELECT document FROM native_followups WHERE incident_id=?',(row[0],)).fetchone()
+            db.execute('INSERT OR REPLACE INTO native_followups VALUES(?,?,?)',(row[0],self.app.clock(),serialized))
+        if old is None or old[0]!=serialized:self.app.store.record(row[0],'native_followup',document,at=self.app.clock())
