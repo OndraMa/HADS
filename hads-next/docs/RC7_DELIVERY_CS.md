@@ -73,3 +73,24 @@ se testují odděleně od živého HAOS, fyzických senzorů a placeného modelu
 Živá přejímka po instalaci musí ověřit skutečné načtení Toolkitu, vazbu hlášeného senzoru na registry/ZHA,
 aktuální stav a případně jediný vlastníkem potvrzený funkční test. Nevyžaduje od uživatele terminálové vyšetřování.
 Při nedostupném připojení nebo nedoložené příčině zůstává stav výslovně neověřený; nevzniká náhodná oprava.
+
+## Výsledek ověření vydávaných souborů
+
+- Zdroj `513394ee9e73f54a639113786f7a6ab92b182870`.
+- [Nativní ARM64/AMD64 CI](https://github.com/OndraMa/HADS/actions/runs/44075502792): obě architektury úspěšné, 273 izolovaných testů každá.
+- [Prohlížečové CI](https://github.com/OndraMa/HADS/actions/runs/44075502793): 20 pohledů, anonymizovaný HA ingress, bez živé domácnosti.
+- Skutečný Core a původní Hermes, ověřená izolace, tři volání lokálního skriptovaného modelu;
+  čtvrté odmítnuté před sítí, žádné placené volání a žádná automatická placená fronta.
+- Nativní kontejnery: ukončení SIGTERM s kódem 0, zachování spisu po restartu,
+  odmítnutí workeru při nesplněné rezervě. Produkční obraz neobsahuje Core fixture.
+- Přesné publikované RC6 zdroje a skutečný RC7 instalátor s testovacím Supervisor CLI:
+  požadavek nativní částečné zálohy, zachování dat a žádné automatické opakování nejistého zásahu.
+  Není to test obnovitelnosti skutečné HAOS zálohy.
+- Všech 62 souborů instalovatelného payloadu porovnáno bajtově s přesným zdrojem;
+  oba nativní běhy vytvořily totožný instalátor i zdrojový archiv.
+- SHA-256 instalátoru: `c38a295191659d73cb675e3fb1e68ddf059edb40b11a1013db8a10e5ea31f476`.
+- SHA-256 zdrojového archivu: `4ab7a6ac41cbb3aa3a563d594850f6ea709f6b893fae5b4a52baadfe0cab20c4`.
+
+[Strojový protokol a důkazy](evidence/installation-1.0.0-rc7/ACCEPTANCE.json) a
+[návod Toolkitu](ZHA_TOOLKIT_SETUP_CS.md) uvádějí stejné hranice přejímky.
+Živý Toolkit, senzor komory, skutečný LLM, další konektory a jejich zapisovací opravy tím nejsou ověřené.
