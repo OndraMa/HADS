@@ -143,6 +143,11 @@ class OrchestratedWire(unittest.TestCase):
         self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
         self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
         self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'resolved')
+        self.now+=1
+        self.app.repairs.on_functional_failure(self.case['id'],self.new,self.now,'fixture-failure-after-verification')
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        with closing(connect(self.app.store.db_path)) as db:
+            self.assertEqual(db.execute('SELECT status FROM repair_executions WHERE plan_id=?',(plan.plan_id,)).fetchone()[0],'recurred')
     def test_private_path_endpoint_does_not_send_an_invalid_empty_bearer_header(self):
         self.expected_auth=None
         client=MCPConnection(self.url+'/mcp',allow_private_http=True)
@@ -198,6 +203,10 @@ class OrchestratedWire(unittest.TestCase):
         self.now+=31;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now-30)
         self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
         self.assertEqual(self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')['classification'],'Vyřešeno a ověřeno')
+        self.now+=1
+        self.app.repairs.on_functional_failure(incident['id'],self.entry['entity_id'],self.now,'fixture-contact-failed-again')
+        self.assertEqual(self.app.store.case(incident['id'])['incident']['status'],'open')
+        self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Problém se opakoval')
     def test_disable_is_not_a_repair_and_forged_rollback_cannot_bypass_identity(self):
         self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
         with self.assertRaises(RepairBlocked):
@@ -342,6 +351,31 @@ class OrchestratedWire(unittest.TestCase):
         report=self.app.approved_tools.verify(inverse.plan_id)
         self.assertIn('Návrat změny ověřen čtením',report['classification'])
         self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+
+    def test_approved_tool_starts_actual_event_subscription_and_restart_restores_it(self):
+        subscribed=threading.Event();outer=self
+        class Transport:
+            def __call__(self,command):return outer.ws(command)
+            def automation_events(self,stop,callback,ready,heartbeat):
+                ready();subscribed.set();stop.wait(3)
+        transport=Transport();self.app.core_ws=CoreWSReader(transport)
+        plan=self.prepare();self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertTrue(subscribed.wait(1));self.assertIsNotNone(self.app.repairs.trigger_coverage)
+        self.app.repairs.close();subscribed.clear()
+        restarted=Application(self.tmp.name,self.app.core,core_ws=CoreWSReader(transport),clock=lambda:self.now)
+        self.addCleanup(restarted.repairs.close);self.addCleanup(restarted.detection.close)
+        restarted.enroll_owner('owner-fixture')
+        self.assertTrue(subscribed.wait(1));self.assertEqual(restarted.repairs.status()['provider_pending_verifications'],1)
+        self.assertEqual(len(self.writes),1)
+
+    def test_recovery_read_failure_is_visible_without_interrupting_other_collection(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        def unavailable(*args):raise ReadFailure('fixture_connection_lost')
+        self.client.call=unavailable
+        self.app.repair_recovery.cycle()
+        self.assertIs(self.app.repair_recovery.status(plan.plan_id)['read_verified'],False)
+        self.assertEqual(len(self.writes),1);self.assertTrue(self.app.store.case(self.case['id'])['evidence'])
 
     def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
         html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)

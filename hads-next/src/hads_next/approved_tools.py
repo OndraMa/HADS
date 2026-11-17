@@ -172,8 +172,8 @@ class ApprovedRepairBroker:
             'rollback':{'supported':True,'separate_approval_required':True,'rollback_of':rollback_of,'scope':'exact_configuration_or_registry_field_not_physical_effects'},
             'manual_alternative':manual,'non_atomic_warning':'Kontrola hashe před zápisem není plný serverový CAS s ostatními editory. Při souběhu nebo nejasném výsledku se zásahy zastaví.'}
         plan=RepairPlan(canonical(document))
-        with closing(connect(self.app.store.db_path)) as db:db.execute('INSERT OR IGNORE INTO repair_plans VALUES(?,?,?,?)',(plan.plan_id,plan.serialized,canonical(original).encode(),self.app.clock()))
-        self.app.store.record(incident_id,'tool_plan_prepared',{'plan_id':plan.plan_id,'provider':provider,'tool':tool})
+        with closing(connect(self.app.store.db_path)) as db:inserted=db.execute('INSERT OR IGNORE INTO repair_plans VALUES(?,?,?,?)',(plan.plan_id,plan.serialized,canonical(original).encode(),self.app.clock())).rowcount
+        if inserted:self.app.store.record(incident_id,'tool_plan_prepared',{'plan_id':plan.plan_id,'provider':provider,'tool':tool})
         return plan
 
     def plan(self,identity):
@@ -247,18 +247,23 @@ class ApprovedRepairBroker:
             status='unknown_requires_reconciliation';completed=None;error='tool_write_or_readback_uncertain_no_replay'
         with closing(connect(self.app.store.db_path)) as db:db.execute('UPDATE repair_executions SET status=?,completed_at=?,error=? WHERE id=?',(status,completed,error,execution_id))
         self.app.store.record(d['incident_id'],'tool_execution',{'plan_id':plan.plan_id,'execution_id':execution_id,'status':status,'retry_allowed':False})
+        if status=='applied_verification_pending':self.app.repairs.start()
         self.report(plan,execution_id,'Oprava provedena, ověření čeká' if completed else 'Není dostatek důkazů')
         return ExecutionResult(execution_id,plan.plan_id,status,now,completed)
 
-    def report(self,plan,execution_id,classification):
+    def report(self,plan,execution_id,classification,*,observations=()):
         summaries={'Vyřešeno a ověřeno':'Funkční podmínka a požadovaný uživatelský test byly ověřené.',
                    'Oprava provedena, ověření čeká':'Zásah čeká na funkční důkazy.',
                    'Oprava selhala':'Kontrolní čtení neodpovídá plánu. Zásah neuzavřel incident; další postup vyžaduje nový návrh.',
+                   'Problém se opakoval':'Funkční monitor po ověřené opravě znovu zachytil nesplněnou podmínku. Spis se znovu otevírá a další zápis vyžaduje nový plán.',
                    'Návrat změny ověřen čtením; funkční problém zůstává':'Původní konfigurace nebo povolení entity byly znovu přečtené. Návrat nevrací fyzické účinky a nepotvrzuje vyřešení problému.'}
         value={'scope':'provider_tool_functional_observations','incident_id':plan.document['incident_id'],'execution_id':execution_id,'classification':classification,'plan_id':plan.plan_id,'provider':plan.document['binding']['provider'],'tool':plan.document['binding']['tool'],
                'summary_cs':summaries.get(classification,'Výsledek nelze bezpečně určit. Další zápis je zastaven; proběhne pouze kontrolní čtení.'),
-               'haos_restored':False}
-        with closing(connect(self.app.store.db_path)) as db:db.execute('INSERT INTO repair_reports(execution_id,created_at,classification,document) VALUES(?,?,?,?)',(execution_id,self.app.clock(),classification,canonical(value)))
+               'haos_restored':False,'evidence':list(observations)}
+        with closing(connect(self.app.store.db_path)) as db:
+            previous=db.execute('SELECT document FROM repair_reports WHERE execution_id=? ORDER BY id DESC LIMIT 1',(execution_id,)).fetchone()
+            if previous and previous[0]==canonical(value):return value
+            db.execute('INSERT INTO repair_reports(execution_id,created_at,classification,document) VALUES(?,?,?,?)',(execution_id,self.app.clock(),classification,canonical(value)))
         self.app.store.record(plan.document['incident_id'],'repair_report',value)
         return value
 
@@ -306,11 +311,17 @@ class ApprovedRepairBroker:
             service=self.app.repairs
             if service.trigger_coverage is None or now-(service.trigger_heartbeat or 0)>15:return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
             with service.lock:observations=list(service.observations)
-            continuous=max(row['completed_at'],detector['continuous_since'] or now,service.trigger_coverage)
+            with closing(connect(self.app.store.db_path)) as db:owner_observations=[json.loads(r[0]) for r in db.execute('SELECT document FROM repair_observations WHERE execution_id=?',(row['id'],))]
             condition=d['verification']
+            triggers=[o for o in observations if o.get('kind')=='automation_triggered' and o.get('payload',{}).get('automation_id')==condition['automation_id'] and o['observed_at']>row['completed_at']][-32:]
+            results=[o for o in observations if o.get('kind')=='target_state' and o.get('payload',{}).get('entity_id')==condition['entity_id'] and o['payload'].get('state')==condition['state'] and o['observed_at']>row['completed_at']][-32:]
+            confirmations=[o['observed_at'] for o in owner_observations if o.get('kind')=='owner_functional_confirmation' and o.get('payload',{}).get('confirmed') is True and o['payload'].get('authority')=='authenticated_owner'][-32:]
+            continuous=max(row['completed_at'],detector['continuous_since'] or now,service.trigger_coverage)
             # Breaks in state must be seen from actual controller observations,
             # including after a previous successful run; a restart resets coverage.
             continuous=max([continuous]+[o['observed_at'] for o in observations if o.get('kind')=='target_state' and o.get('payload',{}).get('entity_id')==condition['entity_id'] and o['payload'].get('state')!=condition['state']])
+            candidate=any(t['payload'].get('context_id') and t['payload'].get('context_id')==r['payload'].get('context_id') and max(t['observed_at'],continuous)<=r['observed_at']<=c<=now for t in triggers for r in results for c in confirmations)
+            if not candidate:return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
             observations.append({'kind':'monitoring_checkpoint','observed_at':now,'payload':{'entity_id':condition['entity_id'],'continuous_since':continuous,'healthy':True}})
             execution=ExecutionResult(row['id'],identity,row['status'],row['started_at'],row['completed_at'])
             report=FunctionalVerifier(self.app.store.db_path,clock=self.app.clock).evaluate(plan,execution,observations)
@@ -318,12 +329,17 @@ class ApprovedRepairBroker:
             with closing(connect(self.app.store.db_path)) as db:
                 observations=[json.loads(r[0]) for r in db.execute('SELECT document FROM repair_observations WHERE execution_id=?',(row['id'],))]
             confirmed=any(r.get('kind')=='owner_functional_confirmation' for r in observations)
+            failed=[r for r in observations if r.get('kind')=='functional_failure' and r.get('observed_at',0)>row['completed_at']]
             entity=d['verification']['entity_id'];state=self.app.core.states(entity)
             from .provider_reports import stamp
             fresh=isinstance(state,dict) and (stamp(state.get('last_updated')) or 0)>row['completed_at']
             desired=isinstance(state,dict) and state.get('state') not in {'unknown','unavailable',None} if d['verification']['expected_enabled'] else state is None and self.app.core.status.last_response_status==404
             breaks=[o['observed_at'] for o in observations if o.get('kind')=='tool_target_state' and o.get('payload',{}).get('state') in {'unavailable','unknown'}]
             covered=now-max([row['completed_at'],detector['continuous_since'] or now]+breaks)>=d['verification']['watch_seconds']
+            if failed:
+                classification='Problém se opakoval' if row['status'] in {'verified','recurred'} else 'Oprava selhala'
+                with closing(connect(self.app.store.db_path)) as db:db.execute('UPDATE repair_executions SET status=? WHERE id=?',('recurred' if classification=='Problém se opakoval' else 'failed',row['id']))
+                return self.report(plan,row['id'],classification,observations=failed)
             report=self.report(plan,row['id'],'Vyřešeno a ověřeno' if confirmed and desired and (fresh or not d['verification']['expected_enabled']) and covered else 'Oprava provedena, ověření čeká')
             if report['classification']=='Vyřešeno a ověřeno':
                 with closing(connect(self.app.store.db_path)) as db:db.execute("UPDATE repair_executions SET status='verified' WHERE id=?",(row['id'],))

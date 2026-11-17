@@ -13,6 +13,7 @@ class RepairService:
         self.app=app;self.root=app.data_dir/'managed-repair';self.root.mkdir(mode=0o700,exist_ok=True)
         self.companion_checked_at=None;self.enabled=False;self.last_error=None;self.stop=threading.Event();self.thread=None
         self.state_breaks={};self.observations=[];self.lock=threading.RLock();self.trigger_coverage=None;self.trigger_heartbeat=None
+        self.verification_checked_at=None;self.verification_cursor=0
         with app.store._connect() as db:db.execute('CREATE TABLE IF NOT EXISTS managed_repair_settings(id INTEGER PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0)');db.execute('INSERT OR IGNORE INTO managed_repair_settings VALUES(1,0)')
         with app.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS automation_intents(entity_id TEXT PRIMARY KEY,expected_enabled INTEGER NOT NULL,confirmed_at REAL NOT NULL,principal TEXT NOT NULL)')
@@ -69,7 +70,9 @@ class RepairService:
     def status(self):
         with self.app.store._connect() as db:
             enabled=bool(db.execute('SELECT enabled FROM managed_repair_settings WHERE id=1').fetchone()[0]);native_count=db.execute('SELECT count(*) FROM automation_intents WHERE expected_enabled=1').fetchone()[0]
+            provider_pending=db.execute("SELECT count(*) FROM repair_executions e JOIN repair_plans p ON p.id=e.plan_id WHERE e.status='applied_verification_pending' AND json_extract(p.document,'$.operation')='tool.approved'").fetchone()[0]
         return {'enabled':enabled,'catalog':'owned_reference_and_selected_lighting','native_automation_writes':False,'native_state_targets':native_count,'native_config_writes':False,
+            'provider_pending_verifications':provider_pending,
             'last_error':self.last_error,'companion_checked_at':self.companion_checked_at,'backup':'Ověřený snapshot jediné reference; není to záloha HAOS/OneDrive.',
             'one_drive_risky_operations':'blocked_no_independent_restore_proof'}
 
@@ -174,7 +177,7 @@ class RepairService:
         with closing(connect(self.app.store.db_path)) as db:
             for row in db.execute('SELECT document FROM repair_plans ORDER BY created_at DESC LIMIT 100'):
                 d=json.loads(row[0])
-                if d['target'].get('entity_id')==entity:automation_id=d['verification']['automation_id'];break
+                if d['target'].get('entity_id')==entity and 'automation_id' in d['verification']:automation_id=d['verification']['automation_id'];break
         with self.lock:
             self.observations.append({'kind':'automation_triggered','observed_at':stamp,'payload':{'automation_id':automation_id,'automation_entity_id':entity,'context_id':context}});self.observations=self.observations[-256:]
 
@@ -190,15 +193,20 @@ class RepairService:
 
     def verify_pending(self):
         now=self.app.clock();detector=self.app.detection.health
-        if detector['state']!='listening' or now-(detector['heartbeat_at'] or 0)>15 or self.trigger_coverage is None or now-(self.trigger_heartbeat or 0)>15:return
+        if detector['state']!='listening' or now-(detector['heartbeat_at'] or 0)>15:return
+        if self.verification_checked_at is not None and now-self.verification_checked_at<10:return
+        self.verification_checked_at=now
         with closing(connect(self.app.store.db_path)) as db:
-            rows=db.execute("SELECT p.id,p.document FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='applied_verification_pending'").fetchall()
+            rows=db.execute("SELECT p.id,p.document FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='applied_verification_pending' ORDER BY e.started_at").fetchall()
+        if rows:
+            offset=self.verification_cursor%len(rows);rows=(rows[offset:]+rows[:offset])[:2];self.verification_cursor+=len(rows)
         for row in rows:
             plan=RepairPlan(row['document'])
             if plan.document['operation']=='tool.approved':
                 try:self.app.approved_tools.verify(row['id'])
-                except (ValueError,KeyError):pass
+                except (ValueError,KeyError,TypeError,OSError,RuntimeError):pass
                 continue
+            if self.trigger_coverage is None or now-(self.trigger_heartbeat or 0)>15:continue
             if plan.document['operation'] not in {'core_managed.replace_entity_reference','core.enable_lighting_automation'}:continue
             engine=self.native_engine(plan) if plan.document['operation']=='core.enable_lighting_automation' else self.engine();execution=engine.execution(row['id'])
             if plan.document['rollback']['rollback_of']:
@@ -219,10 +227,23 @@ class RepairService:
 
     def on_functional_failure(self,incident_id,entity,stamp,identity):
         with closing(connect(self.app.store.db_path)) as db:
-            rows=db.execute("SELECT p.id,p.document FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='verified'").fetchall()
+            rows=db.execute("SELECT p.id,p.document,e.id AS execution_id,e.status,e.completed_at FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='verified' OR (e.status='applied_verification_pending' AND json_extract(p.document,'$.operation')='tool.approved')").fetchall()
         for row in rows:
             plan=RepairPlan(row['document'])
-            if plan.document['incident_id']!=incident_id or plan.document['operation'] not in {'core_managed.replace_entity_reference','core.enable_lighting_automation'} or plan.document['verification']['entity_id']!=entity:continue
+            if plan.document['incident_id']!=incident_id or plan.document['verification']['entity_id']!=entity:continue
+            if plan.document['operation']=='tool.approved':
+                if row['completed_at'] is None or stamp<=row['completed_at']:continue
+                status,classification=('recurred','Problém se opakoval') if row['status']=='verified' else ('failed','Oprava selhala')
+                failure={'kind':'functional_failure','observed_at':stamp,'payload':{'entity_id':entity,'event_id':identity}}
+                from .tool_registry import fingerprint
+                with closing(connect(self.app.store.db_path)) as db:
+                    db.execute('UPDATE repair_executions SET status=? WHERE plan_id=?',(status,row['id']))
+                    db.execute('INSERT OR IGNORE INTO repair_observations VALUES(?,?,?)',(row['execution_id'],fingerprint(failure),json.dumps(failure,sort_keys=True)))
+                self.app.store.record(incident_id,'functional_failure_after_provider_repair',{'plan_id':row['id'],'entity_id':entity,'observed_at':stamp,'event_id':identity})
+                report=self.app.approved_tools.report(plan,row['execution_id'],classification,observations=[failure])
+                self.app.store.reopen_for_report(incident_id,report)
+                continue
+            if plan.document['operation'] not in {'core_managed.replace_entity_reference','core.enable_lighting_automation'}:continue
             engine=self.native_engine(plan) if plan.document['operation']=='core.enable_lighting_automation' else self.engine();execution=engine.execution(row['id'])
             report=FunctionalVerifier(self.app.store.db_path).evaluate(plan,execution,[{'kind':'functional_failure','observed_at':stamp,'payload':{'entity_id':entity,'event_id':identity}}])
             self.app.store.reopen_for_report(incident_id,report)

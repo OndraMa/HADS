@@ -117,7 +117,8 @@ class Application:
             db.execute("INSERT OR IGNORE INTO application_settings VALUES('owner',?)", (user_id,))
         self.investigations.zha_observer.start()
         self.detection.start()
-        if self.repairs.status()["enabled"] or self.repairs.status()['native_state_targets']:self.repairs.start()
+        status=self.repairs.status()
+        if status['enabled'] or status['native_state_targets'] or status['provider_pending_verifications']:self.repairs.start()
 
     def check_sources(self):
         """Execute actual supported reads, preserving per-read success/errors."""

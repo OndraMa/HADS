@@ -3,6 +3,7 @@ from contextlib import closing
 import json
 from .repair import connect,RepairBlocked
 from .evidence import canonical
+from .observability import ReadFailure
 
 class RepairRecovery:
     def __init__(self,app):
@@ -20,7 +21,7 @@ class RepairRecovery:
             provider=next((p for p in self.app.tools.registry.providers() if p['id']==d['binding']['provider']),{})
             if provider.get('connected') is not True:continue  # source collection retries connection independently
             try:result=self.app.approved_tools.reconcile(row['id'])
-            except (ValueError,KeyError,TypeError):result={'read_verified':False,'retry_authorized':False,'detail_cs':'Kontrolní čtení nebylo ověřené. Další zápis je zastavený.'}
+            except (ValueError,KeyError,TypeError,ReadFailure,OSError):result={'read_verified':False,'retry_authorized':False,'detail_cs':'Kontrolní čtení nebylo ověřené. Další zápis je zastavený.'}
             with self.app.store._connect() as db:db.execute('INSERT OR REPLACE INTO tool_recovery_reads VALUES(?,?,?,?)',(row['id'],1 if old is None else old['attempts']+1,self.app.clock(),canonical(result)))
 
     def status(self,identity):

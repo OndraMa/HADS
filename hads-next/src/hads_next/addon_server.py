@@ -511,7 +511,8 @@ def main():
         app.system.automatic.start()
         app.request_initial_diagnostics()
         app.investigations.zha_observer.start();app.detection.start()
-        if app.repairs.status()['enabled'] or app.repairs.status()['native_state_targets']:app.repairs.start()
+        repair_status=app.repairs.status()
+        if repair_status['enabled'] or repair_status['native_state_targets'] or repair_status['provider_pending_verifications']:app.repairs.start()
     threading.Thread(target=app.refresh, daemon=True).start()
     try:serve(Server(("0.0.0.0", 8099), app, owner_user_id=owner))
     finally:

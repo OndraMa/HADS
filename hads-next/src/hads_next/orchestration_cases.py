@@ -78,8 +78,11 @@ class OrchestrationCases:
             self.prepare_candidates(incident['id'])
             self.app.store.record(incident['id'],'orchestration_checkpoint',self.summary(incident['id']))
             with self.app.store._connect() as db:
-                for kind in ('orchestration_checkpoint','orchestration_repair_blocked'):
+                for kind in ('orchestration_checkpoint','orchestration_repair_blocked','orchestration_repair_ready'):
                     db.execute('DELETE FROM case_records WHERE incident_id=? AND kind=? AND id NOT IN (SELECT id FROM case_records WHERE incident_id=? AND kind=? ORDER BY id DESC LIMIT 20)',(incident['id'],kind,incident['id'],kind))
+                db.execute('DELETE FROM orchestration_reads WHERE incident_id=? AND request_hash NOT IN (SELECT request_hash FROM orchestration_reads WHERE incident_id=? ORDER BY checked_at DESC LIMIT 512)',(incident['id'],incident['id']))
+        with self.app.store._connect() as db:
+            db.execute('DELETE FROM orchestration_reads WHERE rowid IN (SELECT rowid FROM orchestration_reads ORDER BY checked_at DESC LIMIT -1 OFFSET 10000)')
     def _dependencies(self,identity,targets,data):
         found=[]
         for row in data.get('items',[]):
