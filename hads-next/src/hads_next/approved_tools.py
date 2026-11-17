@@ -72,6 +72,7 @@ class ApprovedRepairBroker:
             client=self.tools.connections.clients[provider]
             value=client.call('ha_config_get_automation',{'entity_id':parameters['entity_id']})
             if not isinstance(value,dict) or value.get('success') is False or not isinstance(value.get('config'),dict) or not isinstance(value.get('config_hash'),str):raise RepairBlocked('Původní konfigurace nebyla ověřená.')
+            self.tools.registry.provider(provider,diagnostic_read_verified=True,diagnostic_read_at=self.app.clock())
             return {'config':value['config'],'config_hash':value['config_hash']}
         if provider=='spook' and tool in {'homeassistant.enable_entity','homeassistant.disable_entity'}:
             value=self.app.core_ws.transport({'type':'config/entity_registry/get','entity_id':parameters['entity_id']})

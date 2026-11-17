@@ -65,7 +65,7 @@ class ToolRegistry:
         current=next((p for p in self.providers() if p['id']==provider),{})
         # Fields contain capabilities/status only: no address, credential or remote body.
         allowed={'installed','running','connected','authenticated','catalog_loaded','diagnostic_read_verified','version',
-                 'server_version','version_basis','last_error','authentication_basis','identity','origin_digest'}
+                 'server_version','version_basis','last_error','authentication_basis','identity','origin_digest','catalog_digest','diagnostic_read_at'}
         if set(fields)-allowed:raise ToolDenied('Neplatný stav poskytovatele.')
         current.update(fields);current.update(id=provider,checked_at=self.clock())
         with self.store._connect() as db:db.execute('INSERT OR REPLACE INTO tool_providers VALUES(?,?,?)',(provider,canonical(current),self.clock()))

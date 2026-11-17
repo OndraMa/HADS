@@ -13,6 +13,9 @@ def settings(app,csrf):
         body+='<article><h2>'+escape(provider['id'])+'</h2><p>Verze: '+escape(str(provider.get('version') or 'neověřená'))+'; původ: '+escape(str(provider.get('version_basis','neověřeno')))+'</p>'
         labels={'installed':'Nainstalováno','running':'Běží','connected':'Připojeno','authenticated':'Autentizováno','catalog_loaded':'Katalog načten','diagnostic_read_verified':'Vlastní diagnostická odpověď přečtená'}
         body+='<ul>'+''.join('<li>'+label+': '+('ano' if provider.get(key) is True else 'ne' if provider.get(key) is False else 'neověřeno / rozhraní bez vlastní autentizace')+'</li>' for key,label in labels.items())+'</ul>'
+        if provider.get('diagnostic_read_at') is not None:
+            from .dashboard import display_time
+            body+='<p>Poslední konkrétní diagnostické čtení: '+escape(display_time(provider['diagnostic_read_at'],app.snapshot()['timezone']))+'. Obnovení katalogu tento čas neposouvá.</p>'
         if provider.get('last_error'):body+='<p>'+escape(provider['last_error'])+'</p>'
         body+='<details><summary>Skutečné funkce a jejich omezení</summary><ul>'+''.join('<li>'+escape(t['name'])+' — '+escape(t['effect'])+', '+escape(t['policy'])+(' — opravný adaptér implementovaný, každý plán vyžaduje zvláštní souhlas' if t['repair_operation_implemented'] else '')+'</li>' for t in tools)+'</ul></details></article>'
     body+='<h2>Jednorázové připojení</h2><p>Inspector a HADocs se HADS pokusí připojit přes ověřený inventář Supervisoru a jejich doložený interní port. Ostatní MCP endpointy nastav zde nebo aktivuj vybraný starý návrh. Nepřidávej k Hermesu neomezený shell nebo obecný MCP přístup.</p>'

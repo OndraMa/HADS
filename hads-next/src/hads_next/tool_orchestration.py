@@ -197,8 +197,12 @@ class ToolOrchestration:
                 tools.append(descriptor(path,object_schema({'entity_id':ENTITY}) if scoped else object_schema(),contract='Hamster_schema_text_no_argument_native_read',upstream_schema_hash=fingerprint(response)))
                 self.routes[(provider,path)]=('hamster',client)
         previous=next((r for r in self.registry.providers() if r['id']==provider),{})
+        catalog_digest=fingerprint(sorted((r['name'],r['upstream_schema_hash']) for r in tools))
+        read_at=previous.get('diagnostic_read_at')
+        same_source=previous.get('origin_digest')==fingerprint(client.endpoint) and previous.get('server_version')==client._server['version'] and previous.get('identity')==client._server['name'][:100] and previous.get('catalog_digest')==catalog_digest
+        verified=same_source and previous.get('diagnostic_read_verified') is True and type(read_at) in {int,float} and 0<=self.app.clock()-read_at<=900
         self.registry.provider(provider,connected=True,authenticated=bool(client._token) or None,authentication_basis='MCP_server_accepted_credential_or_private_endpoint',catalog_loaded=True,
-             diagnostic_read_verified=False,server_version=client._server['version'],version=previous.get('version') if previous.get('version_basis')=='installed_HA_integration_manifest' else client._server['version'],version_basis='installed_HA_integration_manifest' if previous.get('version_basis')=='installed_HA_integration_manifest' else 'MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None)
+             diagnostic_read_verified=bool(verified),diagnostic_read_at=read_at if verified else None,catalog_digest=catalog_digest,server_version=client._server['version'],version=previous.get('version') if previous.get('version_basis')=='installed_HA_integration_manifest' else client._server['version'],version_basis='installed_HA_integration_manifest' if previous.get('version_basis')=='installed_HA_integration_manifest' else 'MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None)
         self.registry.replace(provider,tools)
 
     def _services(self):
@@ -283,7 +287,7 @@ class ToolOrchestration:
                 value={**value,'provider_version':provider.get('version'),'provider_version_basis':provider.get('version_basis')}
             if len(canonical(value).encode())>11500:raise ToolDenied('Zúžení výsledku je nutné; report překročil limit důkazu.')
             result=self.app.investigations.broker._result(incident_id,'tool:'+args['provider']+':'+args['tool'],args['provider'],'available' if value not in ({},[]) else 'no_relevant_data',value,self.app.clock(),'Výsledek poskytovatele není automaticky příčina ani povolení zápisu.',observed=observed)
-            self.registry.provider(args['provider'],diagnostic_read_verified=True)
+            self.registry.provider(args['provider'],diagnostic_read_verified=True,diagnostic_read_at=self.app.clock())
             return result
         except Exception:
             return {'status':'not_read','data':None,'evidence_ids':[],'source':args['provider'],'detail_cs':'Konkrétní čtení selhalo, má neplatný formát nebo vyžaduje zúžení. Výpadek není nulový nález.'}

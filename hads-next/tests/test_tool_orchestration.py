@@ -179,6 +179,17 @@ class OrchestratedWire(unittest.TestCase):
         self.assertEqual(self.client.call('ha_config_get_automation',{'entity_id':self.auto})['config'],self.config)
         with self.assertRaises(ToolDenied):self.app.tools.registry.get('ha_mcp','ha_call_write_tool',effect='read')
 
+    def test_unchanged_catalog_preserves_actual_read_time_but_schema_change_invalidates_it(self):
+        request={'provider':'ha_mcp','tool':'ha_config_get_automation','arguments':{'entity_id':self.auto}}
+        self.assertEqual(self.app.tools.diagnostic_read(self.case['id'],request)['status'],'available')
+        read_at=self.now;self.now+=61;self.app.tools._mcp('ha_mcp',self.client)
+        provider=next(p for p in self.app.tools.registry.providers() if p['id']=='ha_mcp')
+        self.assertTrue(provider['diagnostic_read_verified']);self.assertEqual(provider['diagnostic_read_at'],read_at)
+        self.changed_schema=True;self.app.tools._mcp('ha_mcp',self.client)
+        provider=next(p for p in self.app.tools.registry.providers() if p['id']=='ha_mcp')
+        self.assertFalse(provider['diagnostic_read_verified']);self.assertIsNone(provider['diagnostic_read_at'])
+        self.assertEqual(self.writes,[])
+
     def test_native_and_hamster_MCP_provide_real_read_results_without_a_generic_write_path(self):
         for provider,tool,args in [('native_mcp','GetLiveContext',{}),('hamster_mcp','hass/config/entity_registry/get',{'entity_id':self.old})]:
             with self.subTest(provider=provider):
