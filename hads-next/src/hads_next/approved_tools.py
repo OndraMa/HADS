@@ -240,7 +240,10 @@ class ApprovedRepairBroker:
             if not registered or registered[0]!=plan.serialized or not approval or approval['principal']!=principal or approval['decision']!='approve' or approval['consumed_at'] is not None or approval['expires_at']<=now:raise RepairBlocked('Chybí platné autentické schválení přesného plánu.')
             if db.execute('SELECT 1 FROM repair_executions WHERE plan_id=?',(plan.plan_id,)).fetchone():raise RepairBlocked('Tento plán už má vykonávací záznam; nesmí se opakovat.')
             db.execute('UPDATE repair_decisions SET consumed_at=? WHERE token_hash=?',(now,digest(token)))
-            db.execute("INSERT INTO repair_executions VALUES(?,?,'tool_intent',?,NULL,NULL)",(execution_id,plan.plan_id,now));db.execute('COMMIT')
+            db.execute("INSERT INTO repair_executions VALUES(?,?,'tool_intent',?,NULL,NULL)",(execution_id,plan.plan_id,now))
+            invalidated=db.execute("UPDATE incidents SET status='open',archived_at=NULL WHERE id=? AND status='resolved'",(d['incident_id'],)).rowcount
+            if invalidated:db.execute('INSERT INTO case_records(incident_id,kind,recorded_at,content) VALUES(?,?,?,?)',(d['incident_id'],'resolution_recheck_required',now,canonical({'plan_id':plan.plan_id,'execution_id':execution_id,'reason_cs':'Nová schválená změna vyžaduje nové ověření; původní výsledek zůstává historickým záznamem.','new_functional_occurrence_claimed':False})))
+            db.execute('COMMIT')
         # Intent is durable before the only external write. Any timeout is
         # unknown, never an excuse to replay, auto-rollback or claim failure-safe.
         try:

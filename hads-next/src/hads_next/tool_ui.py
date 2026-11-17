@@ -41,6 +41,7 @@ def repair_card(plan,csrf,app=None):
                 body+='<p>HADS znovu přečetl cíl. '+('Stav odpovídá schválené změně; původ zápisu ale není potvrzený.' if recovery.get('matches_proposed') else 'Aktuální stav neodpovídá schválené změně. Další zápis je zastavený.')+'</p>'
                 if recovery.get('matches_proposed') and recovery.get('target_identity_matches'):
                     body+='<form method="post" action="../tool-repair/adopt">'+form+'<p>Tato volba nic nezapisuje do HA. Začne nové funkční ověření s aktuálním stavem.</p><button>Přijmout zjištěný stav a ověřit funkci bez dalšího zápisu</button></form>'
-        if plan['status']=='applied_verification_pending':body+='<form method="post" action="../repair/physical">'+form+'<p>Proveď skutečný funkční test popsaného cíle; HADS sleduje nové důkazy a dobu ověření.</p><button>Potvrzuji skutečnou odezvu správného cíle</button></form>'
+        if plan['status']=='applied_verification_pending' and not d['rollback']['rollback_of']:body+='<form method="post" action="../repair/physical">'+form+'<p>Proveď skutečný funkční test popsaného cíle; HADS sleduje nové důkazy a dobu ověření.</p><button>Potvrzuji skutečnou odezvu správného cíle</button></form>'
+        elif plan['status']=='applied_verification_pending':body+='<p>HADS ověřuje návrat konfigurace čtením; tento krok nepotvrzuje vyřešení funkčního problému.</p>'
         if plan['status'] in {'applied_verification_pending','verified','failed','recurred'}:body+='<form method="post" action="../tool-repair/rollback">'+form+'<label><input type="checkbox" name="exclusive" value="yes" required>Cíl nyní nikdo jiný neupravuje.</label><button>Připravit návrat změny k novému schválení</button></form>'
     return body+'</article>'

@@ -73,7 +73,9 @@ def render_dashboard(app,csrf):
     opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids|diagnostic_ids|grouped]
     resolved=[c for c in cases if c['status']=='resolved']
     recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids|grouped]
-    waiting=[c for c in cases if c['id'] not in observation_ids and (any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans[c['id']]) or jobs[c['id']] and jobs[c['id']][0]['state']=='waiting_for_user' and jobs[c['id']][0]['conclusion'] and provider['enabled'] and runtime['runtime_installed'])]
+    def plan_action(c,p):
+        return p['status'] in {'applied_verification_pending','unknown_requires_reconciliation','blocked_requires_review'} or p['status'] is None and p.get('decision') not in {'reject','manual'} and (c['status']=='open' or bool(p['document'].get('rollback',{}).get('rollback_of')))
+    waiting=[c for c in cases if any(plan_action(c,p) for p in plans[c['id']]) or c['status']=='open' and c['id'] not in observation_ids and jobs[c['id']] and jobs[c['id']][0]['state']=='waiting_for_user' and jobs[c['id']][0]['conclusion'] and provider['enabled'] and runtime['runtime_installed']]
     active=sum(bool(jobs[c['id']] and jobs[c['id']][0]['state']=='investigating') for c in cases)
     esc=lambda x:escape(str(x),quote=True)
     def card(c):
@@ -93,6 +95,12 @@ def render_dashboard(app,csrf):
         if automatic:
             summary=(summary+' ' if followup else '')+automatic['summary_cs']
             if not followup:label='HADS sbírá další důkazy' if automatic['state']=='reading' else 'Automatické čtení dokončeno s omezením' if automatic['gaps'] else 'Důkazy automaticky načtené'
+        actions=[p for p in plans[c['id']] if plan_action(c,p)]
+        if any(p['status'] in {'unknown_requires_reconciliation','blocked_requires_review'} for p in actions):label='Výsledek zásahu potřebuje kontrolu'
+        elif any(p['status'] is None and p['document'].get('rollback',{}).get('rollback_of') for p in actions):
+            label='Návrat změny čeká na schválení';summary='Je připravený samostatný návrat předchozí změny. Nic zatím nebylo vrácené; přesný plán najdeš ve spisu.'
+        elif any(p['status'] is None for p in actions):label='Oprava čeká na schválení'
+        elif actions:label='Čeká na funkční ověření'
         return '<article class="case-card"><div class="case-top"><span class="case-kind">'+('Aplikace HAOS' if c['kind']=='application_failure' else 'Diagnostická kontrola' if c['kind']=='system_health_failure' else 'Prostředky pro AI' if c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components'] else 'Zachycený případ')+'</span><span class="badge">'+esc(label)+'</span></div><h3>'+esc(case_title(c,applications))+'</h3><p>'+esc(summary)+'</p><div class="case-footer"><span>Výskytů: '+str(c['occurrence_count'])+' · '+esc(display_time(c['last_seen'],value['timezone']))+'</span><a href="case/'+esc(c['id'])+'">Otevřít důkazy spisu <span aria-hidden="true">→</span></a></div></article>'
     def cards(rows,empty):return ''.join(card(c) for c in rows) if rows else '<div class="empty-state">'+esc(empty)+'</div>'
     findings=health['active_findings']

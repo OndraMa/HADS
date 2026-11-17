@@ -295,6 +295,9 @@ class OrchestratedWire(unittest.TestCase):
         plan=self.prepare();self.uncertain=True
         result=self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
         self.assertEqual(result.status,'unknown_requires_reconciliation');self.assertEqual(len(self.writes),1)
+        from hads_next.dashboard import render_dashboard
+        waiting=render_dashboard(self.app,'fixture-csrf').split('id="waiting"')[1].split('</section>')[0]
+        self.assertIn('Výsledek zásahu potřebuje kontrolu',waiting);self.assertIn(self.case['id'],waiting)
         from hads_next.approved_tools import ApprovedRepairBroker
         restarted=ApprovedRepairBroker(self.app)
         self.assertTrue(restarted.reconcile(plan.plan_id)['matches_proposed'])
@@ -473,8 +476,19 @@ class OrchestratedWire(unittest.TestCase):
 
     def test_actual_rollback_requires_new_approval_and_cannot_target_reused_identifier(self):
         plan=self.prepare();self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.now+=1;trigger=self.now;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now)
+        self.app.repairs.trigger_coverage=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.app.repairs.on_trigger({'data':{'entity_id':self.auto},'time_fired':self.iso(self.now),'context':{'id':'rollback-test-context'}})
+        self.now+=1;self.light_state='on';self.app.repairs.observe_state({'entity_id':self.new,'state':'on','context':{'id':'rollback-test-context'}},self.now)
+        self.now+=1;self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')
+        self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        occurrences=len(self.app.store.case(self.case['id'])['occurrences'])
         self.receipt({'config':copy.deepcopy(self.config),'config_hash':fingerprint(self.config)})
         inverse=self.app.approved_tools.rollback_plan(plan.plan_id,exclusive=True)
+        from hads_next.dashboard import render_dashboard
+        waiting=render_dashboard(self.app,'fixture-csrf').split('id="waiting"')[1].split('</section>')[0]
+        self.assertIn('Návrat změny čeká na schválení',waiting)
         self.assertEqual(len(self.writes),1)
         with self.assertRaises(RepairBlocked):self.app.approved_tools.execute(inverse,'not-an-approval','owner-fixture')
         core=self.core
@@ -484,6 +498,8 @@ class OrchestratedWire(unittest.TestCase):
         self.app.core=CoreReader(core)
         self.app.approved_tools.decide(inverse.plan_id,'approve','owner-fixture',exclusive=True)
         self.assertEqual(len(self.writes),2);self.assertEqual(self.config['actions'][0]['target']['entity_id'],self.old)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        self.assertEqual(len(self.app.store.case(self.case['id'])['occurrences']),occurrences,'Rollback invalidates resolution but does not manufacture a functional recurrence')
         report=self.app.approved_tools.verify(inverse.plan_id)
         self.assertIn('Návrat změny ověřen čtením',report['classification'])
         self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')

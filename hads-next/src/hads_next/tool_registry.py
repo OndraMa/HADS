@@ -97,7 +97,7 @@ class ToolRegistry:
         providers={p['id']:p for p in self.providers()}
         with self.store._connect() as db:
             try:
-                plans=[(r[0],json.loads(r[1])) for r in db.execute("SELECT p.id,p.document FROM repair_plans p LEFT JOIN repair_executions e ON e.plan_id=p.id WHERE e.id IS NULL AND json_extract(p.document,'$.operation')='tool.approved' ORDER BY p.created_at DESC LIMIT 50")]
+                plans=[(r[0],json.loads(r[1])) for r in db.execute("SELECT p.id,p.document FROM repair_plans p JOIN incidents i ON i.id=json_extract(p.document,'$.incident_id') LEFT JOIN repair_executions e ON e.plan_id=p.id WHERE e.id IS NULL AND json_extract(p.document,'$.operation')='tool.approved' AND (i.status='open' OR json_extract(p.document,'$.rollback.rollback_of') IS NOT NULL) AND COALESCE((SELECT decision FROM repair_decisions d WHERE d.plan_id=p.id ORDER BY d.rowid DESC LIMIT 1),'') NOT IN ('reject','manual') ORDER BY p.created_at DESC LIMIT 50")]
             except Exception:plans=[]
         for row in rows:
             row['prepared_plan_ids']=[identity for identity,plan in plans if plan['binding']['provider']==row['provider'] and plan['binding']['tool']==row['name'] and plan['binding']['schema_hash']==row['schema_hash']]
