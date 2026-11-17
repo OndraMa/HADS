@@ -1,0 +1,259 @@
+{
+  "core_version": "2026.11.0",
+  "selector_source": "https://github.com/home-assistant/core/blob/2026.11.0/homeassistant/helpers/service.py",
+  "scope": "lab_only_dependencies_for_actual_get_services_selectors_not_production_HADS",
+  "manifests": {
+    "ai_task": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/ai_task/manifest.json",
+      "sha256": "292f4729b00b526ec5ccb107a6352bf9154168c218724d71a2befa9c3f344490",
+      "requirements": [],
+      "dependencies": [
+        "conversation",
+        "media_source"
+      ]
+    },
+    "alarm_control_panel": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/alarm_control_panel/manifest.json",
+      "sha256": "de3f02523188c3b311d1ac2c0522ca355edc9c641c7d79d868ae813a7f153798",
+      "requirements": [],
+      "dependencies": []
+    },
+    "assist_satellite": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/assist_satellite/manifest.json",
+      "sha256": "975e8f86d74ee0d7f3d03e8c7d1b92687b62b536d2337ec41f1968ef1744c2cd",
+      "requirements": [
+        "hassil==3.12.1"
+      ],
+      "dependencies": [
+        "assist_pipeline",
+        "http",
+        "stt",
+        "tts"
+      ]
+    },
+    "calendar": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/calendar/manifest.json",
+      "sha256": "c6067decca420f58435376ff753e39addf349375b9bca31264c45529c5634c50",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "camera": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/camera/manifest.json",
+      "sha256": "9eff616682ef5d688c7d0fed6a5f9597dbbc103d3cfa8bfd67a54d4b4d7a1323",
+      "requirements": [
+        "PyTurboJPEG==1.8.3"
+      ],
+      "dependencies": [
+        "http",
+        "web_rtc"
+      ]
+    },
+    "climate": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/climate/manifest.json",
+      "sha256": "9105e9abe62edc05b6d67e249e25dac45ae98a4e48a0a2271d0c3b177ad841f7",
+      "requirements": [],
+      "dependencies": []
+    },
+    "cover": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/cover/manifest.json",
+      "sha256": "446ae6053334c3c4960d479ad2e90ff98f53cb5b4eee830bc7cdb55db217c6f4",
+      "requirements": [],
+      "dependencies": []
+    },
+    "fan": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/fan/manifest.json",
+      "sha256": "effb681fb941924daeedcf93363f32c1ee9724d6caac84dff1c35ad1f3d06853",
+      "requirements": [],
+      "dependencies": []
+    },
+    "humidifier": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/humidifier/manifest.json",
+      "sha256": "c2c27d5d0dbd595bd5880509d622a134d600cfbef35d9b47a5fcb3bcb4517b19",
+      "requirements": [],
+      "dependencies": []
+    },
+    "light": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/light/manifest.json",
+      "sha256": "804dcd56c9930769e9c884cd48ac2ebee3475e6f33ded4e590b7fdfed6ac94a1",
+      "requirements": [],
+      "dependencies": []
+    },
+    "lock": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/lock/manifest.json",
+      "sha256": "bd79c8e04c626279edb0da02461c5e19494df42079974817eb5700d67a4b1f92",
+      "requirements": [],
+      "dependencies": []
+    },
+    "media_player": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/media_player/manifest.json",
+      "sha256": "10934ca7c01b5ecb320af6815c7cfcfb0e74e493f62f08d8a183cf8a5da915ac",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "notify": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/notify/manifest.json",
+      "sha256": "3fd1a249c9c6cacb3c4b290351ac387fe26ca8275339b747e1900a6b427c4693",
+      "requirements": [],
+      "dependencies": [
+        "repairs"
+      ]
+    },
+    "remote": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/remote/manifest.json",
+      "sha256": "d8a44ab219df7a308d6de8c3668c07676561948f7efd5eba4c898fc068b5f870",
+      "requirements": [],
+      "dependencies": []
+    },
+    "siren": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/siren/manifest.json",
+      "sha256": "1c9663ef251efd16af50be4e3beac34d2d10a0e99688fa1af41ad94021dfac39",
+      "requirements": [],
+      "dependencies": []
+    },
+    "todo": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/todo/manifest.json",
+      "sha256": "ff74933ad85c66e89dd09d85719afa62b744f301a800d16953cf9e8df05ec600",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "update": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/update/manifest.json",
+      "sha256": "642403abc3d93613233b8b656cb19e013cd72ed13f5c3072b6d19c8edf903f89",
+      "requirements": [],
+      "dependencies": []
+    },
+    "vacuum": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/vacuum/manifest.json",
+      "sha256": "2b9985bc1c37a211aa90729d9ece8f0e6a307f40db9561c7f048c8d1ac6211d7",
+      "requirements": [],
+      "dependencies": []
+    },
+    "water_heater": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/water_heater/manifest.json",
+      "sha256": "d96f8790b16b625e38e02e438563b500422b9c983b26940b321e8ab9035c7d91",
+      "requirements": [],
+      "dependencies": []
+    },
+    "stream": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/stream/manifest.json",
+      "sha256": "06eea8b02d324e2e576f41d7c1487bc281c88d1553d1407e62853981dad1de33",
+      "requirements": [
+        "PyTurboJPEG==1.8.3",
+        "av==19.0.0",
+        "numpy==2.3.2"
+      ],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "conversation": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/conversation/manifest.json",
+      "sha256": "6e2e7a00b78aa66eaf843c1f8eb2fb8f056e5a7105ebc2cd34d4844056b3f84c",
+      "requirements": [
+        "gazetteer-matcher==1.1.0",
+        "hassil==3.12.1",
+        "home-assistant-intents==2026.10.27"
+      ],
+      "dependencies": [
+        "http",
+        "intent",
+        "llm"
+      ]
+    },
+    "media_source": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/media_source/manifest.json",
+      "sha256": "b2b60df6aa5616ae9d12c2678994fc3608759dde0d2fee5a1f1a384442968a58",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "assist_pipeline": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/assist_pipeline/manifest.json",
+      "sha256": "7ffcc295b679e649e2fddffa8cd98edb137dfb79ec45ef3f006c459c8c94257c",
+      "requirements": [
+        "pymicro-vad==1.0.1",
+        "pyspeex-noise==1.0.2"
+      ],
+      "dependencies": [
+        "conversation",
+        "stt",
+        "tts",
+        "wake_word"
+      ]
+    },
+    "http": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/http/manifest.json",
+      "sha256": "33c733681e120554a96085c4bdcd4d563cc86b897c2274e684f50dc2acb28067",
+      "requirements": [],
+      "dependencies": []
+    },
+    "stt": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/stt/manifest.json",
+      "sha256": "722268b8a143aeb22659b5fbbf322880c4cf8e0afadfe0fde1e887d84cbc9e65",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "tts": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/tts/manifest.json",
+      "sha256": "5e5ae447ce2780ee785a49c48553834702a3c87b595f1a4ccbd4a8bfd07b154a",
+      "requirements": [
+        "mutagen==1.48.1"
+      ],
+      "dependencies": [
+        "http",
+        "ffmpeg"
+      ]
+    },
+    "web_rtc": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/web_rtc/manifest.json",
+      "sha256": "4c9f52639bb91ba679b3b4b78213d7837eec9d682eec6fe16af71232e5a21213",
+      "requirements": [],
+      "dependencies": []
+    },
+    "repairs": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/repairs/manifest.json",
+      "sha256": "ab3ddec976bd68ee9e3f14b140daca619d3c61d1c54ffe40f698f1b4b6c9928b",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "intent": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/intent/manifest.json",
+      "sha256": "125bbbece99792bb01be2e82004f622469280f5f19e0599996b58cdae2bae3c2",
+      "requirements": [],
+      "dependencies": [
+        "http"
+      ]
+    },
+    "llm": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/llm/manifest.json",
+      "sha256": "fb1f1e47895280abe9337c5e67dad5a97a062a7656287dc50e608c44d8df78bd",
+      "requirements": [],
+      "dependencies": []
+    },
+    "wake_word": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/wake_word/manifest.json",
+      "sha256": "71e4705d7af95e3f4a359175c77422277d556be028b68a7e9c7f5d87565049cf",
+      "requirements": [],
+      "dependencies": []
+    },
+    "ffmpeg": {
+      "source_url": "https://raw.githubusercontent.com/home-assistant/core/2026.11.0/homeassistant/components/ffmpeg/manifest.json",
+      "sha256": "dfc6b57da506ad9979ca0fecc3029bd5f26e364fba2d0d418513778c6b85777f",
+      "requirements": [
+        "ha-ffmpeg==3.2.2"
+      ],
+      "dependencies": []
+    }
+  }
+}

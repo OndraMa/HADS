@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app HADS_DATA_DIR=/
 WORKDIR /app
 RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.txt,readonly \
     --mount=type=bind,source=lab/core-constraints.txt,target=/core-constraints.txt,readonly \
+    --mount=type=bind,source=lab/service-requirements.txt,target=/core-service-requirements.txt,readonly \
     --mount=type=secret,id=proxy_ca,required=false \
     set -eu; \
     if [ -f /run/secrets/proxy_ca ]; then \
@@ -25,7 +26,8 @@ RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.t
       --constraint /hermes-constraints.txt --editable /opt/hermes-root/opt/hermes; \
     rm -rf /opt/hermes-root/opt/hermes/.git /opt/hermes-root/opt/hermes/tests /root/.cache; \
     if [ "$CORE_LAB" = 1 ]; then \
-      uv pip install --system --no-cache --constraint /core-constraints.txt homeassistant==2026.11.0 gazetteer-matcher==1.1.0 hassil==3.12.1 home-assistant-intents==2026.10.27 mutagen==1.48.1 ha-ffmpeg==3.2.2 pymicro-vad==1.0.1 pyspeex-noise==1.0.2; \
+      apt-get install -y --no-install-recommends libturbojpeg0; \
+      uv pip install --system --no-cache --constraint /core-constraints.txt --requirement /core-service-requirements.txt homeassistant==2026.11.0; \
       # Compile lab-only selector dependencies before removing the toolchain. \
       # Keep actual Core APIs while discarding unused UI translations. \
       find /usr/local/lib/python3.14/site-packages/homeassistant -path '*/translations/*.json' -type f ! -name en.json ! -name cs.json -delete; \
