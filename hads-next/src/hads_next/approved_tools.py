@@ -310,13 +310,18 @@ class ApprovedRepairBroker:
         if b['provider']=='ha_mcp':
             service=self.app.repairs
             if service.trigger_coverage is None or now-(service.trigger_heartbeat or 0)>15:return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
-            with service.lock:observations=list(service.observations)
+            state=self.app.core.states(d['verification']['entity_id']) if self.app.core else None
+            if not isinstance(state,dict) or state.get('state')!=d['verification']['state']:
+                with service.lock:service.state_breaks[d['verification']['entity_id']]=now
+                return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
+            with service.lock:
+                observations=list(service.observations);read_break=service.state_breaks.get(d['verification']['entity_id'],0)
             with closing(connect(self.app.store.db_path)) as db:owner_observations=[json.loads(r[0]) for r in db.execute('SELECT document FROM repair_observations WHERE execution_id=?',(row['id'],))]
             condition=d['verification']
             triggers=[o for o in observations if o.get('kind')=='automation_triggered' and o.get('payload',{}).get('automation_id')==condition['automation_id'] and o['observed_at']>row['completed_at']][-32:]
             results=[o for o in observations if o.get('kind')=='target_state' and o.get('payload',{}).get('entity_id')==condition['entity_id'] and o['payload'].get('state')==condition['state'] and o['observed_at']>row['completed_at']][-32:]
             confirmations=[o['observed_at'] for o in owner_observations if o.get('kind')=='owner_functional_confirmation' and o.get('payload',{}).get('confirmed') is True and o['payload'].get('authority')=='authenticated_owner'][-32:]
-            continuous=max(row['completed_at'],detector['continuous_since'] or now,service.trigger_coverage)
+            continuous=max(row['completed_at'],detector['continuous_since'] or now,service.trigger_coverage,read_break)
             # Breaks in state must be seen from actual controller observations,
             # including after a previous successful run; a restart resets coverage.
             continuous=max([continuous]+[o['observed_at'] for o in observations if o.get('kind')=='target_state' and o.get('payload',{}).get('entity_id')==condition['entity_id'] and o['payload'].get('state')!=condition['state']])

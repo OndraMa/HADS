@@ -77,7 +77,7 @@ async def exercise(launcher,scripted_model):
             fixture.now+=1;app.detection.health.update(state='listening',heartbeat_at=fixture.now,continuous_since=fixture.now)
             app.repairs.trigger_coverage=fixture.now;app.repairs.trigger_heartbeat=fixture.now
             app.repairs.on_trigger({'data':{'entity_id':fixture.auto},'time_fired':fixture.iso(fixture.now),'context':{'id':'wire-functional-context'}})
-            fixture.now+=1;app.repairs.observe_state({'entity_id':fixture.new,'state':'on','context':{'id':'wire-functional-context'}},fixture.now)
+            fixture.now+=1;fixture.light_state='on';app.repairs.observe_state({'entity_id':fixture.new,'state':'on','context':{'id':'wire-functional-context'}},fixture.now)
             fixture.now+=1
             async with client.post(origin+'/repair/physical',data={'plan_id':plan['plan_id'],'csrf':controller.csrf},allow_redirects=False) as response:assert response.status==303
             fixture.now+=32;app.detection.health['heartbeat_at']=fixture.now;app.repairs.trigger_heartbeat=fixture.now

@@ -25,6 +25,7 @@ class OrchestratedWire(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.expected_auth='Bearer fixture-only-token';self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.provider_mode=None;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
         self.old='light.original_fixture';self.new='light.current_fixture';self.auto='automation.fixture_room'
+        self.light_state='off'
         self.light_identity={'entity_id':self.new,'platform':'zha','unique_id':'light_identity_fixture','device_id':'light_device_fixture','config_entry_id':'zha_fixture','disabled_by':None}
         self.config={'id':'automation_fixture_id','alias':'Fixture room','triggers':[{'trigger':'state','entity_id':'binary_sensor.fixture_button','to':'on'}],
                      'conditions':[],'actions':[{'action':'light.turn_on','target':{'entity_id':self.old}}]}
@@ -101,7 +102,7 @@ class OrchestratedWire(unittest.TestCase):
     def iso(t):return datetime.fromtimestamp(t,timezone.utc).isoformat()
     def core(self,path):
         if path=='/api/states/'+self.old:raise ReadFailure('http_error',404)
-        if path=='/api/states/'+self.new:return {'entity_id':self.new,'state':'off','last_updated':self.iso(self.now)}
+        if path=='/api/states/'+self.new:return {'entity_id':self.new,'state':self.light_state,'last_updated':self.iso(self.now)}
         if path=='/api/states/'+self.auto:return {'entity_id':self.auto,'state':'on','attributes':{'id':self.config['id']}}
         if path=='/api/states/'+self.entry['entity_id']:
             if self.entry['disabled_by'] is not None:raise ReadFailure('http_error',404)
@@ -146,6 +147,15 @@ class OrchestratedWire(unittest.TestCase):
         self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
         trigger=self.now;self.app.repairs.on_trigger({'data':{'entity_id':self.auto},'time_fired':self.iso(self.now),'context':{'id':'fixture_context'}})
         self.now+=1;self.app.repairs.observe_state({'entity_id':self.new,'state':'on','context':{'id':'fixture_context'}},self.now)
+        self.now+=1;self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')
+        self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno','A contradictory current Core state must prevent false verification')
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        self.light_state='on'
+        self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno','The earlier contradictory read must break coverage')
+        self.now+=1;trigger=self.now
+        self.app.repairs.on_trigger({'data':{'entity_id':self.auto},'time_fired':self.iso(self.now),'context':{'id':'fixture_new_context'}})
+        self.now+=1;self.app.repairs.observe_state({'entity_id':self.new,'state':'on','context':{'id':'fixture_new_context'}},self.now)
         self.now+=1;self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')
         self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
         self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
