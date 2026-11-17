@@ -23,7 +23,7 @@ from hads_next.tool_ui import settings
 class OrchestratedWire(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.expected_auth='Bearer fixture-only-token';self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
+        self.expected_auth='Bearer fixture-only-token';self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.provider_mode=None;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
         self.old='light.original_fixture';self.new='light.current_fixture';self.auto='automation.fixture_room'
         self.light_identity={'entity_id':self.new,'platform':'zha','unique_id':'light_identity_fixture','device_id':'light_device_fixture','config_entry_id':'zha_fixture','disabled_by':None}
         self.config={'id':'automation_fixture_id','alias':'Fixture room','triggers':[{'trigger':'state','entity_id':'binary_sensor.fixture_button','to':'on'}],
@@ -59,14 +59,21 @@ class OrchestratedWire(unittest.TestCase):
                 if msg['method']=='notifications/initialized':self.send_response(202);self.send_header('Content-Length','0');self.end_headers();return
                 if msg['method']=='initialize':result={'protocolVersion':'2025-06-18','serverInfo':{'name':'ha-mcp','version':'fixture-contract-1'}}
                 elif msg['method']=='tools/list':
-                    if outer.meta:
+                    if outer.provider_mode=='native_mcp':result={'tools':[{'name':'GetLiveContext','inputSchema':object_schema()},{'name':'DangerousWrite','inputSchema':object_schema(),'annotations':{'readOnlyHint':True}}]}
+                    elif outer.provider_mode=='hamster_mcp':result={'tools':[{'name':'schema','inputSchema':object_schema({'path':{'type':'string'}})},{'name':'call','inputSchema':object_schema({'path':{'type':'string'},'arguments':{'type':'object'}})}]}
+                    elif outer.meta:
                         result={'tools':[{'name':'ha_search_tools','inputSchema':object_schema({'tools':{'type':'array','items':{'type':'string'}}})},
                             *[{'name':n,'inputSchema':object_schema({'name':{'type':'string'},'arguments':{'type':'object'}})} for n in ('ha_call_read_tool','ha_call_write_tool')]]}
                     elif msg.get('params',{}).get('cursor')=='page2':result={'tools':outer.definitions()[2:]}
                     else:result={'tools':outer.definitions()[:2],'nextCursor':'page2'}
                 elif msg['method']=='tools/call':
                     name=msg['params']['name'];args=msg['params']['arguments']
-                    if name=='ha_search_tools':value=[r for r in outer.definitions() if r['name'] in args['tools']]
+                    if name=='GetLiveContext':value={'success':True,'entities':[{'entity_id':outer.old,'state':'unavailable'}]}
+                    elif name=='schema':value=args['path'].split('/',1)[1]+'\n'+('**entity_id** (required)' if args['path'].endswith('/get') else 'No parameters required.')
+                    elif name=='call':
+                        outer.assertEqual(args['path'],'hass/config/entity_registry/get')
+                        value={'entity_id':args['arguments']['entity_id'],'platform':'zha','disabled_by':None,'private_token':'NEVER_EXPORT'}
+                    elif name=='ha_search_tools':value=[r for r in outer.definitions() if r['name'] in args['tools']]
                     else:
                         if name in {'ha_call_read_tool','ha_call_write_tool'}:name=args['name'];args=args['arguments']
                         if name=='ha_get_skill_guide':value={'success':True,'file':args['file'],'content':'Acknowledgment key: '+outer.guide_ack+' — strict best-practices. Use literal targets and supported state triggers.'}
@@ -160,6 +167,66 @@ class OrchestratedWire(unittest.TestCase):
         self.assertIn('ha_config_get_automation',self.client.delegated)
         self.assertEqual(self.client.call('ha_config_get_automation',{'entity_id':self.auto})['config'],self.config)
         with self.assertRaises(ToolDenied):self.app.tools.registry.get('ha_mcp','ha_call_write_tool',effect='read')
+
+    def test_native_and_hamster_MCP_provide_real_read_results_without_a_generic_write_path(self):
+        for provider,tool,args in [('native_mcp','GetLiveContext',{}),('hamster_mcp','hass/config/entity_registry/get',{'entity_id':self.old})]:
+            with self.subTest(provider=provider):
+                self.provider_mode=provider
+                client=MCPConnection(self.url+'/mcp','fixture-only-token',allow_private_http=True)
+                self.app.tools._mcp(provider,client)
+                result=self.app.tools.diagnostic_read(self.case['id'],{'provider':provider,'tool':tool,'arguments':args})
+                self.assertEqual(result['status'],'available');self.assertTrue(result['evidence_ids'])
+                self.assertNotIn('NEVER_EXPORT',canonical(result))
+                for blocked in ('call','DangerousWrite'):
+                    with self.assertRaises(ToolDenied):self.app.tools.registry.get(provider,blocked,effect='read')
+        self.assertEqual(self.writes,[])
+
+    def test_statistics_metadata_and_history_are_compared_without_import_or_causal_guess(self):
+        from hads_next.native_tool_reads import install
+        entity='sensor.fixture_energy';commands=[];fail=False
+        case=self.app.store.open_incident('manual_functional','Statistika má jinou jednotku',[entity],self.now)
+        def ws(command):
+            commands.append(command)
+            if command['type']=='recorder/list_statistic_ids':return [{'statistic_id':entity,'unit_of_measurement':'kWh','has_sum':True}]
+            if command['type']=='recorder/statistics_during_period':
+                if fail:raise ReadFailure('fixture_recorder_unavailable')
+                return {entity:[{'start':self.now*1000,'sum':12.5,'state':1.5}]}
+            raise AssertionError(command)
+        self.app.core_ws=CoreWSReader(ws);self.app.core=CoreReader(lambda path:{'entity_id':entity,'state':'1500','attributes':{'unit_of_measurement':'Wh','state_class':'total_increasing'}})
+        self.app.tools.registry.provider('core',connected=True,catalog_loaded=True);install(self.app.tools)
+        request={'provider':'core','tool':'statistics','arguments':{'entity_id':entity}}
+        result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'available');self.assertTrue(result['data']['unit_mismatch_observed'])
+        self.assertIs(result['data']['root_cause_proven'],False);self.assertIs(result['data']['write_available'],False)
+        self.assertEqual(result['data']['values'][0]['sum'],12.5)
+        fail=True;result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'not_read');self.assertEqual(result['evidence_ids'],[])
+        self.assertTrue(all(c['type'] in {'recorder/list_statistic_ids','recorder/statistics_during_period'} for c in commands))
+        self.assertEqual(self.writes,[])
+
+    def test_toolkit_reads_one_bound_standard_attribute_and_denies_write_parameters(self):
+        commands=[];fail=False;entity=self.entry['entity_id'];ieee='00:11:22:33:44:55:66:77'
+        case=self.app.store.open_incident('manual_functional','Kontakt neodpovídá',[entity],self.now)
+        with self.app.store._connect() as db:
+            db.execute('INSERT INTO entity_context_reports VALUES(?,?,?)',(entity,self.now,canonical({'entity_id':entity,'zha':{'ieee':ieee}})))
+        def ws(command):
+            if command['type']=='zha/devices':return []
+            commands.append(command)
+            self.assertEqual(command,{'type':'call_service','domain':'zha_toolkit','service':'attr_read','return_response':True,
+                'service_data':{'ieee':ieee,'endpoint':1,'cluster':1,'attribute':33,'use_cache':0,'tries':1}})
+            return {'response':{'success':not fail,'errors':['device not reachable'] if fail else [],'result_read':[{'33':175},{}]}}
+        self.app.core_ws=CoreWSReader(ws)
+        self.app.entity_context.toolkit={'read_succeeded':True,'version':'v1.1.35','devices':[]}
+        self.app.tools._sensors({'entity_registry':[],'core_config':{'components':['zha_toolkit']}},[])
+        request={'provider':'zha_toolkit','tool':'attr_read','arguments':{'entity_id':entity,'endpoint':1,'cluster':1,'attribute':33}}
+        result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'available');self.assertEqual(result['data']['result_read'][0]['33'],175)
+        before=len(commands)
+        with self.assertRaises(ToolDenied):self.app.tools.diagnostic_read(case['id'],{**request,'arguments':{**request['arguments'],'attr_val':0}})
+        self.assertEqual(len(commands),before)
+        fail=True;result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'not_read');self.assertEqual(result['evidence_ids'],[])
+        self.assertEqual(self.writes,[])
     def test_F_unknown_shell_hint_and_write_through_diagnostic_route_are_denied(self):
         for name,args in [('run_arbitrary_shell',{'command':'echo forbidden'}),('ha_config_set_automation',{})]:
             with self.assertRaises(ToolDenied):self.app.tools.diagnostic_read(self.case['id'],{'provider':'ha_mcp','tool':name,'arguments':args})
