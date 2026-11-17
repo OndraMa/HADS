@@ -66,10 +66,13 @@ def render_dashboard(app,csrf):
     observation_ids={c['id'] for c in observations}
     diagnostics=[c for c in cases if diagnostic_observation(c) and c['status']=='open' and not plans[c['id']]]
     diagnostic_ids={c['id'] for c in diagnostics}
+    historical=[c for c in diagnostics if (app.system.followup.report(c['id']) or {}).get('state')=='check_passed']
+    historical_ids={c['id'] for c in historical}
+    diagnostics=[c for c in diagnostics if c['id'] not in historical_ids]
     opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids|diagnostic_ids]
     resolved=[c for c in cases if c['status']=='resolved']
     recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids]
-    waiting=[c for c in cases if c['id'] not in observation_ids and (any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans[c['id']]) or jobs[c['id']] and jobs[c['id']][0]['state'] in {'waiting_for_user','blocked','waiting_for_source'})]
+    waiting=[c for c in cases if c['id'] not in observation_ids and (any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans[c['id']]) or jobs[c['id']] and jobs[c['id']][0]['state']=='waiting_for_user' and jobs[c['id']][0]['conclusion'] and provider['enabled'] and runtime['runtime_installed'])]
     active=sum(bool(jobs[c['id']] and jobs[c['id']][0]['state']=='investigating') for c in cases)
     esc=lambda x:escape(str(x),quote=True)
     def card(c):
@@ -79,9 +82,11 @@ def render_dashboard(app,csrf):
         if c['id'] in observation_ids and not latest:label='Stav bez potvrzeného dopadu'
         if c['status']=='open' and c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components']:label='Rezerva pro AI nebyla splněná'
         summary='Funkční ověření potvrdilo výsledek. Podrobnosti jsou v reportu.' if c['status']=='resolved' else case_summary(c)
+        context=app.entity_context.reports({'incident':c,'evidence':[]})
+        if context:summary=context[0]['summary_cs']
         automatic=app.system.automatic.report(c['id']) if c['id'] in diagnostic_ids else None
         followup=app.system.followup.report(c['id']) if c['id'] in diagnostic_ids else None
-        if followup and not latest:
+        if followup and (not latest or not provider['enabled']):
             summary=followup['summary_cs']
             label={'still_failing':'Znovu přečteno; nález trvá','check_passed':'Kontrola již nález nepotvrzuje','unavailable':'Další čtení je neúplné'}[followup['state']]
         if automatic:
@@ -104,6 +109,7 @@ def render_dashboard(app,csrf):
     body+='<div class="overview-grid"><section id="investigation"><div class="section-heading"><div><p class="eyebrow">PROBLÉMY A VYŠETŘOVÁNÍ</p><h2>Co nefunguje</h2></div><span class="count">'+str(len(opened))+'</span></div>'+cards(opened,'Zatím tu není otevřený případ. To samo o sobě nepotvrzuje, že všechny funkce domácnosti fungují.')+'</section><aside><section id="waiting"><p class="eyebrow">DALŠÍ KROK</p><h2>Co ode mě potřebuje</h2>'+cards(waiting,'Žádná čekající rozhodnutí.')+'</section><section class="assistant-panel"><span class="badge">VYŠETŘOVÁNÍ</span><h2>Jak právě pracuje HADS</h2><p>'+esc(ai_text)+'</p><a href="setup/ai">Nastavení AI →</a><p class="muted">Povolení AI a případných nákladů je samostatné rozhodnutí. Návrh opravy sám nic nemění.</p></section></aside></div>'
     if observations:body+='<details id="application-observations"><summary>Stavy aplikací k ověření ('+str(len(observations))+')</summary><p>Tyto údaje nepočítám jako potvrzené funkční problémy. Samotný stav error může následovat i po záměrném zastavení. Evidence zůstává uložená a není označená jako vyřešená.</p>'+cards(observations,'')+'</details>'
     if diagnostics:body+='<section id="diagnostic-observations"><h2>Diagnostika a připravenost ('+str(len(diagnostics))+')</h2><p>Tyto nálezy vyžadují prověření nebo omezují HADS. Samy nepotvrzují poruchu funkce domácnosti. Spisy a důkazy zůstávají otevřené.</p>'+cards(diagnostics,'')+'</section>'
+    if historical:body+='<details id="historical-diagnostics"><summary>Dřívější diagnostické nálezy ('+str(len(historical))+')</summary><p>Poslední kontrola je už nepotvrzuje. Důkazy zůstávají zachované; není to potvrzení provedené a funkčně ověřené opravy.</p>'+cards(historical,'')+'</details>'
     body+='<div class="results-grid"><section id="resolved"><p class="eyebrow">POTVRZENÁ NÁPRAVA</p><h2>Co se podařilo vyřešit</h2>'+cards(resolved,'Dosud žádný ověřený výsledek. Pouhý úspěch příkazu případ neuzavírá.')+'</section><section id="recurring"><p class="eyebrow">DLOUHODOBÉ SOUVISLOSTI</p><h2>Co se opakuje</h2>'+cards(recurring,'Zatím nejsou opakované případy. Stejné načtení důkazu se nepočítá znovu.')+'</section></div>'
     entities=''.join('<option value="'+esc(e['entity_id'])+'">'+esc(e.get('name',e['entity_id']))+'</option>' for e in value['entities'])
     apps=''.join('<option value="'+esc(a['slug'])+'">'+esc(a['name'])+'</option>' for a in applications)

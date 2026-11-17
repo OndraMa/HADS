@@ -1,8 +1,8 @@
 name: "HADS Next – diagnostika"
-version: "1.0.0-rc6"
+version: "1.0.0-rc7"
 slug: "hads_next_practical"
 description: "Automatická nativní diagnostika, původní Hermes, omezený test AI a samostatně schvalované opravy."
-url: "https://github.com/OndraMa/HADS/tree/codex/hads-next-collector-audit/hads-next"
+url: "https://github.com/OndraMa/HADS/tree/codex/hads-next-zha-followup/hads-next"
 arch:
   - aarch64
   - amd64

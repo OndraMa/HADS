@@ -1,3 +1,32 @@
+# HADS Next 1.0.0-rc7 — konkrétní entity a ZHA Toolkit
+
+Vývojová větev: **codex/hads-next-zha-followup** · [PR 18](https://github.com/OndraMa/HADS/pull/18).
+
+- [Instalátor, kompletní ZIP, návody a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc7/)
+- [Aktualizace z RC6 bez odinstalace](hads-next/haos/DOCS.md)
+- [Co nastavit a povolit pro ZHA Toolkit](hads-next/docs/ZHA_TOOLKIT_SETUP_CS.md)
+- [Podrobný návod HA-MCP a Hermes](hads-next/haos/HAMCP_HERMES_CS.md)
+- [Audit sběru, skutečný rozsah a nedokončené části](hads-next/docs/RC7_DELIVERY_CS.md)
+- [Přesný protokol balíčku](hads-next/docs/evidence/installation-1.0.0-rc7/ACCEPTANCE.json)
+
+RC7 opravuje rozpoznání Watchman `unavail`, automaticky dohledává konkrétní cíle v registru,
+aktuálních stavech, dostupné historii a pasivním ZHA/Toolkit seznamu. Chybějící entity zůstávají
+v nabídce. Výpadky diagnostiky se nepočítají jako prokázané funkční poruchy domácnosti.
+Čtení nevyžaduje AI klíč ani ruční diagnostické příkazy; Toolkit se nepřipojuje jako další MCP server.
+
+**273 testů na každé architektuře ARM64/AMD64**, skutečný Core a původní izolovaný Hermes se
+skriptovaným neplaceným modelem, aktualizace s testovacím Supervisorem a 20 webových pohledů prošly.
+Přesný zdroj: `513394ee9e73f54a639113786f7a6ab92b182870`; 62 souborů instalačního payloadu
+porovnáno s touto revizí, instalátor je na obou architekturách totožný.
+
+Živý MCP přístup při kontrole vrátil HTTP 503. Živá funkce Toolkitu a příčina selhání senzoru komory
+nejsou potvrzené. Obecné Zigbee/registry/statistiky opravy a úplné vlastní konektory
+HA-MCP/Hamster/Inspector/HADocs **nejsou dokončené**. Kandidát není plné splnění původního zadání.
+
+---
+
+## Předchozí vydání RC6
+
 # HADS Next 1.0.0-rc6 — oprava sběru pro HAOS
 
 Aktuální vývojová větev: **codex/hads-next-collector-audit** · [PR 17](https://github.com/OndraMa/HADS/pull/17).

@@ -48,8 +48,8 @@ def build(ref, package, output, version=VERSION):
             if data != original or hashlib.sha256(data).hexdigest() != metadata["sha256"]:
                 raise ValueError("Payload source mismatch: " + name)
         assets["HADS_Next_" + VERSION + "-navod-CS.md"] = archive.extractfile("DOCS.md").read()
-    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/RC6_DELIVERY_CS.md" if VERSION=="1.0.0-rc6" else "hads-next/docs/RC5_DELIVERY_CS.md" if VERSION=="1.0.0-rc5" else "hads-next/docs/RC4_DELIVERY_CS.md" if VERSION=="1.0.0-rc4" else "hads-next/docs/RC3_DELIVERY_CS.md" if VERSION=="1.0.0-rc3" else "hads-next/docs/PRACTICAL_ACCEPTANCE.md" if VERSION=="1.0.0-rc2" else "hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
-    if VERSION in {"1.0.0-rc1","1.0.0-rc2","1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6"}:
+    assets["VYSLEDKY_A_OMEZENI_CS.md"] = blob("hads-next/docs/RC7_DELIVERY_CS.md" if VERSION=="1.0.0-rc7" else "hads-next/docs/RC6_DELIVERY_CS.md" if VERSION=="1.0.0-rc6" else "hads-next/docs/RC5_DELIVERY_CS.md" if VERSION=="1.0.0-rc5" else "hads-next/docs/RC4_DELIVERY_CS.md" if VERSION=="1.0.0-rc4" else "hads-next/docs/RC3_DELIVERY_CS.md" if VERSION=="1.0.0-rc3" else "hads-next/docs/PRACTICAL_ACCEPTANCE.md" if VERSION=="1.0.0-rc2" else "hads-next/docs/FINAL_DELIVERY.md" if VERSION=="1.0.0-rc1" else "hads-next/docs/results.md")
+    if VERSION in {"1.0.0-rc1","1.0.0-rc2","1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6","1.0.0-rc7"}:
         companion=io.BytesIO()
         with tarfile.open(fileobj=io.BytesIO(assets[source]),mode="r:gz") as archive,zipfile.ZipFile(companion,"w",compression=zipfile.ZIP_DEFLATED) as target:
             for member in archive:
@@ -75,11 +75,11 @@ def build(ref, package, output, version=VERSION):
         "Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.\n"
         "Návody a stav přejímky čti nejprve v kořeni tohoto balíčku.\n")
     if VERSION=="1.0.0-rc1":quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné produkční zápisy jsou zakázané.");quick+="\nJediná podporovaná zapisovací oprava mění vlastní virtuální referenci přes companion CAS. Potřebuje instalaci přiložené integrace a zvláštní schválení každého plánu. Nativní automatizace se obecně nepřepisují.\n"
-    if VERSION in {"1.0.0-rc2","1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6"}:
+    if VERSION in {"1.0.0-rc2","1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6","1.0.0-rc7"}:
         quick=quick.replace("Produkční zápisy jsou vypnuté.","Obecné a rizikové zápisy jsou zakázané.")
         quick+="\nPraktická oprava umí po přesném schválení zapnout vybranou jednoduchou světelnou automatizaci nativní službou. Konfiguraci nepřepisuje; služba nemá CAS. Potřebuje výlučnou práci s cílem a funkční i fyzické ověření. Návrat vypne budoucí triggery, nevrací fyzické účinky. Živá přejímka je v UI.\n"
     assets["CTI_ME_NEJDRIVE_CS.txt"] = quick.encode("utf-8-sig")
-    if VERSION in {"1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6"}:
+    if VERSION in {"1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6","1.0.0-rc7"}:
         assets['INTEGRATIONS_CS.md']=blob('hads-next/haos/INTEGRATIONS_CS.md')
         quick=quick.replace('Nová aplikace zachovává RC3 i starý Next.','Starý Hermes 2.0.0-rc3 se nemění. RC3 lze výslovně aktualizovat z ověřeného zastaveného Next RC2.')
         quick=quick.replace('Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.','ZIP obsahuje aktuální HADS Next zdroje a dokumentaci; historické release ZIPy zůstávají samostatně na GitHubu.')
@@ -127,12 +127,28 @@ def build(ref, package, output, version=VERSION):
             "Kontejnery nejsou živá HAOS přejímka. Při chybě zachovej hlášku/marker; nic nemaž a neodinstalovávej.\n"
             "Testovaný zdroj: "+accepted['source_commit']+"\n")
         assets['CTI_ME_NEJDRIVE_CS.txt']=quick.encode('utf-8-sig')
+    if VERSION=="1.0.0-rc7":
+        assets['HAMCP_HERMES_CS.md']=blob('hads-next/haos/HAMCP_HERMES_CS.md')
+        assets['AUDIT_RC7_CS.md']=blob('hads-next/docs/RC7_DELIVERY_CS.md')
+        quick=("HADS Next 1.0.0-rc7 — konkrétní entity, ZHA Toolkit a opravy sběru\n\n"
+            "Stáhni kompletní ZIP nebo Download raw file; Uložit stránku jako není instalátor. Rozbalený .sh ulož do /config.\n"
+            "Před spuštěním srovnej SHA-256 se součtem vydání. Potom pro běžící RC6:\n"
+            "  echo '"+accepted['installer_sha256']+"  /config/HADS_Next_install_1.0.0-rc7.sh' | sha256sum -c - &&\n"
+            "  bash /config/HADS_Next_install_1.0.0-rc7.sh --verify &&\n"
+            "  bash /config/HADS_Next_install_1.0.0-rc7.sh --upgrade-rc6\n\n"
+            "RC6 předem nezastavuj ani neodinstalovávej. Data a stav se zachovají přes nativní update s částečnou zálohou.\n"
+            "Čtení stavu, registru a omezeného ZHA Toolkit cache probíhá automaticky bez AI a bez diagnostických příkazů uživatele.\n"
+            "Neznámá příčina není opravný plán. ZHA/registry zápisy stále nejsou hotové; nepovoluj obecné nástroje jen kvůli diagnostice.\n"
+            "AI zůstává vypnutá, rezerva 576 MiB platí. Živý HAOS a fyzické výsledky nejsou tímto balíčkem doložené.\n"
+            "Při chybě zachovej hlášku/marker; nic nemaž ani neodinstalovávej.\n"
+            "Testovaný zdroj: "+accepted['source_commit']+"\n")
+        assets['CTI_ME_NEJDRIVE_CS.txt']=quick.encode('utf-8-sig')
     files = dict(assets)
     archive_args=["archive","--format=zip","--prefix=zdrojovy-repozitar/",commit]
-    if VERSION in {"1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6"}:archive_args+=['--','hads-next','.github','README.md']
+    if VERSION in {"1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6","1.0.0-rc7"}:archive_args+=['--','hads-next','.github','README.md']
     with zipfile.ZipFile(io.BytesIO(git(*archive_args))) as archive:
         for member in archive.infolist():
-            if not member.is_dir() and not (VERSION in {"1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6"} and member.filename.startswith("zdrojovy-repozitar/hads-next/releases/")):
+            if not member.is_dir() and not (VERSION in {"1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6","1.0.0-rc7"} and member.filename.startswith("zdrojovy-repozitar/hads-next/releases/")):
                 files[member.filename] = archive.read(member)
     if len(files) > 3000 or sum(map(len, files.values())) > 50 * 1024 * 1024:
         raise ValueError("Unexpected bundle size")
@@ -163,7 +179,7 @@ def build(ref, package, output, version=VERSION):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ref", default="HEAD")
-    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1","1.0.0-rc2","1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6"])
+    parser.add_argument("--version",default=VERSION,choices=["0.2.0-dev1","1.0.0-rc1","1.0.0-rc2","1.0.0-rc3","1.0.0-rc4","1.0.0-rc5","1.0.0-rc6","1.0.0-rc7"])
     parser.add_argument("--package-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()

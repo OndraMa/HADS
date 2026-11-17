@@ -352,6 +352,18 @@ class CoreWSReader(_Reader):
     def entity_registry(self):
         return self._read({"type": "config/entity_registry/list"})
 
+    def zha_devices(self):
+        from .zigbee_reads import project_devices
+        reader=_Reader('zha_native', lambda request: project_devices(self.transport(request)))
+        reader.status=self.status
+        return reader._read({'type': 'zha/devices'})
+
+    def toolkit_devices(self):
+        from .zigbee_reads import toolkit_response,toolkit_request
+        reader=_Reader('zha_toolkit', lambda request: toolkit_response(self.transport(request)))
+        reader.status=self.status
+        return reader._read(toolkit_request())
+
     def auth_users(self):
         # Ingress identity checks may overlap a diagnostic read. Their status
         # must not overwrite a trace/registry failure in the shared reader.

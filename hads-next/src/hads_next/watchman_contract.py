@@ -69,7 +69,7 @@ def read_watchman(registry, state_map):
         if report[target] is None:
             gaps.append(key + '_unavailable')
     status = (by_key.get('status') or {}).get('state')
-    report['status'] = status if status in {'idle', 'parsing', 'pending', 'waiting_ha', 'safe_mode'} else None
+    report['status'] = status if isinstance(status,str) and status in {'idle', 'parsing', 'pending', 'waiting_ha', 'safe_mode'} else None
     if status != 'idle':
         gaps.append('scan_not_confirmed_idle')
     for key in ('missing_entities', 'missing_actions'):
@@ -90,9 +90,11 @@ def read_watchman(registry, state_map):
                 gaps.append(key + '_invalid_detail')
                 continue
             state = item.get('state')
+            # Watchman's public format_state contract abbreviates unavailable.
+            if state == 'unavail': state = 'unavailable'
             loc = locations(item.get('occurrences'))
             valid.append({'id': item['id'], 'kind': key,
-                          'state': state if state in {'missing', 'disabled', 'registry_disabled', 'unavailable', 'unknown'} else 'unclassified',
+                          'state': state if isinstance(state,str) and state in {'missing', 'disabled', 'registry_disabled', 'unavailable', 'unknown'} else 'unclassified',
                           'locations': loc, 'source_context_required': True,
                           'possible_other_configuration_language': item['id'] in {'logger.log', 'script.execute'}})
         if len(raw) != count or len({x['id'] for x in valid}) != len(raw):
@@ -128,8 +130,14 @@ def persist_watchman(app, report):
     incident = app.store.open_incident('provider_diagnostic', 'Watchman: odkazy vyžadují kontrolu kontextu.',
                                        ['integration:watchman'], at, correlation_key=key,
                                        occurrence_id='watchman-reference-review')
-    added = app.store.add_evidence(incident['id'], {'source': 'watchman_native', 'kind': 'watchman_reference_snapshot',
-                                  'event_id': event_id, 'observed_at': at, 'payload': report})
+    try:
+        added = app.store.add_evidence(incident['id'], {'source': 'watchman_native', 'kind': 'watchman_reference_snapshot',
+                                      'event_id': event_id, 'observed_at': at, 'payload': report})
+    except ValueError as error:
+        if str(error) not in {'Incident evidence budget exceeded; export/archive required','Incident byte budget exceeded; export/archive required'}:raise
+        report['gaps']=sorted(set(report['gaps']+['case_evidence_budget']))
+        report['read_verified']=False
+        return incident['id']
     if added:
         counts = report['counts']
         summary = ('HADS přečetl podrobnosti existujícího hlášení Watchmanu. '

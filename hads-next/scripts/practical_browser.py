@@ -1,5 +1,5 @@
 """Reproducible offline UI acceptance; fake trusted ingress, no HAOS/model."""
-import hashlib,json,os,sys,tempfile,threading
+import hashlib,json,os,sys,tempfile,threading,time
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 from hads_next.haos_application import Application
@@ -25,6 +25,9 @@ def main():
                 page.goto(origin);page.get_by_role('button',name='Potvrdit správu HADS a zahájit kontrolu zdrojů').click();page.wait_for_url(origin+'/setup')
                 case=app.report_incident('Světlo nereaguje <script>window.bad=true</script>','light.offline_fixture',app.owner())
                 with app.store._connect() as db:db.execute("UPDATE incidents SET status='archived' WHERE id=?",(case['incident']['id'],))
+                deadline=time.monotonic()+3
+                while app.snapshot()['source_job']['state']=='running' and time.monotonic()<deadline:time.sleep(.01)
+                assert app.snapshot()['source_job']['state']!='running'
                 app._timezone='Europe/Prague'
                 app._sources={name:{'read_succeeded':True,'status':{'last_error':None}} for name in ('core_config','supervisor','haos','applications','entity_registry','device_registry','repairs','system_log','system_health')}
                 app._apps=[{'slug':'fixture_radio','name':'Stream Player'},{'slug':'fixture_backup','name':'Backup Agent'}]
@@ -40,11 +43,14 @@ def main():
                 health_case=next(c['id'] for c in app.snapshot()['cases'] if c['kind']=='system_health_failure')
                 app.system.followup.update({'complete':True,'domains':{'marketplace':{'info':{'github_web':{'error':'unreachable'}}}}},{'issues':[]},[])
                 app.providers.update({'core_config':{'components':['spook','watchman']},'applications':{'addons':[{'slug':'fixture_hadocs','name':'HADocs','state':'started','version':'1.0'}]},'entity_registry':[{'entity_id':'sensor.watchman_status','platform':'watchman'}],'repairs':{'issues':[]}},[{'entity_id':'sensor.watchman_status','state':'0','last_updated':'2026-11-14T00:00:00+00:00'}])
+                target='binary_sensor.storage_presence'
+                entity_case=app.store.open_incident('manual_functional','Senzor skladu nereaguje.',[target],app.clock())
+                app.entity_context.update({'core_config':{'components':[]},'entity_registry':[{'entity_id':target,'platform':'zha','device_id':'fixture-device','original_name':'Senzor skladu'}]},[{'entity_id':target,'state':'unavailable','attributes':{'friendly_name':'Senzor skladu'}}])
                 app.system.last=app.clock()
                 app._entities=[{'entity_id':'automation.entry','name':'Světlo na chodbě – ukázka prohlížeče','state':'off'}]
                 for width in [1280,390]:
                     page.set_viewport_size({'width':width,'height':900})
-                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case]:
+                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case,'/case/'+entity_case['id']]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
                         assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'
@@ -58,7 +64,7 @@ def main():
                             assert '822 MiB' in page.inner_text('body')
                             assert 'Znovu přečteno; nález trvá' in page.inner_text('body')
                             assert page.locator('#diagnostic-observations').get_by_role('heading',name='Marketplace: neúspěšná diagnostická kontrola').count()==1
-                            assert page.locator('#investigation .case-card').count()==0
+                            assert page.locator('#investigation .case-card').count()==1
                             page.evaluate('window.scrollTo(0,0)')
                             page.screenshot(path=str(ROOT/('.test-tmp/dashboard-'+('mobile' if width==390 else 'desktop')+'.png')),full_page=True)
                         if path=='/case/'+health_case:
@@ -69,6 +75,10 @@ def main():
                         if path=='/case/'+memory_case:
                             assert 'Co HADS sám přečetl' in page.inner_text('body')
                             assert '822 MiB' in page.inner_text('body') and '41 MiB' in page.inner_text('body')
+                        if path=='/case/'+entity_case['id']:
+                            assert 'Co HADS zjistil o konkrétních cílech' in page.inner_text('body')
+                            assert 'Senzor skladu' in page.inner_text('body')
+                            assert 'Oprava ke schválení:' in page.inner_text('body')
                         if path=='/setup/providers':
                             assert 'HADS zatím neověřil vlastní diagnostiku doplňku' in page.inner_text('body')
                             assert 'HASK' not in page.inner_text('body')
@@ -78,7 +88,7 @@ def main():
                             assert page.locator('select[name=mode]').input_value()=='trial'
                             assert not page.locator('input[name=consent]').is_checked()
                             assert '512' in page.inner_text('body')
-                        assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0].split(health_case)[0].split(memory_case)[0],'passed':True})
+                        assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0].split(health_case)[0].split(memory_case)[0].split(entity_case['id'])[0],'passed':True})
                     page.goto(origin+'/acceptance');page.locator('input[name=isolated]').check();page.get_by_role('button',name='Založit přejímkový protokol').click();page.wait_for_url('**/acceptance?session=*')
                     assert page.get_by_role('button',name='Provést tento test').count()==12
                     assert not page.locator('input[name=cost_consent]').is_checked()

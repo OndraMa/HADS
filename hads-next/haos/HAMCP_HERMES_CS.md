@@ -1,6 +1,6 @@
 # HA-MCP, Hermes a diagnostické doplňky — nastavení pro HADS
 
-Ověřeno ze zdrojů 14. 11. 2026. Toto je návod pro RC6 a popis jeho hranic.
+Ověřeno ze zdrojů 14. 11. 2026. Toto je návod pro RC7 a popis jeho hranic.
 Připojené aplikace na skutečném HAOS nebyly z tohoto vývojového prostředí autentizovaně testované.
 Nativní čtení HADS fungují bez AI klíče. Samotná konfigurace nenahradí chybějící adaptér.
 
@@ -9,10 +9,11 @@ Nativní čtení HADS fungují bez AI klíče. Samotná konfigurace nenahradí c
 Po přihlášení vlastníka otevři **Zdroje a připravenost → Doplňky a ověření**.
 Kontrola se opakuje přibližně každých pět minut. Není potřeba zadávat příkazy do terminálu.
 
-| Zdroj | Dostupné čtení v RC6 | Co tím není ověřeno |
+| Zdroj | Dostupné čtení v RC7 | Co tím není ověřeno |
 |---|---|---|
 | Core a Supervisor | Verze, stavy, seznam aplikací, registr entit/zařízení, Repairs, System Health; podle incidentu statistiky a protokoly | Samotný úspěch HTTP nepotvrzuje funkci domácnosti |
 | Spook | Načtená komponenta, vlastní entity, sdílené Repairs | Registr/statistiky nelze tímto katalogem opravovat |
+| ZHA Toolkit | Omezený `zha_devices` cache read s validovanou odpovědí a nativním fallbackem | RF testy, reporting, reconfigure a jiné zápisy |
 | Watchman | Počty **i atributy s odkazy**, stav, skutečný čas aktualizace a parsování; společný diagnostický spis | Statická reference není důkaz poruchy ani automaticky bezpečná oprava |
 | Entity Availability | Entity vlastněné integrací a jejich vybrané stavy | Kompletní časová historie a očekávání jednotlivých zařízení |
 | HAGHS | Také vlastníkem určený `sensor.system_ha_global_health_score` | Jedna entita neurčuje totožnost/verzi celého projektu |
@@ -63,9 +64,9 @@ HADS má po implementaci obecného adaptéru sám provést: `initialize` → dok
 stránkované `tools/list` → validace schémat → jedno konkrétní dovolené čtení se známým cílem.
 Musí evidovat autentizaci, čtení, čas dat a každou mezeru. Popis „read-only“ od serveru nestačí:
 smíšené nástroje potřebují kontrolu konkrétních argumentů. Negativní zápisové testy patří do izolované laboratoře,
-ne do produkční domácnosti. Bez adaptéru RC6 se tento postup **automaticky neprovede**.
+ne do produkční domácnosti. Bez adaptéru RC7 se tento postup **automaticky neprovede**.
 
-V RC6 lze původní nastavení převzít tlačítkem **Načíst návrh připojení z původního Hermes RC3**.
+V RC7 lze původní nastavení převzít tlačítkem **Načíst návrh připojení z původního Hermes RC3**.
 Import uloží pouze neaktivní soukromý návrh. Neaktivuje MCP, nepřenáší souhlasy a nedokazuje jeho funkčnost.
 Není tu skrytý krok, který by uživatel musel dohledat: aktivní obecný MCP adaptér je nedokončená implementace HADS.
 
@@ -113,7 +114,7 @@ Rozšířený režim má jiné limity a samostatný souhlas s autonomním vyšet
 ## 5. Watchman, Spook a zdrojový kontext
 
 Pro čtení Watchmanu není potřeba zapínat jeho reportovací službu ani zapisovací HA-MCP nástroje.
-RC6 používá vlastnictví v registru a unique IDs `watchman_missing_entities`, `watchman_missing_actions`,
+RC7 používá vlastnictví v registru a unique IDs `watchman_missing_entities`, `watchman_missing_actions`,
 `watchman_last_updated`, `watchman_last_parse`, `watchman_status` podle ověřeného upstream kontraktu.
 Přejmenování entity v UI nevadí. Starší odlišná identita je viditelné omezení; nenahrazuje se hádáním podle názvu.
 
@@ -125,7 +126,7 @@ Zakázaný spínač se automaticky nepovoluje. Zmizelá chyba neuzavírá funkč
 Spook Repairs jsou čtené přes nativní HA API. Nulový počet pouze v doméně `spook` neověřuje všechny
 jeho reapers ani oprávnění. Zápisy do registrů a import/mazání statistik potřebují vlastní katalog,
 náhled původního/nového stavu, zálohu s ověřenou obnovitelností a funkční kontrolu.
-**Takový obecný vykonavatel Spook/HA-MCP není v RC6 hotový a přepínače serveru jej nedoplní.**
+**Takový obecný vykonavatel Spook/HA-MCP není v RC7 hotový a přepínače serveru jej nedoplní.**
 
 ## 6. Automation Inspector a HADocs
 
@@ -178,3 +179,7 @@ světelnou aktivaci. Instalace kandidáta neznamená dokončení celého původn
 - [Automation Inspector 1.2.4](https://github.com/ITSpecialist111/Automation-Inspector/tree/aa24bd4485b5f74fd4547d84dc5fb1045bc766fa).
 - [HADocs 0.17.0-rc5](https://github.com/SirBlondieDK/HADocs/tree/c8dc8ff2fd5157941a3749148b4326592ee065c5)
   a [HASK Preview](https://github.com/SirBlondieDK/HADocs/blob/c8dc8ff2fd5157941a3749148b4326592ee065c5/docs/guides/features/HASK-Preview.md).
+
+## Doplnění RC7: konkrétní cíle
+
+Nálezy Watchmanu nyní pokračují do registrů, stavů a dostupné pasivní ZHA/Toolkit diagnostiky. Hermes má čtecí nástroj pro tyto konkrétní důkazy spisu. Nejde o obecný service caller. Neznámá příčina stále nesmí vytvořit fiktivní opravu ke schválení. Podrobný rozsah a přejímka jsou v návodu instalace RC7.

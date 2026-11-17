@@ -17,15 +17,20 @@ def render_providers(app, csrf):
         if row['samples']:
             body+='<ul>'+''.join('<li>'+escape(x['entity_id'])+': '+escape(str(x['state']) if x['state'] is not None else 'soukromý nebo nepodporovaný text vynechán')+'; změna stavu '+escape(display_time(x['source_updated_at'],zone))+'</li>' for x in row['samples'])+'</ul><p>Čas změny entity není důkaz nového skenu doplňku.</p>'
         native=row.get('diagnostic_read')
-        if native:
+        if native and row['provider_id']=='watchman':
             body+='<h3>Existující hlášení Watchmanu</h3><p>'+('Počty a podrobnosti přečtené.' if native['read_verified'] else 'Čtení hlášení je neúplné; není to nulový nález.')+'</p>'
             body+='<p>Aktualizace Watchmanu: '+escape(display_time(native['last_update_at'],zone))+'; poslední parsování: '+escape(display_time(native['last_parse_at'],zone))+'. Čas tohoto čtení není čas nového skenu.</p>'
             body+='<p>Chybějící entity: '+escape(str(native['counts'].get('missing_entities')) if native['counts'].get('missing_entities') is not None else 'nezjištěno')+'; akce: '+escape(str(native['counts'].get('missing_actions')) if native['counts'].get('missing_actions') is not None else 'nezjištěno')+'.</p>'
+            if 'case_evidence_budget' in native['gaps']:body+='<p>Spis dosáhl limitu důkazů. Nové čtení pokračuje, ale historii je nutné řízeně exportovat a archivovat; chybějící uložený důkaz nesmí autorizovat opravu.</p>'
             body+='<ul>'+''.join('<li>'+escape(x['id'])+' ('+escape(x['state'])+'): '+escape('; '.join(p['file']+':'+','.join(map(str,p['lines'])) for p in x['locations']) or 'kontext umístění není dostupný')+'</li>' for x in native['findings'])+'</ul>'
             if native['incident_id']:body+='<p><a href="../case/'+escape(native['incident_id'],quote=True)+'">Otevřít společný diagnostický spis Watchmanu</a></p>'
             body+='<p>Zakázaná entita může být záměrná; odkazy ESPHome potřebují jiný kontext než entity HA. Nic automaticky nepřepisuji ani nezapínám.</p>'
+        elif native and row['provider_id']=='zha_toolkit':
+            body+='<p>Konkrétní čtení seznamu zařízení: '+('proběhlo, přečtených zařízení '+str(len(native['devices'])) if native['read_succeeded'] else 'neověřené')+'. Čtou se pouze údaje existující v paměti ZHA; jejich stáří určuje poslední komunikace zařízení.</p>'
+            if native.get('version'):body+='<p>Verze uvedená v odpovědi Toolkitu: '+escape(native['version'])+'. Kompatibilitu fyzické instalace musí potvrdit skutečná čtení.</p>'
         if row['matching_repairs_count'] is not None:body+='<p>Nálezy se shodnou doménou v Repairs: '+str(row['matching_repairs_count'])+'. Nula neprokazuje zdravý doplněk.</p>'
-        body+='<p>HADS zatím neověřil vlastní diagnostiku doplňku. '+('MCP autentizace a katalog: neověřené. ' if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'} else '')+'Zapisovací opravy: nepovolené.</p></article>'
+        verified=bool(native and (native.get('read_verified') or native.get('read_succeeded')))
+        body+='<p>'+('Konkrétní čtecí odpověď byla ověřena. Funkční výsledek zařízení tím není potvrzený. ' if verified else 'HADS zatím neověřil vlastní diagnostiku doplňku. ')+('MCP autentizace a katalog: neověřené. ' if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'} else '')+'Zapisovací opravy: nepovolené.</p></article>'
     token='<input type="hidden" name="csrf" value="'+escape(csrf,quote=True)+'">'
     body+='<form method="post" action="provider-previous">'+token+'<p>Ze starého Hermes 2.0.0-rc3 lze přes Supervisor převzít pouze vybrané připojovací položky do neaktivního soukromého návrhu. Starou aplikaci kvůli tomu nespouštím ani neměním.</p><button>Načíst návrh připojení z původního Hermes RC3</button></form>'
     try:staged=', '.join(app.legacy_connectors.public_status()['staged_providers']) or 'žádné'

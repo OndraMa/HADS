@@ -46,7 +46,7 @@ class SystemDiagnostics:
         with self.app.store._connect() as db:update=db.execute("SELECT document,changed_at FROM health_observations WHERE key='last-update'").fetchone()
         if update and 0<=now-update[1]<=86400:
             self.app.store.record(incident['id'],'version_correlation',{'version_change':json.loads(update[0]),'changed_at':update[1],'causality_proven':False})
-        if kind not in {'automation_reference','source_unavailable','application_failure','system_health_failure','system_resource_pressure'} and self.app.detection.snapshot()['autonomous_ai']:
+        if kind not in {'automation_reference','source_unavailable','diagnostic_capture_gap','application_failure','system_health_failure','system_resource_pressure'} and self.app.detection.snapshot()['autonomous_ai']:
             try:self.app.investigations.start(incident['id'],self.app.owner(),automatic=True)
             except ValueError:pass
         return incident['id']
@@ -109,6 +109,7 @@ class SystemDiagnostics:
                         # observation; it alone neither proves impact nor authorizes AI.
                         self._finding('app:'+slug,'application_failure','Aplikace hlásí neúspěšný běh.',['supervisor',slug],{'slug':slug,'state':state,'version':item.get('version')},active=state in {'error','failed'})
             self._finding('native-api-access','source_unavailable','Nativní diagnostická API neposkytují ověřitelné údaje.',['homeassistant','supervisor'] if len(failures)>1 else failures,{'failed_sources':failures,'common_root_cause_proven':False},active=bool(failures))
+            self.followup.collection('native-api-access',not failures,'Aktuální přístup k ověřovaným API Core a Supervisoru funguje. Dřívější výpadek sběru zůstává zaznamenaný; porucha zařízení tím není prokázaná.' if not failures else 'Čtení nativních diagnostických API je nyní omezené. HADS je automaticky zopakuje; nejde o důkaz poruchy zařízení.')
             if self.app.core_ws:
                 repairs=self.app.core_ws.repairs()
                 if isinstance(repairs,dict) and isinstance(repairs.get('issues'),list):
@@ -184,7 +185,11 @@ class SystemDiagnostics:
         zha=self.app.investigations.zha
         with self.app.store._connect() as db:status=db.execute('SELECT last_error,authenticated FROM zha_collector_status WHERE id=1').fetchone()
         self.capabilities['zha_capture']='read' if zha.capture is not None else 'unavailable'
-        if status and status[0] and status[1]:self._finding('zha-subscription','diagnostic_capture_gap','Odběr ZHA událostí má doloženou mezeru.',['zha'],{'capture_gap':True,'physical_press_failure_proven':False})
+        gap=bool(status and status[0])
+        self._finding('zha-subscription','diagnostic_capture_gap','Odběr ZHA událostí má doloženou mezeru.',['zha'],{'capture_gap':True,'physical_press_failure_proven':False},active=gap)
+        if gap or zha.capture is not None:
+            self.followup.collection('zha-subscription',not gap and zha.capture is not None,
+                'Odběr ZHA událostí je znovu navázaný. Historická mezera zůstává; nezachycený fyzický stisk nelze zpětně dokázat.' if not gap and zha.capture is not None else 'Odběr ZHA událostí má aktuální mezeru. HADS sám opakuje připojení; tento stav nepotvrzuje závadu Zigbee zařízení.')
         reader=self.app.investigations.broker.music
         if reader and reader.mapping:
             entity=next(iter(reader.mapping))

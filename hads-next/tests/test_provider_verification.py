@@ -4,6 +4,7 @@ from hads_next.haos_application import Application
 from hads_next.observability import CoreReader, CoreWSReader, SupervisorReader
 from hads_next.legacy_connectors import prepare
 from hads_next.provider_ui import render_providers
+from hads_next.provider_verification import SPECS
 
 class ProviderTests(unittest.TestCase):
     def setUp(self):
@@ -18,7 +19,7 @@ class ProviderTests(unittest.TestCase):
         self.app.providers.update(self.values,self.states)
         return {r['provider_id']:r for r in self.app.providers.snapshot()}
     def test_presence_process_native_data_and_function_are_separate(self):
-        rows=self.update();self.assertEqual(len(rows),9)
+        rows=self.update();self.assertEqual(len(rows),len(SPECS))
         self.assertTrue(rows['spook']['presence_confirmed']);self.assertFalse(rows['spook']['native_state_read_succeeded'])
         self.assertTrue(rows['watchman']['native_state_read_succeeded']);self.assertEqual(rows['watchman']['samples'][0]['state'],1.)
         self.assertEqual(rows['hadocs']['applications'][0]['state'],'started')
@@ -51,7 +52,7 @@ class ProviderTests(unittest.TestCase):
         self.states=[{'entity_id':r['entity_id'],'state':'ok'} for r in self.values['entity_registry']]
         for _ in range(4):row=self.update()['watchman']
         self.assertEqual(len(row['samples']),4);self.assertTrue(row['samples_truncated']);self.assertEqual(self.app.snapshot()['cases'],[])
-        with self.app.store._connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM provider_verifications').fetchone()[0],9)
+        with self.app.store._connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM provider_verifications').fetchone()[0],len(SPECS))
     def test_actual_source_check_calls_only_existing_native_reads_and_persists(self):
         calls=[]
         def http(path):
