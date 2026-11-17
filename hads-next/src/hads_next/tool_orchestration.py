@@ -41,7 +41,8 @@ class ToolOrchestration:
     def schema_read(self,incident_id,args):
         validate(object_schema({'provider':{'type':'string'},'tool':{'type':'string'}}),args);self.app.store.case(incident_id)
         row=self.registry.get(args['provider'],args['tool'])
-        return {'status':'available','data':row,'evidence_ids':[],'authority':'catalog_not_approval'}
+        public={**row,'schema':row['schema'].get('allOf',[row['schema']])[-1]}
+        return {'status':'available','data':public,'evidence_ids':[],'authority':'catalog_not_approval'}
 
     def _native(self,values):
         broker=self.app.investigations.broker
