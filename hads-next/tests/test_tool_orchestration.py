@@ -496,6 +496,20 @@ class OrchestratedWire(unittest.TestCase):
         self.assertIs(self.app.repair_recovery.status(plan.plan_id)['read_verified'],False)
         self.assertEqual(len(self.writes),1);self.assertTrue(self.app.store.case(self.case['id'])['evidence'])
 
+    def test_exhausted_automatic_recovery_can_be_rechecked_by_owner_without_replay(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.config=copy.deepcopy(plan.document['original']['config'])
+        self.app.repair_recovery.cycle();self.now+=301;self.app.repair_recovery.cycle()
+        self.assertTrue(self.app.repair_recovery.status(plan.plan_id)['matches_original'])
+        with self.assertRaises(RepairBlocked):self.app.repair_recovery.recheck(plan.plan_id,'not-owner')
+        with self.assertRaises(RepairBlocked):self.app.repair_recovery.recheck(plan.plan_id,'owner-fixture')
+        self.config=copy.deepcopy(plan.document['proposed']['config']);self.now+=61
+        result=self.app.repair_recovery.recheck(plan.plan_id,'owner-fixture')
+        self.assertTrue(result['matches_proposed']);self.assertTrue(result['requested_by_owner'])
+        self.app.repair_recovery.adopt(plan.plan_id,'owner-fixture')
+        self.assertEqual(len(self.writes),1);self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+
     def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
         html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)
         raw=canonical(self.app.tools.list_read(self.case['id'],{}));self.assertNotIn('fixture-only-token',raw);self.assertNotIn(self.url,raw)

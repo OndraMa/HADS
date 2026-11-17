@@ -36,6 +36,7 @@ def repair_card(plan,csrf,app=None):
         body+='<p>Výsledek zásahu: '+escape(labels.get(plan['status'],'Zásah vyžaduje kontrolu uložených důkazů.'))+'</p>'
         if plan['status']=='unknown_requires_reconciliation' and app is not None:
             recovery=app.repair_recovery.status(plan['plan_id'])
+            body+='<form method="post" action="../tool-repair/recheck">'+form+'<p>Automatická kontrolní čtení jsou omezená. Po obnovení přístupu nebo ruční změně může vlastník nejvýše jednou za minutu vyžádat nové čtení. Původní příkaz se tím neopakuje.</p><button>Znovu ověřit nejistý výsledek bez zápisu</button></form>'
             if recovery and recovery.get('read_verified'):
                 body+='<p>HADS znovu přečetl cíl. '+('Stav odpovídá schválené změně; původ zápisu ale není potvrzený.' if recovery.get('matches_proposed') else 'Aktuální stav neodpovídá schválené změně. Další zápis je zastavený.')+'</p>'
                 if recovery.get('matches_proposed') and recovery.get('target_identity_matches'):

@@ -418,6 +418,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.approved_tools.decide(form.get('plan_id',[''])[0],form.get('decision',[''])[0],self.headers['X-Remote-User-Id'],exclusive=form.get('exclusive')==['yes'])
             elif path == '/tool-repair/adopt':
                 self.server.app.repair_recovery.adopt(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/tool-repair/recheck':
+                self.server.app.repair_recovery.recheck(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
             elif path == '/tool-repair/rollback':
                 self.server.app.approved_tools.rollback_plan(form.get('plan_id',[''])[0],exclusive=form.get('exclusive')==['yes'])
             elif path == '/setup/check':

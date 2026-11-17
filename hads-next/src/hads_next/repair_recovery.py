@@ -28,6 +28,22 @@ class RepairRecovery:
         with self.app.store._connect() as db:row=db.execute('SELECT * FROM tool_recovery_reads WHERE plan_id=?',(identity,)).fetchone()
         return {**json.loads(row['result']),'checked_at':row['checked_at']} if row else None
 
+    def recheck(self,identity,principal):
+        """Owner-requested fresh read after bounded automatic recovery; never replay."""
+        broker=self.app.approved_tools;broker._owner(principal)
+        with self.app._read_lock:
+            plan=broker.plan(identity)
+            with closing(connect(self.app.store.db_path)) as db:run=db.execute('SELECT status FROM repair_executions WHERE plan_id=?',(identity,)).fetchone()
+            if not run or run['status']!='unknown_requires_reconciliation':raise RepairBlocked('Tento zásah nečeká na kontrolu nejistého výsledku.')
+            with self.app.store._connect() as db:old=db.execute('SELECT attempts,checked_at FROM tool_recovery_reads WHERE plan_id=?',(identity,)).fetchone()
+            if old and self.app.clock()-old['checked_at']<60:raise RepairBlocked('Kontrolní čtení lze zopakovat nejvýše jednou za minutu.')
+            try:result=broker.reconcile(identity)
+            except (ValueError,KeyError,TypeError,ReadFailure,OSError):result={'read_verified':False,'retry_authorized':False,'detail_cs':'Kontrolní čtení nebylo ověřené. Další zápis je zastavený.'}
+            result['requested_by_owner']=True
+            with self.app.store._connect() as db:db.execute('INSERT OR REPLACE INTO tool_recovery_reads VALUES(?,?,?,?)',(identity,1 if old is None else old['attempts']+1,self.app.clock(),canonical(result)))
+            self.app.store.record(plan.document['incident_id'],'owner_requested_reconciliation_read',{'plan_id':identity,'no_write_performed':True,'read_verified':result['read_verified']})
+            return result
+
     def adopt(self,identity,principal):
         """Fresh owner decision accepts a freshly observed state, never a write."""
         broker=self.app.approved_tools;broker._owner(principal)
