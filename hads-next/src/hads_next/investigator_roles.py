@@ -73,7 +73,11 @@ class RoleBroker:
             'authority':'read_only','unsupported_tools':'Sources absent from the catalog cannot be claimed as available.'}
 
     def schemas(self):
-        return self.broker.schemas()+[
+        # Two redundant direct aliases remain in the controller catalog and
+        # are callable through hads_diagnostic_tool. Keep the unchanged 32-tool
+        # launcher boundary instead of weakening it when adding orchestration.
+        schemas=[r for r in self.broker.schemas() if r['name'] not in {'hads_get_core_status','hads_get_applications'}]
+        return schemas+[
             {'name':'hads_select_investigator','description':'Zvol další logickou specializaci stejného Hermes workeru; předání musí citovat skutečné důkazy.',
              'parameters':{'type':'object','properties':{'role':{'type':'string','enum':list(ROLES)},
                 'task':{'type':'string','maxLength':500},'handoff':FINDING},'required':['role','task'],'additionalProperties':False}},

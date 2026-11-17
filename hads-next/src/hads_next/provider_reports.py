@@ -24,7 +24,7 @@ def safe_report(value,depth=0):
                  'stale_candidates','stale_watch_entities','zombie_entities','dead_device_ids','integration_unhealthy_entries',
                  'repairs','recommendations','psi_available','db_size_mb','name','count','start','end','mean','min','max','sum',
                  'last_reset','statistic_id','statistic_unit','unit_class','has_sum','has_mean','mean_type','statistics',
-                 'data','metadata','attributes','errors','success','value','result','attribute','read_before','reporting_config'}
+                 'entry_id','total_entities','essential','online','offline','offline_entities','suppressed','non_essential','non_essential_offline','offline_entities_non_essential','low_battery','low_battery_entities','stale_entities','window_minutes','per_device','mtbf_hours','mttr_minutes','offline_events','total_offline_events','data','metadata','attributes','errors','success','value','result','attribute','read_before','reporting_config'}
         return {k:safe_report(v,depth+1) for k,v in list(value.items())[:256] if k in allowed or ENTITY_RE.fullmatch(k)}
     if isinstance(value,list):return [safe_report(v,depth+1) for v in value[:128]]
     if isinstance(value,str):
@@ -51,8 +51,9 @@ def inspector(value,status):
 
 def hadocs(value,status):
     if not isinstance(value,dict) or value.get('available') is not True or not isinstance(value.get('health'),dict) or not isinstance(value.get('incidents'),list) or not isinstance(value.get('recommendations'),list):raise ToolDenied('HADocs nemá dostupný ověřitelný report.')
-    if not isinstance(status,dict) or status.get('running') is True or status.get('exit_code')!=0 or stamp(status.get('finished_at')) is None:raise ToolDenied('HADocs nemá dokončený úspěšný sken.')
-    return {'generated_at':status['finished_at'],'health':safe_report(value['health']),
+    if not isinstance(status,dict) or status.get('report_available') is False:raise ToolDenied('HADocs nemá dostupný report.')
+    known_time=stamp(status.get('finished_at')) if status.get('running') is False and status.get('exit_code')==0 else None
+    return {'generated_at':status.get('finished_at') if known_time else None,'freshness_verified':known_time is not None,'freshness_limitation':'Čas posledního úspěšného skenu není doložený; report se neprohlašuje za nový.' if known_time is None else None,'health':safe_report(value['health']),
             'incidents':safe_report(value['incidents']),'recommendations':safe_report(value['recommendations']),
             'truncated':len(value['incidents'])>128 or len(value['recommendations'])>128}
 

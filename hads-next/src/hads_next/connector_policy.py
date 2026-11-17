@@ -2,6 +2,7 @@
 from .tool_registry import object_schema,ENTITY,ID
 
 READS={
+ 'ha_get_skill_guide':object_schema({'file':{'type':'string','enum':['references/triggers-and-conditions.md','references/automation-actions.md']}}),
  'ha_get_state':object_schema({'entity_id':ENTITY}),
  'ha_get_device':object_schema({'entity_id':ENTITY}),
  'ha_config_get_automation':object_schema({'entity_id':ENTITY}),
@@ -9,7 +10,7 @@ READS={
 }
 WRITES={
  'ha_config_set_automation':object_schema({'entity_id':ENTITY,'config':{'type':'object'},'config_hash':{'type':'string','minLength':16,'maxLength':128},
-     'run_actions':{'const':False},'wait':{'const':True}}),
+     'run_actions':{'const':False},'wait':{'const':True},'BestPracticeKey':{'type':'string','pattern':'^I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-[a-f0-9]{8}$'}},['entity_id','config','config_hash','run_actions','wait']),
 }
 HAMSTER_READS={'hass/config/entity_registry/get','hass/get_states','hass/config/entity_registry/list','hass/config/device_registry/list','hass/repairs/list_issues','hass/system_log/list'}
 

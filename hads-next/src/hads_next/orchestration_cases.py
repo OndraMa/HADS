@@ -13,7 +13,10 @@ class OrchestrationCases:
     def __init__(self,app):
         self.app=app;self.cursor=0
         with app.store._connect() as db:
-            db.executescript('''CREATE TABLE IF NOT EXISTS orchestration_reads(
+            db.executescript('''CREATE TABLE IF NOT EXISTS orchestration_schema(version INTEGER PRIMARY KEY);
+                INSERT OR IGNORE INTO orchestration_schema VALUES(1);
+                CREATE TABLE IF NOT EXISTS incident_links(parent TEXT NOT NULL,child TEXT NOT NULL,kind TEXT NOT NULL,PRIMARY KEY(parent,child));
+                CREATE TABLE IF NOT EXISTS orchestration_reads(
                 incident_id TEXT NOT NULL,request_hash TEXT NOT NULL,provider TEXT NOT NULL,tool TEXT NOT NULL,
                 state TEXT NOT NULL,attempts INTEGER NOT NULL,checked_at REAL NOT NULL,result TEXT,
                 PRIMARY KEY(incident_id,request_hash));
@@ -21,6 +24,7 @@ class OrchestrationCases:
                 fingerprint TEXT PRIMARY KEY,observed_at REAL NOT NULL,document TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS orchestration_correlations(
                 id TEXT PRIMARY KEY,document TEXT NOT NULL,checked_at REAL NOT NULL);''')
+            if [r[0] for r in db.execute('SELECT version FROM orchestration_schema')]!=[1]:raise ToolDenied('Neznámé schéma orchestrace.')
     def cycle(self,budget=6):
         cases=[c for c in self.app.snapshot()['cases'] if c['status']=='open']
         if not cases:return
@@ -110,15 +114,28 @@ class OrchestrationCases:
             db.execute('DELETE FROM orchestration_log_events WHERE observed_at<?',(self.app.clock()-7*86400,))
             db.execute('DELETE FROM orchestration_log_events WHERE fingerprint IN (SELECT fingerprint FROM orchestration_log_events ORDER BY observed_at DESC LIMIT -1 OFFSET 2000)')
             corpus=[json.loads(r[0]) for r in db.execute('SELECT document FROM orchestration_log_events ORDER BY observed_at')]
-        groups=[]
+        groups=[];claimed=set()
         for dns in [r for r in corpus if r['kind']=='dns']:
+            if fingerprint(dns) in claimed:continue
             linked=[r for r in corpus if dns['observed_at']<=r['observed_at']<=dns['observed_at']+120 and r['kind'] in {'dns','network'}]
             components=sorted({r['component'] for r in linked})
             if len(components)<2:continue
+            claimed.update(fingerprint(r) for r in linked if r['kind']=='dns')
             doc={'hypothesis':'Společná chyba DNS mohla způsobit následné chyby připojení.','root_cause_proven':False,'components':components,'events':linked[:32],'first_seen':dns['observed_at']}
-            identity=fingerprint([dns,components])
+            identity=fingerprint(['dns_window',dns])
             with self.app.store._connect() as db:db.execute('INSERT OR REPLACE INTO orchestration_correlations VALUES(?,?,?)',(identity,canonical(doc),self.app.clock()))
-            groups.append(doc)
+            incident=self.app.store.open_incident('network_correlation','Více připojení selhalo v časovém okně chyby DNS.',components,dns['observed_at'],correlation_key='correlation:'+identity,occurrence_id=identity)
+            event={'source':'central_log_correlation','kind':'network_correlation_hypothesis','event_id':fingerprint([identity,doc]),'observed_at':dns['observed_at'],'payload':doc}
+            try:self.app.store.add_evidence(incident['id'],event)
+            except ValueError:pass  # Collection continues; no missing proof authorizes repair.
+            self.app.store.record(incident['id'],'deterministic_investigation',{'summary_cs':doc['hypothesis'],'root_cause_proven':False,'next_test_cs':'HADS porovná dostupné nativní systémové údaje a další zdrojové časy. Časová návaznost není důvod k restartu nebo změně DNS.'})
+            for case in self.app.snapshot()['cases']:
+                if case['id']==incident['id'] or abs(case['first_seen']-dns['observed_at'])>120:continue
+                related={c.removeprefix('integration:') for c in case['components']}
+                related|={'homeassistant.components.'+c for c in related}
+                if related&set(components):
+                    with self.app.store._connect() as db:db.execute('INSERT OR IGNORE INTO incident_links VALUES(?,?,?)',(incident['id'],case['id'],'possible_common_cause_not_proven'))
+            groups.append({**doc,'incident_id':incident['id']})
         return groups
 
     def prepare_candidates(self,identity):
@@ -187,3 +204,6 @@ class OrchestrationCases:
         groups=self.correlate(events)
         if groups:
             self.app.store.record(incident_id,'cross_source_correlation',{'groups':groups[:4],'root_cause_proven':False})
+
+    def grouped_children(self):
+        with self.app.store._connect() as db:return {r[0] for r in db.execute("SELECT child FROM incident_links l JOIN incidents i ON i.id=l.parent WHERE i.status='open'")}

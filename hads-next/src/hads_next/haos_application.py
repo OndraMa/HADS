@@ -156,6 +156,15 @@ class Application:
             self.providers.record_toolkit(self.entity_context.toolkit)
             self.tools.refresh(values,states)
             self.approved_tools.identities(values.get("entity_registry"))
+            logs=values.get('system_log')
+            if isinstance(logs,list):
+                normalized=[]
+                for row in logs[:256]:
+                    if not isinstance(row,dict):continue
+                    message=row.get('message')
+                    if isinstance(message,list):message=' '.join(x for x in message[:4] if isinstance(x,str))
+                    normalized.append({'source':'system_log','observed_at':row.get('timestamp'),'component':row.get('name',row.get('logger','unknown')),'message':message})
+                self.orchestration.correlate(normalized)
             self.orchestration.cycle()
         with self._lock:
             self._sources = sources

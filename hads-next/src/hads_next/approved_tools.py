@@ -52,6 +52,19 @@ class ApprovedRepairBroker:
     def _owner(self,principal):
         if not principal or principal!=self.app.owner():raise RepairBlocked('Operaci může schválit pouze ověřený vlastník.')
 
+    def _guide(self):
+        row=self.tools.registry.get('ha_mcp','ha_config_set_automation',effect='write')
+        remote=row['schema']['allOf'][0]
+        if 'BestPracticeKey' not in remote.get('properties',{}):return None
+        self.tools.registry.get('ha_mcp','ha_get_skill_guide',effect='read')
+        value=self.tools.connections.clients['ha_mcp'].call('ha_get_skill_guide',{'file':'references/triggers-and-conditions.md'})
+        if not isinstance(value,dict) or value.get('success') is not True or not isinstance(value.get('content'),str) or len(value['content'])>64000:raise RepairBlocked('Aktuální pravidla HA-MCP nebyla přečtená. Ochrany serveru se nevypínají.')
+        import re
+        match=re.search(r'Acknowledgment key: (I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-[a-f0-9]{8})',value['content'])
+        # The independent static executor still validates the exact light-only
+        # config. Guide text cannot add a command, permission or bypass.
+        return {'sha256':fingerprint(value['content']),'ack':match[1] if match else None}
+
     def _original(self,provider,tool,parameters):
         if provider=='ha_mcp' and tool=='ha_config_set_automation':
             read=self.tools.registry.get(provider,'ha_config_get_automation',effect='read')
@@ -109,6 +122,10 @@ class ApprovedRepairBroker:
                 raise RepairBlocked('Návrat nemá odpovídající skutečně provedený původní zásah.')
             if provider=='ha_mcp' and parameters['config']!=parent['original']['config']:raise RepairBlocked('Návrat by změnil více než původní konfiguraci.')
             if provider=='spook' and tool==parent['binding']['tool']:raise RepairBlocked('Návrat není inverzí původního povolení.')
+        guide=self._guide() if provider=='ha_mcp' else None
+        parameters=copy.deepcopy(parameters)
+        if guide and guide['ack']:parameters['BestPracticeKey']=guide['ack']
+        validate(row['schema'],parameters)
         original=self._original(provider,tool,parameters)
         if parent:
             expected=parent['proposed']
@@ -139,7 +156,7 @@ class ApprovedRepairBroker:
         receipt=self.backups.verify(original_hash)
         document={'schema':1,'operation':'tool.approved','incident_id':incident_id,'binding':self.binding(row),'parameters':copy.deepcopy(parameters),'target':{'entity_id':parameters['entity_id']},
             'original':original,'original_sha256':original_hash,'proposed':proposed,'evidence_ids':sorted(set(evidence_ids)),
-            'reason':reason,'risk':row['risk'],'backup':{'required':'independent_OneDrive_restore_attestation','receipt_sha256':fingerprint(receipt),'scope':receipt['scope']},
+            'guide_receipt':guide,'reason':reason,'risk':row['risk'],'backup':{'required':'independent_OneDrive_restore_attestation','receipt_sha256':fingerprint(receipt),'scope':receipt['scope']},
             'preconditions':['exclusive_target','exact_original','unchanged_provider_schema_identity_version','owner_approval_unexpired','independent_restore_proof'],
             'verification':condition,'expected_result':'Ověřený zápis musí následovat skutečný funkční test a sledovací doba. HTTP úspěch případ neuzavírá.',
             'rollback':{'supported':True,'separate_approval_required':True,'rollback_of':rollback_of,'scope':'exact_configuration_or_registry_field_not_physical_effects'},
@@ -167,6 +184,7 @@ class ApprovedRepairBroker:
         d=plan.document;b=d['binding'];row=self.tools.registry.get(b['provider'],b['tool'],effect='write')
         if self.binding(row)!=b:raise RepairBlocked('Poskytovatel, schéma nebo připojení se změnilo; schválení už nelze použít.')
         validate(row['schema'],d['parameters'])
+        if b['provider']=='ha_mcp' and self._guide()!=d.get('guide_receipt'):raise RepairBlocked('Pravidla nebo potvrzení HA-MCP se změnila; je potřeba nový plán.')
         if fingerprint(self._original(b['provider'],b['tool'],d['parameters']))!=d['original_sha256']:raise RepairBlocked('Cíl se změnil; je potřeba nové schválení.')
         receipt=self.backups.verify(d['original_sha256'])
         if fingerprint(receipt)!=d['backup']['receipt_sha256']:raise RepairBlocked('Důkaz zálohy se změnil; je potřeba nový plán.')

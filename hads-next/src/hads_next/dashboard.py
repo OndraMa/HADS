@@ -69,9 +69,10 @@ def render_dashboard(app,csrf):
     historical=[c for c in diagnostics if (app.system.followup.report(c['id']) or {}).get('state')=='check_passed']
     historical_ids={c['id'] for c in historical}
     diagnostics=[c for c in diagnostics if c['id'] not in historical_ids]
-    opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids|diagnostic_ids]
+    grouped=app.orchestration.grouped_children() if hasattr(app,'orchestration') else set()
+    opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids|diagnostic_ids|grouped]
     resolved=[c for c in cases if c['status']=='resolved']
-    recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids]
+    recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids|grouped]
     waiting=[c for c in cases if c['id'] not in observation_ids and (any((p['status'] is None and p.get('decision') not in {'reject','manual'}) or p['status']=='applied_verification_pending' for p in plans[c['id']]) or jobs[c['id']] and jobs[c['id']][0]['state']=='waiting_for_user' and jobs[c['id']][0]['conclusion'] and provider['enabled'] and runtime['runtime_installed'])]
     active=sum(bool(jobs[c['id']] and jobs[c['id']][0]['state']=='investigating') for c in cases)
     esc=lambda x:escape(str(x),quote=True)

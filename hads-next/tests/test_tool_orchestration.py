@@ -23,7 +23,7 @@ from hads_next.tool_ui import settings
 class OrchestratedWire(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.changed_schema=False;self.uncertain=False
+        self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
         self.old='light.original_fixture';self.new='light.current_fixture';self.auto='automation.fixture_room'
         self.config={'id':'automation_fixture_id','alias':'Fixture room','triggers':[{'trigger':'state','entity_id':'binary_sensor.fixture_button','to':'on'}],
                      'conditions':[],'actions':[{'action':'light.turn_on','target':{'entity_id':self.old}}]}
@@ -68,10 +68,11 @@ class OrchestratedWire(unittest.TestCase):
                     if name=='ha_search_tools':value=[r for r in outer.definitions() if r['name'] in args['tools']]
                     else:
                         if name in {'ha_call_read_tool','ha_call_write_tool'}:name=args['name'];args=args['arguments']
-                        if name=='ha_config_get_automation':value={'success':True,'config':copy.deepcopy(outer.config),'config_hash':fingerprint(outer.config),'references':{'entities':[outer.old]}}
+                        if name=='ha_get_skill_guide':value={'success':True,'file':args['file'],'content':'Acknowledgment key: '+outer.guide_ack+' — strict best-practices. Use literal targets and supported state triggers.'}
+                        elif name=='ha_config_get_automation':value={'success':True,'config':copy.deepcopy(outer.config),'config_hash':fingerprint(outer.config),'references':{'entities':[outer.old]}}
                         elif name=='ha_get_state':value={'success':True,'data':{'entity_id':args['entity_id'],'state':'unavailable','private_token':'NEVER_EXPORT'}}
                         elif name=='ha_config_set_automation':
-                            outer.assertEqual(args['config_hash'],fingerprint(outer.config));outer.assertIs(args['run_actions'],False)
+                            outer.assertEqual(args['config_hash'],fingerprint(outer.config));outer.assertIs(args['run_actions'],False);outer.assertEqual(args['BestPracticeKey'],outer.guide_ack)
                             outer.writes.append(copy.deepcopy(args));outer.config=copy.deepcopy(args['config'])
                             if outer.uncertain:self.output({'error':'lost reply'},503);return
                             value={'success':True,'config_hash':fingerprint(outer.config)}
@@ -202,9 +203,24 @@ class OrchestratedWire(unittest.TestCase):
         self.app.orchestration.correlate([{'source':'core','component':'resolver','observed_at':self.now-20,'message':'DNS name resolution failed'},
             {'source':'application','component':'radio','observed_at':self.now-15,'message':'Cannot connect to provider'},
             {'source':'core','component':'weather','observed_at':self.now-10,'message':'connection refused'}])
-        groups=self.app.orchestration.correlate([]);self.assertEqual(len(groups),1);self.assertEqual(len(groups[0]['components']),3);self.assertFalse(groups[0]['root_cause_proven'])
+        groups=self.app.orchestration.correlate([]);self.assertEqual(len(groups),1);self.assertEqual(len(groups[0]['components']),3);self.assertFalse(groups[0]['root_cause_proven']);self.assertEqual(len([c for c in self.app.snapshot()['cases'] if c['kind']=='network_correlation']),1)
         self.app.orchestration.cycle();self.assertFalse(self.app.investigations.status()['provider']['enabled'] if 'provider' in self.app.investigations.status() else False)
         self.assertTrue(self.app.store.case(self.case['id'])['evidence']);self.assertEqual(self.writes,[])
+    def test_upstream_best_practice_receipt_is_read_bound_and_not_disabled(self):
+        plan=self.prepare();self.assertEqual(plan.document['parameters']['BestPracticeKey'],self.guide_ack)
+        self.assertIsNotNone(plan.document['guide_receipt'])
+        self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-abcd1234'
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.writes,[])
+        self.assertFalse(any(c.get('params',{}).get('arguments',{}).get('MandatoryBPS') is False for c in self.calls))
+
+    def test_real_runtime_catalog_stays_within_unchanged_launcher_limit(self):
+        from hads_next.investigator_roles import RoleBroker
+        role=RoleBroker(self.app.investigations.broker,'fixture-job',self.case['id'])
+        self.assertLessEqual(len(role.schemas()),32)
+        names={r['name'] for r in role.schemas()}
+        self.assertTrue({'hads_list_tools','hads_diagnostic_tool','hads_get_tool_schema','hads_propose_tool_repair'}<=names)
+
     def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
         html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)
         raw=canonical(self.app.tools.list_read(self.case['id'],{}));self.assertNotIn('fixture-only-token',raw);self.assertNotIn(self.url,raw)

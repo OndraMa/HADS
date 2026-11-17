@@ -15,6 +15,10 @@ from hads_next.tool_registry import object_schema
 from hads_next.hermes_runtime import run_investigation
 
 async def exercise(app,token,launcher,scripted_model):
+    # A new isolated test DB keeps this additional free protocol exercise
+    # separate from the unchanged per-installation/day admission limits.
+    from hads_next.haos_application import Application
+    app=Application(app.data_dir.parent/'orchestration-proof',app.core,core_ws=app.core_ws,launcher=launcher)
     settings=Settings(websocket_url='ws://127.0.0.1:8123/api/websocket',token=token,inspect_traces=True,scan_automations_file=False)
     original=await DependencyMapBuilder(settings).build()
     value=inspector(original,{'ready':True,'stale':False,'generation':1})

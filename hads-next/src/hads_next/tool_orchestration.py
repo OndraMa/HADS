@@ -139,7 +139,8 @@ class ToolOrchestration:
         install(self)
         if self.app.core_ws:
             try:
-                manifests=self.app.core_ws.transport({'type':'manifest/list','integrations':['spook','watchman','haghs','entity_availability','zha_toolkit','zha','ha_mcp_tools','hamster_mcp']})
+                requested=[p for p in ('spook','watchman','haghs','entity_availability','zha_toolkit','zha','ha_mcp_tools','hamster_mcp') if isinstance(loaded,list) and p in loaded]
+                manifests=self.app.core_ws.transport({'type':'manifest/list','integrations':requested}) if requested else []
                 if isinstance(manifests,list):
                     for row in manifests:
                         if not isinstance(row,dict):continue
@@ -171,10 +172,10 @@ class ToolOrchestration:
         else:
             status=client.get('/api/status');value=hadocs(client.get('/api/summary'),status);name='analysis_report';version=status.get('version')
         generated=stamp(value.get('generated_at'))
-        if generated is None or not -60<=self.app.clock()-generated<=86400:raise ToolDenied('Report nemá aktuální ověřitelný čas.')
+        if generated is None and provider!='hadocs' or generated is not None and not -60<=self.app.clock()-generated<=86400:raise ToolDenied('Report nemá aktuální ověřitelný čas.')
         self._report(provider,name,value,generated_at=generated)
         self.registry.provider(provider,connected=True,authenticated=None,authentication_basis='private_report_listener_no_auth_in_upstream',catalog_loaded=True,
-            diagnostic_read_verified=True,version=version,version_basis='actual_report',last_error=None,origin_digest=fingerprint(client.base))
+            diagnostic_read_verified=True,version=version,version_basis='actual_report',last_error=value.get('freshness_limitation'),origin_digest=fingerprint(client.base))
         self.registry.replace(provider,[descriptor(name,object_schema(),contract='upstream_structured_HTTP_report')])
 
     def _mcp(self,provider,client):
@@ -267,7 +268,7 @@ class ToolOrchestration:
                 if (data['cluster'],data['attribute']) not in {(0,4),(0,5),(1,32),(1,33),(1024,0),(1026,0),(1280,0)}:raise ToolDenied('Nepovolený atribut.')
                 entity=data['entity_id'];report=next((r for r in self.app.entity_context.reports(case) if r['entity_id']==entity),None)
                 radio=(report or {}).get('zha') or (report or {}).get('toolkit')
-                if not radio:raise ToolDenied('Chybí doložená vazba entity na IEEE zařízení.')
+                if not radio or self.app.clock()-report['checked_at']>600:raise ToolDenied('Chybí doložená vazba entity na IEEE zařízení.')
                 value=self.app.core_ws.transport({'type':'call_service','domain':'zha_toolkit','service':'attr_read','return_response':True,
                     'service_data':{'ieee':radio['ieee'],'endpoint':data['endpoint'],'cluster':data['cluster'],'attribute':data['attribute'],'use_cache':0,'tries':1}})
                 response=value.get('response') if isinstance(value,dict) else None

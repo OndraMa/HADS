@@ -34,7 +34,7 @@ RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.t
     cp -a /etc/ssl /opt/hermes-root/etc/ssl; \
     chmod 1777 /opt/hermes-root/tmp; \
     if [ "$CORE_LAB" = 1 ]; then \
-      uv pip install --system --no-cache --constraint /core-constraints.txt homeassistant==2026.11.0; \
+      uv pip install --system --no-cache --constraint /core-constraints.txt homeassistant==2026.11.0 gazetteer-matcher==1.1.0 hassil==3.12.1 home-assistant-intents==2026.10.27; \
       # Lab keeps original Core code and APIs; discard unused UI languages to \
       # fit VFS inode quotas. Production does not contain Core at all. \
       find /usr/local/lib/python3.14/site-packages/homeassistant -path '*/translations/*.json' -type f ! -name en.json ! -name cs.json -delete; \
