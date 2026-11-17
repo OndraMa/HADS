@@ -19,6 +19,7 @@ def main():
     shutil.copytree(ROOT/'lab',target/'lab',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
     shutil.copyfile(ROOT/'haos/Dockerfile',target/'Dockerfile')
     if args.receipt:
+        shutil.copyfile(ROOT/'tests/test_tool_orchestration.py',target/'lab/orchestration_wire_fixture.py')
         with (target/'Dockerfile').open('a') as output:
             output.write('\nFROM scratch AS receipt\nCOPY --from=0 /app/core-hermes-proof.json /core-hermes-proof.json\n')
     shutil.copyfile(ROOT/'haos/run.sh',target/'run.sh')

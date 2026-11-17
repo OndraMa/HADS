@@ -258,6 +258,9 @@ input_button:
                         from orchestrated_catalog_probe import exercise as exercise_orchestration
                         result['tool_orchestration']=await exercise_orchestration(app,token,launcher,ScriptedModel)
                         assert result['tool_orchestration']['passed']
+                        from approved_orchestration_probe import exercise as exercise_approved_orchestration
+                        result['tool_orchestration']['approved_wire_e2e']=await exercise_approved_orchestration(launcher,ScriptedModel)
+                        assert result['tool_orchestration']['approved_wire_e2e']['passed']
                 finally:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()
