@@ -60,7 +60,8 @@ class MusicMCP:
         self._sequence+=1
         payload={'jsonrpc':'2.0','method':method,'params':params}
         if not notification:payload['id']=self._sequence
-        headers={'Authorization':'Bearer '+self._token,'Content-Type':'application/json','Accept':'application/json, text/event-stream'}
+        headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}
+        if self._token:headers['Authorization']='Bearer '+self._token
         if self._session:headers['Mcp-Session-Id']=self._session
         if self._protocol:headers['MCP-Protocol-Version']=self._protocol
         request=Request(self.endpoint,data=json.dumps(payload).encode(),headers=headers,method='POST')

@@ -23,7 +23,7 @@ from hads_next.tool_ui import settings
 class OrchestratedWire(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
+        self.expected_auth='Bearer fixture-only-token';self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
         self.old='light.original_fixture';self.new='light.current_fixture';self.auto='automation.fixture_room'
         self.config={'id':'automation_fixture_id','alias':'Fixture room','triggers':[{'trigger':'state','entity_id':'binary_sensor.fixture_button','to':'on'}],
                      'conditions':[],'actions':[{'action':'light.turn_on','target':{'entity_id':self.old}}]}
@@ -53,7 +53,7 @@ class OrchestratedWire(unittest.TestCase):
             def output(self,value,status=200):
                 data=json.dumps(value).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
             def do_POST(self):
-                outer.assertEqual(self.headers.get('Authorization'),'Bearer fixture-only-token')
+                outer.assertEqual(self.headers.get('Authorization'),outer.expected_auth)
                 msg=json.loads(self.rfile.read(int(self.headers['Content-Length'])));outer.calls.append(msg)
                 if msg['method']=='notifications/initialized':self.send_response(202);self.send_header('Content-Length','0');self.end_headers();return
                 if msg['method']=='initialize':result={'protocolVersion':'2025-06-18','serverInfo':{'name':'ha-mcp','version':'fixture-contract-1'}}
@@ -142,6 +142,13 @@ class OrchestratedWire(unittest.TestCase):
         self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
         self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
         self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'resolved')
+    def test_private_path_endpoint_does_not_send_an_invalid_empty_bearer_header(self):
+        self.expected_auth=None
+        client=MCPConnection(self.url+'/mcp',allow_private_http=True)
+        self.assertTrue(client.discover())
+        self.assertEqual(client.call('ha_config_get_automation',{'entity_id':self.auto})['config'],self.config)
+        self.assertEqual(self.writes,[])
+
     def test_meta_tool_search_is_discovered_but_proxies_never_exposed_to_AI(self):
         self.meta=True;self.app.tools._mcp('ha_mcp',self.client)
         self.assertIn('ha_config_get_automation',self.client.delegated)
@@ -253,6 +260,21 @@ class OrchestratedWire(unittest.TestCase):
         attrs=report['sensors'][0]['attributes']
         self.assertEqual(attrs['per_device']['binary_sensor.fixture_contact'],99.8)
         self.assertEqual(attrs['offline_entities'],['binary_sensor.fixture_contact'])
+
+    def test_public_research_uses_actual_provider_version_and_explicit_consent(self):
+        self.app.tools._http('automation_inspector',ReportHTTP(self.url,allow_private_http=True))
+        research=self.app.investigations.research
+        urls=[];research.transport=lambda url:(urls.append(url) or json.dumps({'items':[]}))
+        request={'project':'automation_inspector','version':'1.2.4','terms':'missing reference'}
+        result=research.read(self.case['id'],'hads_get_known_issues',request)
+        self.assertEqual(result['status'],'not_read');self.assertEqual(urls,[])
+        self.app.tools.diagnostic_read(self.case['id'],{'provider':'automation_inspector','tool':'dependency_report','arguments':{}})
+        research.configure(True,'owner-fixture','owner-fixture')
+        result=research.read(self.case['id'],'hads_get_known_issues',request)
+        self.assertNotEqual(result['status'],'not_read');self.assertEqual(len(urls),1)
+        from urllib.parse import unquote_plus
+        self.assertIn('repo:ITSpecialist111/Automation-Inspector',unquote_plus(urls[0]))
+        self.assertEqual(self.writes,[])
 
     def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
         html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)

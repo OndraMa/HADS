@@ -278,6 +278,9 @@ class ToolOrchestration:
             elif route=='music':
                 return self.app.investigations.broker._read(incident_id,'hads_get_music_assistant_diagnostics',{**args['arguments'],'section':client})
             else:raise ToolDenied('Vykonávací čtecí adaptér není připojený.')
+            if isinstance(value,dict):
+                provider=next(p for p in self.registry.providers() if p['id']==args['provider'])
+                value={**value,'provider_version':provider.get('version'),'provider_version_basis':provider.get('version_basis')}
             if len(canonical(value).encode())>11500:raise ToolDenied('Zúžení výsledku je nutné; report překročil limit důkazu.')
             result=self.app.investigations.broker._result(incident_id,'tool:'+args['provider']+':'+args['tool'],args['provider'],'available' if value not in ({},[]) else 'no_relevant_data',value,self.app.clock(),'Výsledek poskytovatele není automaticky příčina ani povolení zápisu.',observed=observed)
             self.registry.provider(args['provider'],diagnostic_read_verified=True)
