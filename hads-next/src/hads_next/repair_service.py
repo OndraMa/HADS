@@ -79,7 +79,7 @@ class RepairService:
         result=[]
         for r in rows:
             document=json.loads(r['document'])
-            if document['incident_id']==incident_id and document['operation'] in {'core_managed.replace_entity_reference','core.enable_lighting_automation'}:
+            if document['incident_id']==incident_id and document['operation'] in {'core_managed.replace_entity_reference','core.enable_lighting_automation','tool.approved'}:
                 result.append({'plan_id':r['id'],'document':document,'status':r['status'],'execution_id':r['execution_id'],'decision':r['decision']})
         return result
 
@@ -117,6 +117,7 @@ class RepairService:
 
     def decide(self,identity,decision,principal):
         self.owner_only(principal);plan=self.plan(identity)
+        if plan.document.get('operation')=='tool.approved':raise RepairBlocked('Použij samostatné schválení nástroje s potvrzením výlučné práce s cílem.')
         authority=ApprovalAuthority(self.app.store.db_path,owner=self.app.owner())
         engine=None
         if decision=='approve':
@@ -134,6 +135,7 @@ class RepairService:
 
     def confirm_physical(self,identity,principal):
         self.owner_only(principal);plan=self.plan(identity)
+        if plan.document['operation']=='tool.approved':return self.app.approved_tools.confirm_physical(identity,principal)
         if plan.document['operation']!='core.enable_lighting_automation':raise RepairBlocked('Tento plán nevyžaduje potvrzení světla.')
         execution=self.native_engine(plan).execution(identity)
         if not execution or execution.status!='applied_verification_pending':raise RepairBlocked('Oprava nečeká na funkční potvrzení.')
@@ -144,6 +146,7 @@ class RepairService:
 
     def rollback(self,identity,principal):
         self.owner_only(principal);plan=self.plan(identity)
+        if plan.document['operation']=='tool.approved':raise RepairBlocked('Návrat nástroje potřebuje samostatný plán a nové potvrzení výlučné práce s cílem.')
         case=self.app.store.case(plan.document['incident_id']);evidence=[e['evidence_id'] for e in case['evidence']]
         if plan.document['operation']=='core.enable_lighting_automation':
             engine=self.native_engine(plan)
@@ -160,6 +163,10 @@ class RepairService:
         entity=event.get('data',{}).get('entity_id')
         tracked={'automation.hads_next_reference_test'}
         with self.app.store._connect() as db:tracked.update(r[0] for r in db.execute('SELECT entity_id FROM automation_intents WHERE expected_enabled=1'))
+        with self.app.store._connect() as db:
+            for row in db.execute("SELECT document FROM repair_plans WHERE json_extract(document,'$.operation')='tool.approved'"):
+                d=json.loads(row[0])
+                if d['binding']['provider']=='ha_mcp':tracked.add(d['parameters']['entity_id'])
         if entity not in tracked:return
         try:stamp=datetime.fromisoformat(event['time_fired']).timestamp();context=event['context']['id']
         except (ValueError,KeyError,TypeError):return
@@ -172,6 +179,7 @@ class RepairService:
             self.observations.append({'kind':'automation_triggered','observed_at':stamp,'payload':{'automation_id':automation_id,'automation_entity_id':entity,'context_id':context}});self.observations=self.observations[-256:]
 
     def observe_state(self,state,stamp):
+        if hasattr(self.app,'approved_tools'):self.app.approved_tools.observe_state(state,stamp)
         if not state['entity_id'].startswith('light.') and state['entity_id']!=TARGET:return
         context=state.get('context',{}).get('id')
         with self.lock:
@@ -187,6 +195,10 @@ class RepairService:
             rows=db.execute("SELECT p.id,p.document FROM repair_plans p JOIN repair_executions e ON e.plan_id=p.id WHERE e.status='applied_verification_pending'").fetchall()
         for row in rows:
             plan=RepairPlan(row['document'])
+            if plan.document['operation']=='tool.approved':
+                try:self.app.approved_tools.verify(row['id'])
+                except (ValueError,KeyError):pass
+                continue
             if plan.document['operation'] not in {'core_managed.replace_entity_reference','core.enable_lighting_automation'}:continue
             engine=self.native_engine(plan) if plan.document['operation']=='core.enable_lighting_automation' else self.engine();execution=engine.execution(row['id'])
             if plan.document['rollback']['rollback_of']:

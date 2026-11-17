@@ -10,7 +10,7 @@ from .evidence_broker import BrokerDenied
 from .observability import redact
 
 
-COMMON={'hads_get_incident','hads_get_related_incidents','hads_get_core_status'}
+COMMON={'hads_list_tools','hads_diagnostic_tool','hads_get_tool_schema','hads_propose_tool_repair','hads_get_incident','hads_get_related_incidents','hads_get_core_status'}
 ROLE_LABELS={'event':'Události a původ akcí','system':'Stav systému','supervisor':'Supervisor a aplikace',
     'device':'Ovladače a zařízení','automation':'Automatizace','research':'Výzkum známých problémů',
     'root_cause':'Porovnání příčin','repair_planner':'Návrh opravy','verification':'Ověření výsledku'}

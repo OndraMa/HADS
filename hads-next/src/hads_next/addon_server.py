@@ -217,6 +217,9 @@ class Handler(BaseHTTPRequestHandler):
                     if len(content)>65536:raise ValueError('Neplatný companion balíček.')
                     archive.writestr(name,content)
             return self.send_body(200,stream.getvalue(),'application/zip')
+        if path == '/setup/tools':
+            from .tool_ui import settings
+            return self.send_body(200,settings(self.server.app,self.server.csrf))
         if path == '/setup/repair':
             state=self.server.app.repairs.status()
             return self.send_body(200,'<h1>Bezpečně podporované opravy</h1><p><a href="../download/companion" download="HADS_companion.zip">Stáhnout integraci, testovací YAML a přesný postup</a></p><p>Jediná zapisovací operace mění vlastní referenci izolované virtuální testovací automatizace přes atomické CAS companion integrace. Běžné automatizace se nepřepisují. Companion musí být zvlášť instalovaný na testovacím HA.</p><p>'+escape(state['backup'])+'</p><p>Rizikové zásahy a OneDrive restore: nepodporované, blokované.</p><form method="post" action="repair"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label><input type="checkbox" name="enabled" value="yes" '+('checked' if state['enabled'] else '')+'>Potvrzuji oddělené virtuální testovací prostředí a povoluji tento úzký katalog. Každá změna stále vyžaduje zvláštní schválení.</label><button>Ověřit companion a uložit katalog</button></form><details><summary>Technický stav</summary><pre>'+escape(json.dumps(state,ensure_ascii=False,indent=2))+'</pre></details>')
@@ -405,6 +408,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.app.repairs.decide(form.get('plan_id',[''])[0],form.get('decision',[''])[0],self.headers['X-Remote-User-Id'])
             elif path == '/repair/rollback':
                 self.server.app.repairs.rollback(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
+            elif path == '/setup/tool-connection':
+                self.server.app.tools.connections.configure(form.get('provider',[''])[0],url=form.get('url',[''])[0],token=form.get('token',[''])[0],private_http=form.get('private_http')==['yes'],enabled=form.get('enabled')==['yes'],principal=self.headers['X-Remote-User-Id'])
+                self.server.app.request_source_check()
+            elif path == '/setup/tool-activate':
+                self.server.app.tools.connections.activate_previous(form.get('provider',[''])[0],self.headers['X-Remote-User-Id'])
+                self.server.app.request_source_check()
+            elif path == '/tool-repair/decide':
+                self.server.app.approved_tools.decide(form.get('plan_id',[''])[0],form.get('decision',[''])[0],self.headers['X-Remote-User-Id'],exclusive=form.get('exclusive')==['yes'])
+            elif path == '/tool-repair/rollback':
+                self.server.app.approved_tools.rollback_plan(form.get('plan_id',[''])[0],exclusive=form.get('exclusive')==['yes'])
             elif path == '/setup/check':
                 self.server.app.request_source_check()
             elif path == '/setup/runtime':

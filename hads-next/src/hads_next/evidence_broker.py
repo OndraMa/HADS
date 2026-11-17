@@ -217,6 +217,11 @@ class EvidenceBroker:
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()
+            runtime=getattr(self,'runtime_system',None)
+            tools=getattr(getattr(runtime,'app',None),'tools',None)
+            if tools:
+                value['orchestrated_operations']=[{k:r[k] for k in ('provider','name','schema_hash','risk','repair_operation_implemented','available')} for r in tools.registry.tools() if r['effect']=='write']
+                value['production_limitation_cs']='Použij aktuální nástrojový katalog a nezávislé schválení konkrétního plánu. Změny registru a konfigurace potřebují ověřenou obnovitelnou zálohu. Obecné zápisy a neověřené operace jsou zakázané.'
         elif name=='hads_get_incident':
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}

@@ -12,7 +12,7 @@ RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.t
       export PIP_CERT=/run/secrets/proxy_ca SSL_CERT_FILE=/run/secrets/proxy_ca GIT_SSL_CAINFO=/run/secrets/proxy_ca; \
     fi; \
     apt-get update; apt-get install -y --no-install-recommends git build-essential ca-certificates libseccomp2; \
-    python -m pip install --no-cache-dir uv==0.13.6 websockets==16.0; \
+    python -m pip install --no-cache-dir uv==0.13.6 websockets==16.0 jsonschema==4.26.0 cryptography==46.0.3; \
     mkdir -p /opt/hermes-root/opt/hermes /opt/hermes-root/usr/local/lib /opt/hermes-root/app/hads_next /opt/hermes-root/tmp /opt/hermes-root/etc; \
     git init /opt/hermes-root/opt/hermes; \
     git -C /opt/hermes-root/opt/hermes remote add origin https://github.com/NousResearch/hermes-agent.git; \

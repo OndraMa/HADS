@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "baseline": "c1372a392f213ab995c9848ae9721b3732967268",
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "new_RC_published": false,
+  "full_original_assignment_complete": false,
+  "requirements": [
+    {
+      "requirement": "1",
+      "description": "Audit revize, izolovaná větev a neměnné archivy",
+      "implementation": "git baseline + additive schema",
+      "tool": "Git/GitHub",
+      "operational_link": "source",
+      "test": "git diff and ref check",
+      "result": "verified_source"
+    },
+    {
+      "requirement": "2",
+      "description": "Upstream rešerše a kompatibilita",
+      "implementation": "ORCHESTRATION_ACCEPTANCE_CS + pinned source inspection",
+      "tool": "15 provider contracts",
+      "operational_link": "reviewed_source",
+      "test": "pin hashes + contract tests",
+      "result": "source_verified_live_pending"
+    },
+    {
+      "requirement": "3",
+      "description": "Pět oddělených vrstev",
+      "implementation": "Existing RC7 + ToolRegistry/Diagnostic broker/ApprovedRepairBroker",
+      "tool": "Application and IncidentStore",
+      "operational_link": "wired_controller",
+      "test": "wire scenarios + regressions",
+      "result": "implemented"
+    },
+    {
+      "requirement": "4",
+      "description": "Konkrétní observability zdroje",
+      "implementation": "Existing readers + reports + Recorder/log adapters",
+      "tool": "Core/Supervisor/HAOS/providers",
+      "operational_link": "check_sources -> registry -> cases",
+      "test": "provider wire contracts",
+      "result": "implemented_partial_live_pending"
+    },
+    {
+      "requirement": "5",
+      "description": "HA 2026.11 provenance",
+      "implementation": "Existing Action history/context/traces + versioned native contracts",
+      "tool": "Core",
+      "operational_link": "EvidenceBroker",
+      "test": "actual Core lab",
+      "result": "container_verification_pending"
+    },
+    {
+      "requirement": "6",
+      "description": "Originální Hermes a iterativní plánování",
+      "implementation": "Existing confined NousResearch runtime + dynamic catalog tools",
+      "tool": "Hermes + broker",
+      "operational_link": "RoleBroker/BrokerSession",
+      "test": "actual original runtime CI",
+      "result": "container_verification_pending"
+    },
+    {
+      "requirement": "7",
+      "description": "Specializace a úsporné plánování",
+      "implementation": "Existing logical roles, bounded sequential tasks",
+      "tool": "RoleBroker/OrchestrationCases",
+      "operational_link": "one worker",
+      "test": "role authority tests",
+      "result": "implemented"
+    },
+    {
+      "requirement": "8",
+      "description": "Trvalý incidentní spis a restart",
+      "implementation": "Existing DB + additive catalog/reads/identity tables",
+      "tool": "IncidentStore/InvestigationJobs",
+      "operational_link": "persistent",
+      "test": "restart and dedup tests",
+      "result": "implemented"
+    },
+    {
+      "requirement": "9",
+      "description": "Funkční poruchy místo log-only",
+      "implementation": "Existing detection + specific observations/verification",
+      "tool": "DetectionEngine",
+      "operational_link": "state and automation events",
+      "test": "false-repair negative test",
+      "result": "implemented_live_pending"
+    },
+    {
+      "requirement": "10",
+      "description": "Music Assistant rádio",
+      "implementation": "Existing fixed FastMCP reader added to common registry",
+      "tool": "Music Assistant/Core",
+      "operational_link": "target-scoped broker",
+      "test": "radio regressions + MCP fixture",
+      "result": "live_pending"
+    },
+    {
+      "requirement": "11",
+      "description": "ZHA ovladač a nedostupný senzor",
+      "implementation": "Existing journal/context + Toolkit attr read and provider results",
+      "tool": "Watchman/ZHA/Toolkit/Inspector",
+      "operational_link": "autonomous acquisition + Hermes",
+      "test": "A wire scenario + existing Zigbee suite",
+      "result": "live_pending"
+    },
+    {
+      "requirement": "12",
+      "description": "Výzkum a paměť",
+      "implementation": "Existing approved research reader + persistent investigation checkpoints",
+      "tool": "ResearchReader/IncidentStore",
+      "operational_link": "Hermes tools",
+      "test": "research and budget suite",
+      "result": "implemented_partial_live_pending"
+    },
+    {
+      "requirement": "13",
+      "description": "Skutečné opravy existujícími nástroji",
+      "implementation": "HA-MCP single literal lighting reference / Spook single enable flag",
+      "tool": "HA-MCP/Spook",
+      "operational_link": "ApprovedRepairBroker",
+      "test": "B/Spook wire scenarios",
+      "result": "implemented_narrow_catalog"
+    },
+    {
+      "requirement": "14",
+      "description": "Neměnný souhlas vlastníka",
+      "implementation": "Existing ApprovalAuthority + schema/version/origin/target binding",
+      "tool": "Ingress/ApprovedRepairBroker",
+      "operational_link": "independent writer",
+      "test": "forged/expired/drift/CSRF negatives",
+      "result": "implemented"
+    },
+    {
+      "requirement": "15",
+      "description": "Záloha a rollback",
+      "implementation": "Signature verification contract + exact snapshot/inverse + no replay",
+      "tool": "Independent verifier + provider",
+      "operational_link": "fail closed until real restore proof",
+      "test": "signed fixture and uncertainty tests",
+      "result": "independent_live_verifier_not_connected"
+    },
+    {
+      "requirement": "16",
+      "description": "Funkční ověření a český report",
+      "implementation": "Existing FunctionalVerifier + provider reports and physical confirmation",
+      "tool": "trusted controller observations",
+      "operational_link": "persisted report validation",
+      "test": "trigger/context/coverage/false-repair",
+      "result": "implemented_live_pending"
+    },
+    {
+      "requirement": "17",
+      "description": "České Command Center",
+      "implementation": "Existing UI + actual tool setup and immutable plan review",
+      "tool": "Ingress",
+      "operational_link": "tools and repair cards",
+      "test": "browser and ingress tests",
+      "result": "implemented_review_pending"
+    },
+    {
+      "requirement": "18",
+      "description": "RPi 4/2 GB, žádné skryté AI náklady",
+      "implementation": "Existing reserve and metering + bounded catalog, requests, cache",
+      "tool": "controller and isolated worker",
+      "operational_link": "same admission gates",
+      "test": "memory/restart/cost tests",
+      "result": "hardware_live_pending"
+    },
+    {
+      "requirement": "19",
+      "description": "Povinné scénáře A-J",
+      "implementation": "Existing suites + test_tool_orchestration + real Core/Inspector/Hermes",
+      "tool": "offline/wire/container/live",
+      "operational_link": "separate proof scopes",
+      "test": "A/B/C/E/F/G/H/I offline; D existing radio; J acceptance",
+      "result": "live_J_pending"
+    },
+    {
+      "requirement": "20",
+      "description": "Milestones a release gate",
+      "implementation": "No RC or installer published in this work",
+      "tool": "GitHub source PR + test workflow",
+      "operational_link": "no release job",
+      "test": "no new release/archive diff",
+      "result": "not_full_M5"
+    },
+    {
+      "requirement": "21",
+      "description": "Předání zdrojů/testů/návodů",
+      "implementation": "One cumulative source PR, acceptance matrix and receipts",
+      "tool": "GitHub",
+      "operational_link": "reviewable branch",
+      "test": "exact source/run references",
+      "result": "pending_final_review"
+    },
+    {
+      "requirement": "22",
+      "description": "Úplné uzavření incident→oprava→ověření",
+      "implementation": "Actual approved provider operation exercised offline; live chain unverified",
+      "tool": "registry + Hermes + writer + verifier",
+      "operational_link": "existing application",
+      "test": "B/Spook end-to-end, Core CI, live acceptance",
+      "result": "not_full_original_assignment"
+    }
+  ]
+}

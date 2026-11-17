@@ -66,6 +66,12 @@ class Application:
         from .legacy_connectors import LegacyConnectors
         self.legacy_connectors=LegacyConnectors(self)
         self.investigations.broker.runtime_system=self.system
+        from .tool_orchestration import ToolOrchestration
+        from .approved_tools import ApprovedRepairBroker
+        from .orchestration_cases import OrchestrationCases
+        self.tools=ToolOrchestration(self)
+        self.approved_tools=ApprovedRepairBroker(self)
+        self.orchestration=OrchestrationCases(self)
         from .live_acceptance import LiveAcceptance
         self.acceptance=LiveAcceptance(self)
 
@@ -148,6 +154,9 @@ class Application:
             self.providers.update(values,states)
             self.entity_context.update(values,states)
             self.providers.record_toolkit(self.entity_context.toolkit)
+            self.tools.refresh(values,states)
+            self.approved_tools.identities(values.get("entity_registry"))
+            self.orchestration.cycle()
         with self._lock:
             self._sources = sources
         return sources

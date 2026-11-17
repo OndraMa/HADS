@@ -75,11 +75,11 @@ class MusicMCP:
                     return None
                 content=response.headers.get_content_type()
                 if content=='application/json':
-                    raw=bounded_body(response,128000)
+                    raw=bounded_body(response,getattr(self,"max_rpc_bytes",128000))
                     message=json.loads(raw)
                 elif content=='text/event-stream':
                     data=[];message=None;buffer=b''
-                    for chunk in bounded_chunks(response,128000,15):
+                    for chunk in bounded_chunks(response,getattr(self,"max_rpc_bytes",128000),15):
                         buffer=(buffer+chunk).replace(b'\r\n',b'\n')
                         while b'\n' in buffer:
                             raw,buffer=buffer.split(b'\n',1);line=raw.decode('utf-8')
