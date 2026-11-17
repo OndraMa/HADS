@@ -221,6 +221,39 @@ class OrchestratedWire(unittest.TestCase):
         names={r['name'] for r in role.schemas()}
         self.assertTrue({'hads_list_tools','hads_diagnostic_tool','hads_get_tool_schema','hads_propose_tool_repair'}<=names)
 
+    def test_application_wires_report_discovery_and_collects_without_a_model(self):
+        app=self.app
+        app.tools.connections.clients['automation_inspector']=ReportHTTP(self.url,allow_private_http=True)
+        app.tools.connections.clients['hadocs']=ReportHTTP(self.url,allow_private_http=True)
+        def core(path):
+            if path=='/api/config':return {'version':'2026.11.1','components':[]}
+            if path=='/api/states':return []
+            return self.core(path)
+        def ws(command):
+            if command['type'] in {'config/entity_registry/list','config/device_registry/list','system_log/list'}:return []
+            if command['type']=='repairs/list_issues':return {'issues':[]}
+            if command['type']=='system_health/info':return {'domains':{},'complete':True}
+            return self.ws(command)
+        app.core=CoreReader(core);app.core_ws=CoreWSReader(ws)
+        app.investigations.broker.core=app.core;app.investigations.broker.ws=app.core_ws
+        app.check_sources()
+        providers={r['id']:r for r in app.tools.registry.providers()}
+        self.assertTrue(providers['automation_inspector']['diagnostic_read_verified'])
+        self.assertTrue(providers['hadocs']['diagnostic_read_verified'])
+        self.assertTrue(any(e['source']=='automation_inspector' for e in app.store.case(self.case['id'])['evidence']))
+        self.assertEqual(self.writes,[])
+
+    def test_old_HADocs_report_survives_process_restart_without_claiming_a_new_scan(self):
+        from hads_next.provider_reports import hadocs,sensor_report
+        value=hadocs({'available':True,'health':{'health_score':97},'incidents':[],'recommendations':[]},
+                     {'version':'0.17.0-rc5','running':False,'exit_code':None,'finished_at':None,'report_available':True})
+        self.assertIsNone(value['generated_at']);self.assertFalse(value['freshness_verified'])
+        report=sensor_report('entity_availability',[{'entity_id':'sensor.availability','platform':'entity_availability'}],
+            [{'entity_id':'sensor.availability','state':'99.8','last_updated':self.iso(self.now),'attributes':{'per_device':{'binary_sensor.fixture_contact':99.8},'offline_entities':['binary_sensor.fixture_contact'],'count':1}}])
+        attrs=report['sensors'][0]['attributes']
+        self.assertEqual(attrs['per_device']['binary_sensor.fixture_contact'],99.8)
+        self.assertEqual(attrs['offline_entities'],['binary_sensor.fixture_contact'])
+
     def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
         html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)
         raw=canonical(self.app.tools.list_read(self.case['id'],{}));self.assertNotIn('fixture-only-token',raw);self.assertNotIn(self.url,raw)

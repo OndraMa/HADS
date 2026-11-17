@@ -39,6 +39,24 @@ jobs:
           python scripts/investigation_context.py --receipt .test-tmp/orchestration-context
           python scripts/fetch_inspector_lab.py .test-tmp/orchestration-context
           docker build --build-arg CORE_LAB=1 --target receipt --output type=local,dest=.test-tmp/orchestration-result .test-tmp/orchestration-context
+      - name: Verify and print exact acceptance scope
+        working-directory: hads-next
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,os
+          root=pathlib.Path('.test-tmp/orchestration-result')
+          proof=json.loads((root/'core-hermes-proof.json').read_text())
+          tests=json.loads(pathlib.Path('docs/evidence/offline-tests.json').read_text())
+          assert proof['passed'] and proof['isolation_verified'] and proof['tool_orchestration']['passed']
+          assert tests['passed'] and not tests['failures'] and not tests['errors']
+          result={'source_commit':os.environ['GITHUB_SHA'],'runner':os.environ['RUNNER_ARCH'],
+              'tests_run':tests['tests_run'],'offline_passed':tests['passed'],
+              'core_hermes_proof_sha256':hashlib.sha256((root/'core-hermes-proof.json').read_bytes()).hexdigest(),
+              'offline_proof_sha256':hashlib.sha256(pathlib.Path('docs/evidence/offline-tests.json').read_bytes()).hexdigest(),
+              'tool_orchestration':proof['tool_orchestration'],'live_haos':False,'real_model_reasoning_tested':False,'paid_model_calls':0}
+          (root/'ORCHESTRATION_PROOF.json').write_text(json.dumps(result,indent=2)+'\n')
+          print('HADS_ORCHESTRATION_PROOF='+json.dumps(result,sort_keys=True))
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ always() }}
         with:

@@ -8,6 +8,7 @@ from contextlib import closing
 import copy
 import json
 import secrets
+import threading
 from .repair import ApprovalAuthority,RepairPlan,RepairBlocked,ExecutionResult,connect,digest
 from .tool_registry import ToolDenied,validate,fingerprint
 from .evidence import canonical
@@ -16,7 +17,7 @@ from .verification import FunctionalVerifier
 
 class ApprovedRepairBroker:
     def __init__(self,app):
-        self.app=app;self.tools=app.tools
+        self.app=app;self.tools=app.tools;self._write_lock=threading.RLock()
         self.backups=RestoreReceiptVerifier(app.data_dir,app.clock)
         connect(app.store.db_path).close()
         # An intent from a previous process cannot be re-executed, even with
@@ -203,6 +204,9 @@ class ApprovedRepairBroker:
             return self.execute(plan,token,principal)
 
     def execute(self,plan,token,principal):
+        with self._write_lock:return self._execute(plan,token,principal)
+
+    def _execute(self,plan,token,principal):
         self._owner(principal);self._preflight(plan);d=plan.document;now=self.app.clock();execution_id=secrets.token_hex(16)
         with closing(connect(self.app.store.db_path)) as db:
             db.execute('BEGIN IMMEDIATE')
