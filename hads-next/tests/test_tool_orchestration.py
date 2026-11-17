@@ -109,6 +109,7 @@ class OrchestratedWire(unittest.TestCase):
             return {'entity_id':self.entry['entity_id'],'state':'on','last_updated':self.iso(self.now)}
         raise ReadFailure('unknown_fixture')
     def ws(self,command):
+        if command['type']=='config/auth/list':return [{'id':'owner-fixture','is_active':True,'is_owner':True,'system_generated':False,'group_ids':[]}]
         if command['type']=='get_services':return {'homeassistant':{'enable_entity':{'fields':{'entity_id':{'required':True}}},'disable_entity':{'fields':{'entity_id':{'required':True}}}}}
         if command['type']=='manifest/get':return {'domain':'spook','version':'fixture-contract-1'}
         if command['type']=='config/entity_registry/get':return copy.deepcopy(self.light_identity if command['entity_id']==self.new else self.entry)
@@ -242,6 +243,31 @@ class OrchestratedWire(unittest.TestCase):
             with self.assertRaises(ToolDenied):self.app.tools.diagnostic_read(self.case['id'],{'provider':'ha_mcp','tool':name,'arguments':args})
         with self.assertRaises(ToolDenied):validate({'$ref':'https://invalid.invalid/schema'}, {})
         self.assertEqual(self.writes,[])
+
+    def test_real_approved_tool_HTTP_route_requires_fresh_HA_owner_CSRF_and_exact_plan(self):
+        from hads_next.addon_server import Server
+        from http.client import HTTPConnection
+        from urllib.parse import urlencode
+        controller=Server(('127.0.0.1',0),self.app,ingress_peer='127.0.0.1')
+        self.addCleanup(controller.server_close);self.addCleanup(controller.shutdown)
+        threading.Thread(target=controller.serve_forever,daemon=True).start()
+        plan=self.prepare()
+        def post(principal,csrf,exclusive=True):
+            conn=HTTPConnection('127.0.0.1',controller.server_port,timeout=5)
+            body=urlencode({'plan_id':plan.plan_id,'decision':'approve','csrf':csrf,'exclusive':'yes' if exclusive else 'no'})
+            headers={'Content-Type':'application/x-www-form-urlencoded'}
+            if principal:headers['X-Remote-User-Id']=principal
+            try:
+                conn.request('POST','/tool-repair/decide',body,headers);response=conn.getresponse();response.read();return response.status
+            finally:conn.close()
+        self.assertEqual(post(None,controller.csrf),403)
+        self.assertEqual(post('other-user',controller.csrf),403)
+        self.assertEqual(post('owner-fixture','forged'),403)
+        self.assertEqual(post('owner-fixture',controller.csrf,False),409)
+        self.assertEqual(self.writes,[])
+        self.assertEqual(post('owner-fixture',controller.csrf),303);self.assertEqual(len(self.writes),1)
+        self.assertEqual(post('owner-fixture',controller.csrf),409);self.assertEqual(len(self.writes),1)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
     def test_expired_forged_wrong_principal_changed_schema_and_target_block_before_write(self):
         plan=self.prepare()
         with self.assertRaises(RepairBlocked):self.app.approved_tools.execute(plan,'forged','owner-fixture')

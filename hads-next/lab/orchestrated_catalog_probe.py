@@ -24,6 +24,8 @@ async def exercise(app,token,launcher,scripted_model):
     value=inspector(original,{'ready':True,'stale':False,'generation':1})
     assert original['schema_version']==2 and original['app_version']==APP_VERSION and original['summary']['inspected_items']>=1
     await asyncio.to_thread(app.check_sources)
+    services=await asyncio.to_thread(app.core_ws.transport,{'type':'get_services'})
+    assert isinstance(services,dict) and 'turn_on' in services.get('light',{}),'Actual Core service catalog must be readable, not silently replaced'
     app.tools._report('automation_inspector','dependency_report',value)
     app.tools.registry.provider('automation_inspector',connected=True,catalog_loaded=True,version=APP_VERSION,version_basis='actual_pinned_Inspector_builder',diagnostic_read_verified=True)
     app.tools.registry.replace('automation_inspector',[descriptor('dependency_report',object_schema(),contract='actual_upstream_builder_against_actual_Core')])
