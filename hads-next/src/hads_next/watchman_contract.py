@@ -130,8 +130,14 @@ def persist_watchman(app, report):
     incident = app.store.open_incident('provider_diagnostic', 'Watchman: odkazy vyžadují kontrolu kontextu.',
                                        ['integration:watchman'], at, correlation_key=key,
                                        occurrence_id='watchman-reference-review')
-    added = app.store.add_evidence(incident['id'], {'source': 'watchman_native', 'kind': 'watchman_reference_snapshot',
-                                  'event_id': event_id, 'observed_at': at, 'payload': report})
+    try:
+        added = app.store.add_evidence(incident['id'], {'source': 'watchman_native', 'kind': 'watchman_reference_snapshot',
+                                      'event_id': event_id, 'observed_at': at, 'payload': report})
+    except ValueError as error:
+        if str(error) not in {'Incident evidence budget exceeded; export/archive required','Incident byte budget exceeded; export/archive required'}:raise
+        report['gaps']=sorted(set(report['gaps']+['case_evidence_budget']))
+        report['read_verified']=False
+        return incident['id']
     if added:
         counts = report['counts']
         summary = ('HADS přečetl podrobnosti existujícího hlášení Watchmanu. '

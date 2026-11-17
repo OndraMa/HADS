@@ -81,6 +81,8 @@ class EntityContextTests(unittest.TestCase):
         again=self.app.store.case(case['id'])
         self.assertEqual(first['evidence'],again['evidence']);self.assertEqual(len(again['occurrences']),1)
         self.states[-1]['state']='off';self.app.check_sources()
+        self.states[0]['state']='0';self.states[0]['attributes']={'entities':[]}
+        self.now+=300;self.app.check_sources()
         self.assertEqual(self.app.entity_context.reports()[0]['classification'],'state_available')
         self.assertEqual(self.app.store.case(case['id'])['incident']['status'],'open')
         self.states[-1]['state']='unavailable';self.now+=300;self.app.check_sources()
@@ -114,3 +116,14 @@ class EntityContextTests(unittest.TestCase):
         self.assertFalse(any(isinstance(c,dict) and c.get('type')=='call_service' for c in self.calls))
         self.assertEqual(self.app.entity_context.reports()[0]['classification'],'unverified')
         self.assertNotIn('NEVER_COPY',json.dumps(self.app.entity_context.reports()))
+    def test_full_evidence_budget_does_not_stop_collection_or_fabricate_evidence(self):
+        from unittest.mock import patch
+        original=self.app.store.add_evidence
+        def limited(incident,event):
+            if event['source'] in {'native_entity_context','watchman_native'}:raise ValueError('Incident evidence budget exceeded; export/archive required')
+            return original(incident,event)
+        with patch.object(self.app.store,'add_evidence',side_effect=limited):self.app.check_sources()
+        report=self.app.entity_context.reports()[0];self.assertIn('case_evidence_budget',report['gaps'])
+        case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        result=self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':self.target})
+        self.assertEqual(result['status'],'not_read');self.assertEqual(result['evidence_ids'],[])

@@ -60,7 +60,7 @@ class EntityContext:
         targets=set(watchman_targets)
         cases=app.snapshot()['cases']
         for case in cases:
-            if case['kind']=='manual_functional' and case['status']=='open':targets.update(x for x in case['components'] if ENTITY.fullmatch(x))
+            if case['kind'] in {'manual_functional','device_unavailable'} and case['status']=='open':targets.update(x for x in case['components'] if ENTITY.fullmatch(x))
         catalog={entity:{'entity_id':entity,'name':str((r['attributes'] if isinstance(r.get('attributes'),dict) else {}).get('friendly_name',entity))[:120],
                          'state':str(r.get('state','unknown'))[:128]} for entity,r in current.items()}
         for entity,r in (registry or {}).items():catalog.setdefault(entity,{'entity_id':entity,'name':r['name'],'state':'není v aktuálních stavech'})
@@ -158,8 +158,14 @@ class EntityContext:
             for identity in set(linked):
                 event=hashlib.sha256(canonical(['entity_context',document]).encode()).hexdigest()
                 with app.store._connect() as db:before=db.execute("SELECT observed_at FROM evidence WHERE source='native_entity_context' AND event_id=?",(event,)).fetchone()
-                added=app.store.add_evidence(identity,{'source':'native_entity_context','kind':'entity_context','event_id':event,
-                    'observed_at':before[0] if before else now,'payload':document})
+                try:
+                    added=app.store.add_evidence(identity,{'source':'native_entity_context','kind':'entity_context','event_id':event,
+                        'observed_at':before[0] if before else now,'payload':document})
+                except ValueError as error:
+                    if str(error) not in {'Incident evidence budget exceeded; export/archive required','Incident byte budget exceeded; export/archive required'}:raise
+                    added=False
+                    if 'case_evidence_budget' not in document['gaps']:document['gaps'].append('case_evidence_budget')
+                    with app.store._connect() as db:db.execute('UPDATE entity_context_reports SET document=? WHERE entity_id=?',(canonical(document),entity))
                 if added and (not watchman or identity!=watchman.get('incident_id')):
                     app.store.record(identity,'deterministic_investigation',{'summary_cs':summary,'next_test_cs':next_step,'root_cause_proven':False,
                                      'needed':[],'repair':document['repair']},at=now)
@@ -189,6 +195,8 @@ class EntityContext:
         report=next((r for r in self.reports(case) if r['entity_id']==args['entity_id']),None)
         if report is None:raise BrokerDenied('Cíl nemá diagnostický důkaz v tomto spisu.')
         stale=self.app.clock()-report['checked_at']>600
-        return {'tool':'hads_get_entity_diagnosis','source':'native_entity_context','status':'not_read' if stale else 'available',
-                'data':report,'evidence_ids':[e['evidence_id'] for e in case['evidence'] if e['source']=='native_entity_context' and e['payload'].get('entity_id')==args['entity_id']],
-                'read_at':report['checked_at'],'detail_cs':'Čtení je starší než deset minut; čeká na obnovení.' if stale else 'Konkrétní nativní čtení cíle, nikoli oprava.'}
+        payload={k:v for k,v in report.items() if k!='checked_at'}
+        evidence=[e['evidence_id'] for e in case['evidence'] if e['source']=='native_entity_context' and e['payload']==payload]
+        return {'tool':'hads_get_entity_diagnosis','source':'native_entity_context','status':'not_read' if stale or not evidence else 'available',
+                'data':report,'evidence_ids':evidence,
+                'read_at':report['checked_at'],'detail_cs':'Čtení je starší než deset minut; čeká na obnovení.' if stale else 'Čtení nemá uložený odpovídající důkaz; HADS jej nesmí vydávat za ověřený podklad.' if not evidence else 'Konkrétní nativní čtení cíle, nikoli oprava.'}

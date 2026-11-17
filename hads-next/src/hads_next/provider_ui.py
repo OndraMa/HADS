@@ -21,6 +21,7 @@ def render_providers(app, csrf):
             body+='<h3>Existující hlášení Watchmanu</h3><p>'+('Počty a podrobnosti přečtené.' if native['read_verified'] else 'Čtení hlášení je neúplné; není to nulový nález.')+'</p>'
             body+='<p>Aktualizace Watchmanu: '+escape(display_time(native['last_update_at'],zone))+'; poslední parsování: '+escape(display_time(native['last_parse_at'],zone))+'. Čas tohoto čtení není čas nového skenu.</p>'
             body+='<p>Chybějící entity: '+escape(str(native['counts'].get('missing_entities')) if native['counts'].get('missing_entities') is not None else 'nezjištěno')+'; akce: '+escape(str(native['counts'].get('missing_actions')) if native['counts'].get('missing_actions') is not None else 'nezjištěno')+'.</p>'
+            if 'case_evidence_budget' in native['gaps']:body+='<p>Spis dosáhl limitu důkazů. Nové čtení pokračuje, ale historii je nutné řízeně exportovat a archivovat; chybějící uložený důkaz nesmí autorizovat opravu.</p>'
             body+='<ul>'+''.join('<li>'+escape(x['id'])+' ('+escape(x['state'])+'): '+escape('; '.join(p['file']+':'+','.join(map(str,p['lines'])) for p in x['locations']) or 'kontext umístění není dostupný')+'</li>' for x in native['findings'])+'</ul>'
             if native['incident_id']:body+='<p><a href="../case/'+escape(native['incident_id'],quote=True)+'">Otevřít společný diagnostický spis Watchmanu</a></p>'
             body+='<p>Zakázaná entita může být záměrná; odkazy ESPHome potřebují jiný kontext než entity HA. Nic automaticky nepřepisuji ani nezapínám.</p>'

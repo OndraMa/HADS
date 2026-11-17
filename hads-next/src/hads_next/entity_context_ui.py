@@ -13,6 +13,7 @@ def render_context(app,case=None):
         name=(row.get('registry') or {}).get('name') or row['entity_id']
         body+='<article><h3>'+escape(name)+'</h3><p>'+escape(row['entity_id'])+' — '+escape(labels[row['classification']])+'.</p><p>'+escape(row['summary_cs'])+'</p>'
         body+='<p>Poslední konkrétní čtení: '+escape(display_time(row['checked_at'],zone))+'.</p>'
+        if 'case_evidence_budget' in row['gaps']:body+='<p>Spis dosáhl limitu důkazů. Aktuální čtení pokračuje, ale nový podklad není plně uložený; nesmí autorizovat opravu. Historii je nutné řízeně exportovat a archivovat.</p>'
         radio=row.get('zha') or row.get('toolkit')
         if radio:
             body+='<p>ZHA: poslední komunikace '+escape(display_time(radio.get('last_seen'),zone))+'; LQI '+escape(str(radio.get('lqi')) if radio.get('lqi') is not None else 'nezjištěno')+'; RSSI '+escape(str(radio.get('rssi')) if radio.get('rssi') is not None else 'nezjištěno')+'. Tyto údaje samy neurčují příčinu ani fyzický výsledek.</p>'
