@@ -86,6 +86,15 @@ class ApprovedRepairBroker:
             raise RepairBlocked('Skutečná identita cílového zařízení není ověřená.')
         return {k:row.get(k) for k in ('entity_id','unique_id','device_id','platform','config_entry_id','disabled_by')}
 
+    def core_state(self,entity_id):
+        # Proof-critical status belongs to this call. Concurrent observability
+        # must not turn a failed read into another request's 404 evidence.
+        if self.app.core is None:return None,None
+        from .observability import CoreReader
+        reader=CoreReader(self.app.core.transport);value=reader.states(entity_id)
+        if isinstance(value,dict) and value.get('entity_id')!=entity_id:raise RepairBlocked('Core vrátil stav jiného cíle.')
+        return value,reader.status.last_response_status
+
     @staticmethod
     def replacement(original,proposed):
         """Exactly one literal action target; no template, blueprint, Python or arbitrary patch."""
@@ -144,18 +153,18 @@ class ApprovedRepairBroker:
             if not rollback_of:
                 with self.app.store._connect() as db:renamed=db.execute('SELECT device_id FROM entity_renames WHERE old_id=? AND new_id=?',(old,new)).fetchone()
                 if not renamed:raise RepairBlocked('Náhradní identifikátor není doložený stabilní identitou registru. Podobný název nestačí.')
-                missing=self.app.core.states(old)
-                if missing is not None or self.app.core.status.last_response_status!=404:raise RepairBlocked('Původní reference není prokázaná jako chybějící.')
+                missing,status=self.core_state(old)
+                if missing is not None or status!=404:raise RepairBlocked('Původní reference není prokázaná jako chybějící.')
             target_identity=self.target_identity(new) if not rollback_of else None
             if not rollback_of and target_identity['device_id']!=renamed['device_id']:raise RepairBlocked('Náhradní entita už nepatří doloženému původnímu zařízení.')
-            target=self.app.core.states(new)
+            target,target_status=self.core_state(new)
             if not rollback_of and (not isinstance(target,dict) or target.get('state') not in {'on','off'}):raise RepairBlocked('Nový světelný cíl není čitelný.')
-            if rollback_of and (target is not None or self.app.core.status.last_response_status!=404):raise RepairBlocked('Původní chybějící reference už může patřit jinému zařízení. Návrat konfigurace se zastavil.')
-            auto_state=self.app.core.states(parameters['entity_id'])
+            if rollback_of and (target is not None or target_status!=404):raise RepairBlocked('Původní chybějící reference už může patřit jinému zařízení. Návrat konfigurace se zastavil.')
+            auto_state,_=self.core_state(parameters['entity_id'])
             config_id=(auto_state or {}).get('attributes',{}).get('id')
             if not isinstance(config_id,str) or str(original['config'].get('id'))!=config_id:raise RepairBlocked('Identita automatizace není ověřená.')
             proposed={'config':parameters['config']}
-            condition={'automation_id':config_id,'entity_id':new,'state':'on' if original['config'].get('actions',original['config'].get('action'))[0].get('action',original['config'].get('actions',original['config'].get('action'))[0].get('service'))=='light.turn_on' else 'off','watch_seconds':30,'physical_confirmation_required':True,'target_identity':target_identity,'missing_target_required':new if rollback_of else None}
+            condition={'automation_id':config_id,'entity_id':new,'state':'on' if original['config'].get('actions',original['config'].get('action'))[0].get('action',original['config'].get('actions',original['config'].get('action'))[0].get('service'))=='light.turn_on' else 'off','watch_seconds':30,'physical_confirmation_required':True,'target_identity':target_identity,'missing_target_required':new if rollback_of else old}
             manual='V HA otevři uvedenou automatizaci. Změň pouze zobrazený původní target entity_id na doloženou novou identitu, ulož a ověř skutečný trigger a světlo. Při jiné konfiguraci změnu neprováděj.'
         else:
             enable=tool=='homeassistant.enable_entity'
@@ -199,8 +208,8 @@ class ApprovedRepairBroker:
         if fingerprint(self._original(b['provider'],b['tool'],d['parameters']))!=d['original_sha256']:raise RepairBlocked('Cíl se změnil; je potřeba nové schválení.')
         if d['verification'].get('target_identity') is not None and self.target_identity(d['verification']['entity_id'])!=d['verification']['target_identity']:raise RepairBlocked('Identifikátor nyní patří jinému zařízení; je potřeba nový návrh.')
         if d['verification'].get('missing_target_required'):
-            state=self.app.core.states(d['verification']['missing_target_required'])
-            if state is not None or self.app.core.status.last_response_status!=404:raise RepairBlocked('Původní identifikátor už není prokázaný jako chybějící. Návrat by mohl ovládat jiné zařízení.')
+            state,status=self.core_state(d['verification']['missing_target_required'])
+            if state is not None or status!=404:raise RepairBlocked('Dříve chybějící identifikátor je nyní dostupný nebo neověřený. Je potřeba nový návrh.')
         receipt=self.backups.verify(d['original_sha256'])
         if fingerprint(receipt)!=d['backup']['receipt_sha256']:raise RepairBlocked('Důkaz zálohy se změnil; je potřeba nový plán.')
         return row
@@ -311,7 +320,7 @@ class ApprovedRepairBroker:
         if b['provider']=='ha_mcp':
             service=self.app.repairs
             if service.trigger_coverage is None or now-(service.trigger_heartbeat or 0)>15:return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
-            state=self.app.core.states(d['verification']['entity_id']) if self.app.core else None
+            state,_=self.core_state(d['verification']['entity_id'])
             if not isinstance(state,dict) or state.get('state')!=d['verification']['state']:
                 with service.lock:service.state_breaks[d['verification']['entity_id']]=now
                 return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
@@ -336,10 +345,10 @@ class ApprovedRepairBroker:
                 observations=[json.loads(r[0]) for r in db.execute('SELECT document FROM repair_observations WHERE execution_id=?',(row['id'],))]
             confirmed=any(r.get('kind')=='owner_functional_confirmation' for r in observations)
             failed=[r for r in observations if r.get('kind')=='functional_failure' and r.get('observed_at',0)>row['completed_at']]
-            entity=d['verification']['entity_id'];state=self.app.core.states(entity)
+            entity=d['verification']['entity_id'];state,state_status=self.core_state(entity)
             from .provider_reports import stamp
             fresh=isinstance(state,dict) and (stamp(state.get('last_updated')) or 0)>row['completed_at']
-            desired=isinstance(state,dict) and state.get('state') not in {'unknown','unavailable',None} if d['verification']['expected_enabled'] else state is None and self.app.core.status.last_response_status==404
+            desired=isinstance(state,dict) and state.get('state') not in {'unknown','unavailable',None} if d['verification']['expected_enabled'] else state is None and state_status==404
             breaks=[o['observed_at'] for o in observations if o.get('kind')=='tool_target_state' and o.get('payload',{}).get('state') in {'unavailable','unknown'}]
             covered=now-max([row['completed_at'],detector['continuous_since'] or now]+breaks)>=d['verification']['watch_seconds']
             if failed:

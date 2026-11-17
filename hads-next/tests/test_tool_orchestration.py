@@ -424,8 +424,25 @@ class OrchestratedWire(unittest.TestCase):
             self.assertEqual(len(app.snapshot()['cases']),1)
 
     def test_reused_entity_id_cannot_redirect_an_approved_light_repair(self):
-        plan=self.prepare();self.light_identity['device_id']='different_device'
+        plan=self.prepare();original_core=self.app.core
+        self.app.core=CoreReader(lambda path:{'entity_id':self.old,'state':'off'} if path=='/api/states/'+self.old else self.core(path))
         with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.app.core=original_core;self.light_identity['device_id']='different_device'
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.writes,[])
+
+    def test_other_reads_cannot_turn_permission_failure_into_missing_reference_proof(self):
+        original=self.core
+        def denied(path):
+            if path=='/api/states/'+self.old:raise ReadFailure('http_error',403)
+            return original(path)
+        class ClobberedSharedStatus(CoreReader):
+            def states(self,entity_id=None):
+                result=super().states(entity_id)
+                self.status.last_response_status=404  # another request replaces shared status
+                return result
+        self.app.core=ClobberedSharedStatus(denied)
+        with self.assertRaises(RepairBlocked):self.prepare()
         self.assertEqual(self.writes,[])
 
     def test_uncertain_write_is_read_automatically_and_owner_adopts_without_replay(self):
