@@ -4,10 +4,15 @@ from .dashboard import display_time
 
 def render_providers(app, csrf):
     rows=app.providers.snapshot();zone=app.snapshot()['timezone']
+    catalog={r['id']:r for r in app.tools.registry.providers()}
     body='<h1>Inventář a nativní stopy doplňků</h1><p><a href="tools">Otevřít skutečné konektory, katalog funkcí a jejich ověřené výsledky</a></p><p>Instalace, běžící proces a přečtený stav jsou různé důkazy. Žádný z nich sám nepotvrzuje funkci celého diagnostického nástroje.</p>'
     if not rows:body+='<p>Aktuální kontrola dosud neproběhla. Historický výpis předchozího HADS ji nenahrazuje.</p>'
     for row in rows:
-        body+='<article><h2>'+escape(row['title'])+'</h2><p>'+escape(row['summary_cs'])+'</p>'
+        tool=catalog.get(row['provider_id'],{})
+        current=tool.get('connected') is True and app.clock()-tool.get('checked_at',0)<=600
+        actual_read=current and tool.get('diagnostic_read_verified') is True
+        summary='Společný konektor přečetl diagnostickou odpověď a předává ji incidentnímu systému. Rozsah funkcí, původ a omezení ukazuje katalog; samotná odpověď nepotvrzuje funkční zdraví zařízení.' if actual_read else row['summary_cs']
+        body+='<article><h2>'+escape(row['title'])+'</h2><p>'+escape(summary)+'</p>'
         body+='<p>Poslední čtení: '+escape(display_time(row['checked_at'],zone))+(' — výsledek je starší než 10 minut.' if row['stale'] else '')+'</p>'
         if row['last_error']:body+='<p>'+escape(row['last_error'])+'</p>'
         body+='<p>Načtené komponenty: '+escape(', '.join(row['matched_components']) or 'nepotvrzené')+'. Záznamy registru se shodnou platformou: '+str(row['owned_entity_count'])+'.</p>'
@@ -29,8 +34,11 @@ def render_providers(app, csrf):
             body+='<p>Konkrétní čtení seznamu zařízení: '+('proběhlo, přečtených zařízení '+str(len(native['devices'])) if native['read_succeeded'] else 'neověřené')+'. Čtou se pouze údaje existující v paměti ZHA; jejich stáří určuje poslední komunikace zařízení.</p>'
             if native.get('version'):body+='<p>Verze uvedená v odpovědi Toolkitu: '+escape(native['version'])+'. Kompatibilitu fyzické instalace musí potvrdit skutečná čtení.</p>'
         if row['matching_repairs_count'] is not None:body+='<p>Nálezy se shodnou doménou v Repairs: '+str(row['matching_repairs_count'])+'. Nula neprokazuje zdravý doplněk.</p>'
-        verified=bool(native and (native.get('read_verified') or native.get('read_succeeded')))
-        body+='<p>'+('Konkrétní čtecí odpověď byla ověřena. Funkční výsledek zařízení tím není potvrzený. ' if verified else 'HADS zatím neověřil vlastní diagnostiku doplňku. ')+('MCP autentizace a katalog: neověřené. ' if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'} else '')+'Zapisovací opravy: nepovolené.</p></article>'
+        verified=actual_read or bool(native and (native.get('read_verified') or native.get('read_succeeded')))
+        body+='<p>'+('Konkrétní čtecí odpověď byla ověřena. Funkční výsledek zařízení tím není potvrzený. ' if verified else 'HADS zatím neověřil vlastní diagnostiku doplňku. ')
+        if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'}:
+            body+='Katalog konektoru: '+('načtený' if current and tool.get('catalog_loaded') else 'neověřený')+'. Autentizace: '+('server přijal credential' if current and tool.get('authenticated') is True else 'nepotvrzená samostatná identita; podrobnosti připojení jsou v katalogu')+'. '
+        body+='Tato kontrola nic nepovoluje k zápisu; konkrétní opravný plán vyžaduje samostatný souhlas.</p></article>'
     token='<input type="hidden" name="csrf" value="'+escape(csrf,quote=True)+'">'
     body+='<form method="post" action="provider-previous">'+token+'<p>Ze starého Hermes 2.0.0-rc3 lze přes Supervisor převzít pouze vybrané připojovací položky do neaktivního soukromého návrhu. Starou aplikaci kvůli tomu nespouštím ani neměním.</p><button>Načíst návrh připojení z původního Hermes RC3</button></form>'
     try:staged=', '.join(app.legacy_connectors.public_status()['staged_providers']) or 'žádné'

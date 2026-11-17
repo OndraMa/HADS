@@ -325,6 +325,11 @@ class OrchestratedWire(unittest.TestCase):
         self.assertTrue(providers['automation_inspector']['diagnostic_read_verified'])
         self.assertTrue(providers['hadocs']['diagnostic_read_verified'])
         self.assertTrue(any(e['source']=='automation_inspector' for e in app.store.case(self.case['id'])['evidence']))
+        from hads_next.provider_ui import render_providers
+        page=render_providers(app,'fixture-csrf')
+        inspector=page.split('<h2>Automation Inspector</h2>')[1].split('</article>')[0]
+        self.assertIn('Společný konektor přečetl diagnostickou odpověď',inspector)
+        self.assertNotIn('HADS zatím neověřil vlastní diagnostiku',inspector)
         self.assertEqual(self.writes,[])
 
     def test_old_HADocs_report_survives_process_restart_without_claiming_a_new_scan(self):
