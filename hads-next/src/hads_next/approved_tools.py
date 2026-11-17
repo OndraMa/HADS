@@ -47,7 +47,7 @@ class ApprovedRepairBroker:
         provider=next(p for p in self.tools.registry.providers() if p['id']==row['provider'])
         return {'provider':row['provider'],'tool':row['name'],'schema_hash':row['schema_hash'],
                 'upstream_schema_hash':row.get('upstream_schema_hash'),'version':provider.get('version'),
-                'origin_digest':provider.get('origin_digest'),'identity':provider.get('identity')}
+                'server_version':provider.get('server_version'),'origin_digest':provider.get('origin_digest'),'identity':provider.get('identity')}
 
     def _owner(self,principal):
         if not principal or principal!=self.app.owner():raise RepairBlocked('Operaci může schválit pouze ověřený vlastník.')

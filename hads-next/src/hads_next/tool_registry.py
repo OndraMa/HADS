@@ -65,7 +65,7 @@ class ToolRegistry:
         current=next((p for p in self.providers() if p['id']==provider),{})
         # Fields contain capabilities/status only: no address, credential or remote body.
         allowed={'installed','running','connected','authenticated','catalog_loaded','diagnostic_read_verified','version',
-                 'version_basis','last_error','authentication_basis','identity','origin_digest'}
+                 'server_version','version_basis','last_error','authentication_basis','identity','origin_digest'}
         if set(fields)-allowed:raise ToolDenied('Neplatný stav poskytovatele.')
         current.update(fields);current.update(id=provider,checked_at=self.clock())
         with self.store._connect() as db:db.execute('INSERT OR REPLACE INTO tool_providers VALUES(?,?,?)',(provider,canonical(current),self.clock()))
@@ -95,7 +95,13 @@ class ToolRegistry:
     def tools(self,*,include_blocked=True):
         with self.store._connect() as db:rows=[json.loads(r[0]) for r in db.execute('SELECT document FROM tool_catalog ORDER BY provider,name')]
         providers={p['id']:p for p in self.providers()}
+        with self.store._connect() as db:
+            try:
+                plans=[(r[0],json.loads(r[1])) for r in db.execute("SELECT p.id,p.document FROM repair_plans p LEFT JOIN repair_executions e ON e.plan_id=p.id WHERE e.id IS NULL AND json_extract(p.document,'$.operation')='tool.approved' ORDER BY p.created_at DESC LIMIT 50")]
+            except Exception:plans=[]
         for row in rows:
+            row['prepared_plan_ids']=[identity for identity,plan in plans if plan['binding']['provider']==row['provider'] and plan['binding']['tool']==row['name'] and plan['binding']['schema_hash']==row['schema_hash']]
+            row['repair_ready_for_approval']=bool(row['prepared_plan_ids'])
             provider=providers.get(row['provider'],{})
             row['available']=provider.get('connected') is True and provider.get('catalog_loaded') is True and self.clock()-row['checked_at']<=900
             row['diagnostic_read_verified']=provider.get('diagnostic_read_verified') is True

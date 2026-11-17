@@ -69,7 +69,7 @@ class OrchestrationCases:
                 with self.app.store._connect() as db:
                     db.execute('INSERT OR REPLACE INTO orchestration_reads VALUES(?,?,?,?,?,?,?,?)',(incident['id'],request_id,request['provider'],request['tool'],result['status'],1 if previous is None else previous['attempts']+1,self.app.clock(),canonical({k:v for k,v in result.items() if k!='data'})))
                 if result['status']=='available' and request['tool'] in {'core_logs','supervisor_logs'}:
-                    self._log_lines(request['provider'],request['tool'],result.get('data',{}))
+                    self._log_lines(incident['id'],request['provider'],request['tool'],result.get('data',{}))
                 if result['status']=='available' and request['provider']=='automation_inspector':self._dependencies(incident['id'],targets,result.get('data',{}))
             self.prepare_candidates(incident['id'])
             self.app.store.record(incident['id'],'orchestration_checkpoint',self.summary(incident['id']))
@@ -149,7 +149,7 @@ class OrchestrationCases:
                         'reason_cs':str(error)[:700] if isinstance(error,(ToolDenied,)) else 'Konkrétní plán zatím neprošel kontrolou cíle, změny nebo obnovitelnosti zálohy.',
                         'manual_alternative_cs':'Změna se neprovedla. Pro danou automatizaci porovnej přesnou původní a novou identitu v návrhu; nedoloženou náhradu nepoužívej. HADS dál získává důkazy automaticky.'})
 
-    def _log_lines(self,provider,name,data):
+    def _log_lines(self,incident_id,provider,name,data):
         # Preserve timestamps only when they are explicitly parseable. Do not
         # replace an undated line's event time with its most recent fetch time.
         text=data.get('text','');events=[]
@@ -158,7 +158,8 @@ class OrchestrationCases:
             if not match:continue
             when=stamp(match[1])
             if when is None:continue
-            events.append({'source':'core' if name=='core_logs' else 'supervisor','observed_at':when,'component':provider,'message':line})
+            component=re.search(r'\[(homeassistant\.[A-Za-z0-9_.]+)\]',line)
+            events.append({'source':'core' if name=='core_logs' else 'supervisor','observed_at':when,'component':component[1] if component else provider,'message':line})
         groups=self.correlate(events)
         if groups:
-            self.app.store.record(self.app.snapshot()['cases'][0]['id'],'cross_source_correlation',{'groups':groups[:4],'root_cause_proven':False})
+            self.app.store.record(incident_id,'cross_source_correlation',{'groups':groups[:4],'root_cause_proven':False})

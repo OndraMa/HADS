@@ -194,8 +194,9 @@ class ToolOrchestration:
                 if scoped and '**entity_id** (required)' not in response or not scoped and 'No parameters required.' not in response:continue
                 tools.append(descriptor(path,object_schema({'entity_id':ENTITY}) if scoped else object_schema(),contract='Hamster_schema_text_no_argument_native_read',upstream_schema_hash=fingerprint(response)))
                 self.routes[(provider,path)]=('hamster',client)
+        previous=next((r for r in self.registry.providers() if r['id']==provider),{})
         self.registry.provider(provider,connected=True,authenticated=bool(client._token) or None,authentication_basis='MCP_server_accepted_credential_or_private_endpoint',catalog_loaded=True,
-             diagnostic_read_verified=False,version=client._server['version'],version_basis='MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None)
+             diagnostic_read_verified=False,server_version=client._server['version'],version=previous.get('version') if previous.get('version_basis')=='installed_HA_integration_manifest' else client._server['version'],version_basis='installed_HA_integration_manifest' if previous.get('version_basis')=='installed_HA_integration_manifest' else 'MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None)
         self.registry.replace(provider,tools)
 
     def _services(self):
