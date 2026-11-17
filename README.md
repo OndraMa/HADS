@@ -1,4 +1,20 @@
-# HADS Next 1.0.0-rc7 — konkrétní entity a ZHA Toolkit
+# HADS Next — vývoj orchestrace po RC7
+
+Zdrojová větev **codex/hads-next-orchestration**, [souhrnný PR #19](https://github.com/OndraMa/HADS/pull/19).
+Nový instalátor ani RC zatím nevychází. Instalovaná RC7 změny z této větve ještě neobsahuje.
+
+- [Implementace, výsledky kontrol a přesné zbývající části](hads-next/docs/ORCHESTRATION_REVIEW_CS.md)
+- [Matice požadavek → implementace → nástroj → propojení → test → výsledek](hads-next/docs/orchestration-matrix.json)
+- [Jednorázové nastavení HA-MCP, Hermesu a konektorů](hads-next/docs/ORCHESTRATION_SETUP_CS.md)
+- [Kontrakty všech providerů a živá přejímka](hads-next/docs/ORCHESTRATION_ACCEPTANCE_CS.md)
+- [Přesný živý přejímací protokol po RC7](hads-next/docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md)
+- [Protokoly s přesnou zdrojovou revizí a SHA-256](hads-next/docs/evidence/orchestration/RESULTS.json)
+
+Vydané balíčky níže zůstávají zachované; nepředstavují instalaci nového vývoje.
+
+---
+
+# Poslední vydaná HADS Next 1.0.0-rc7 — konkrétní entity a ZHA Toolkit
 
 Vývojová větev: **codex/hads-next-zha-followup** · [PR 18](https://github.com/OndraMa/HADS/pull/18).
 

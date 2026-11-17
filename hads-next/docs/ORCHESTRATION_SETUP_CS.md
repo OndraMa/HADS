@@ -23,9 +23,29 @@ Pro samotný sběr není potřeba OpenAI klíč ani další samostatný Hermes.
 5. Read-only server je vhodný pro diagnostiku. Pokud má být později dostupná konkrétní oprava automatizace,
    server musí též povolit `ha_config_set_automation` a `ha_get_skill_guide`. Samotné vypnutí serverového read-only není schválení.
    Zapisovací spojení i jeho credential má pouze kontroler; Hermes k němu přímo přístup nemá.
+   Stejný zapisovací endpoint nepřipojuj přímo jako obecný nástroj jiného AI klienta.
+   Schvalovací hranice HADS se vztahuje na operace HADS; nemůže schvalovat volání jiné aplikace,
+   která samostatně vlastní zapisovací credential HA-MCP. Pro takového klienta ponech serverem vynucené čtení,
+   pokud má mít přístup. OAuth callback URL sama není adresa diagnostického endpointu ani omezení jeho operací.
 6. Přísné best-practices ochrany se nevypínají. HADS načte skutečný referenční soubor, respektuje jeho receipt
    `BestPracticeKey` a váže jej na plán. Když se pravidla nebo receipt změní, předloží nový plán místo skrytého retry.
    Nástroj nevolá s `MandatoryBPS=false`, Python transformací ani `run_actions=true`.
+
+Výběr dostupných funkcí v HA-MCP ověřuje HADS proti aktuálnímu katalogu, nikoli podle obecného přepínače „vše povoleno“:
+
+| Funkce serveru | Použití v HADS |
+|---|---|
+| `ha_get_state`, `ha_get_device` | Aktuální stav a zařízení cíle případu |
+| `ha_config_get_automation` | Skutečná konfigurace a `config_hash` pro související automatizaci |
+| `ha_get_system_health` | Pouze ověřené části repairs, ZHA network a Supervisor |
+| `ha_search_tools` a čtecí proxy | HADS načte úplné schéma konkrétní funkce v režimu vyhledávání nástrojů; proxy se modelu nepředává |
+| `ha_get_skill_guide` | Aktuální pravidla a receipt před konkrétním návrhem |
+| `ha_config_set_automation` a zapisovací proxy | Pouze nezávislý vykonavatel po souhlasu; jediná doložená světelná reference |
+
+V serverovém nastavení ponech **Povolit zásady zabezpečení nástrojů** a **Přísný režim osvědčených postupů** zapnuté.
+Kvůli této funkci není potřeba **Povolit úpravy YAML konfigurace (beta)**, přístup k souborům ani vlastní Python nástroje.
+Pokud se katalog oproti tabulce liší, HADS používá jen skutečně nalezenou bezpečně ověřenou podmnožinu;
+nevyhledává náhradu pomocí obecného shellu. Pro nativní ZHA čtení není HA-MCP povinný.
 
 ## Nativní MCP a Hamster
 
@@ -51,6 +71,20 @@ nikoli přidáváním neomezených MCP serverů do jeho konfigurace.
 AI povol až výslovně v privátním nastavení pro malý test. Klíč neposílej do chatu. Vyčerpaný rozpočet zachová spis
 a zastaví další modelové požadavky; diagnostická čtení pokračují. Pro skutečný diagnostický úsudek je nutná
 samostatná živá přejímka s autorizovaným modelem. Skriptovaný endpoint ji nenahrazuje.
+
+Na **Zdroje a připravenost → Nastavit poskytovatele AI** vyber HTTPS `chat/completions` endpoint a model
+podporovaný poskytovatelem. Klíč zadej do maskovaného pole a souhlas potvrď pouze pro zamýšlený test.
+Výchozí trial dovoluje nejvýše **3 požadavky za 24 hodin**, 48 000 bajtů vstupu a 512 výstupních tokenů na požadavek.
+Vícekrokové vyšetřování tím může být přerušeno; není to důvod přidávat opakované ruční starty.
+Rozšířený režim je jiné výslovné rozhodnutí: nejvýše **8 požadavků na případ a 12 za 24 hodin**.
+Automatické vyšetřování potřebuje další souhlas. Počítadla přežijí restart i změnu klíče a započítají nejistý výsledek.
+Limity požadavků a tokenů nejsou zaručený dolarový strop; malý peněžní limit nastav také u poskytovatele, pokud ho nabízí.
+
+Na připravenosti nejprve použij **Ověřit Hermes bez volání modelu**. Model se tím nevolá ani neplatí.
+Pokud není volných alespoň 576 MiB podle skutečného měření, worker se nespustí ani s cloudovým modelem:
+lokální Hermes stále potřebuje RAM. HADS sám sbírá statistiky Core a aplikací; po uživateli nechce terminálové příkazy.
+Nevypínej naslepo aplikace a nesnižuj rezervu. Případná změna hostitele nebo složení běžících aplikací je samostatné
+rozhodnutí podle naměřených údajů, nikoli automatická oprava jiných závad.
 
 ## Co lze povolit k opravě
 
