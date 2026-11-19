@@ -73,3 +73,8 @@ class BudgetTests(unittest.TestCase):
         self.assertFalse(app.investigations.provider.public_status()['enabled'])
         case=app.report_incident('Lokální detekce pokračuje.','light.fixture','owner')
         self.assertEqual(case['incident']['status'],'open')
+    def test_official_OpenAI_contract_caps_completion_and_reasoning_tokens(self):
+        self.provider.configure(**dict(self.settings,endpoint='https://api.openai.com/v1/chat/completions',model='gpt-4.1-mini'))
+        with patch('hads_next.ai_provider.build_opener',self.opener):
+            self.provider.sender()[1]({'messages':[{'role':'user','content':'fixture'}],'max_tokens':999999,'max_completion_tokens':999999})
+        self.assertEqual(self.calls[0]['max_completion_tokens'],512);self.assertNotIn('max_tokens',self.calls[0])

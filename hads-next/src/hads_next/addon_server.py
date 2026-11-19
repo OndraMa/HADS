@@ -133,7 +133,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path).path
         if path == "/health":
-            return self.send_body(200, json.dumps({"service": "hads-next", "version": VERSION, "mode": "read_only_development"}), "application/json")
+            from .build_identity import current_build
+            return self.send_body(200, json.dumps({"service": "hads-next", "version": VERSION, "build": current_build(), "mode": "read_only_development"}), "application/json")
         if path in {'/','/identity'} and self.client_address[0] == self.server.ingress_peer and not (self.server.app.owner() or self.server.owner_user_id):
             return self.send_body(200,self.setup_page())
         if not self.authorized():
@@ -176,6 +177,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/setup/providers':
             from .provider_ui import render_providers
             return self.send_body(200,render_providers(self.server.app,self.server.csrf))
+        if path == '/setup/backup-verifier':
+            state=self.server.app.approved_tools.backups.status()
+            return self.send_body(200,'<h1>Nezávislé ověření obnovitelnosti</h1><p>HADS nevydává vlastní potvrzení o obnově. Připojí přesnou HTTPS adresu existujícího nezávislého ověřovatele a ověří jeho podepsaný důkaz pro původní stav každé opravy. Toto není adresa OneDrive uploadu ani automaticky nalezené rozhraní HABS.</p><p>'+escape(state['last_error'] or state['detail_cs'])+'</p><form method="post" action="backup-verifier"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><label>Soukromá HTTPS adresa důkazu<input type="password" name="url" required autocomplete="new-password"></label><label>Token ověřovatele, pokud je potřeba<input type="password" name="token" autocomplete="new-password"></label><label>Nezávisle ověřený veřejný Ed25519 klíč (Base64)<input name="public_key" required autocomplete="off"></label><button>Uložit důvěryhodné připojení, bez schválení opravy</button></form>')
+        if path == '/setup/resources':
+            state=self.server.app.resource_study.status()
+            return self.send_body(200,'<h1>Průběžné měření prostředků</h1><p>HADS čte nejvýše jednu dávku za minutu. Pro souvislé měření potřebuje 15 minut; restart nebo mezera delší než 90 sekund pokrytí přeruší. Součet spotřeby kontejnerů není volná paměť hostitele. Rezerva 576 MiB se nesnižuje.</p><p>Vzorků: '+str(state['samples'])+'; pokryto '+str(round(state['covered_seconds']))+' sekund.</p><details><summary>Skutečně naměřené údaje a mezery</summary><pre>'+escape(json.dumps(state,ensure_ascii=False,indent=2))+'</pre></details>')
         if path == '/setup/lighting':
             entities=[s for s in self.server.app.snapshot()['entities'] if s['entity_id'].startswith('automation.')]
             options=''.join('<option value="'+escape(s['entity_id'],quote=True)+'">'+escape(s.get('name',s['entity_id']))+' — '+escape(s['state'])+'</option>' for s in entities)
@@ -287,6 +294,8 @@ class Handler(BaseHTTPRequestHandler):
             if explanation:
                 suggestion_html+='<form method="post" action="../setup/check"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><button>Zopakovat nativní diagnostiku bez AI</button></form><a href="../setup">Zdroje a připravenost</a><p>Proběhne čtení dostupných nativních zdrojů na pozadí. Model ani oprava se nespustí. Po dokončení otevři spis znovu. Zmizení diagnostické chyby samo spis neuzavírá.</p>'
             suggestion_html+='<a href="../export/' +case['incident']['id']+'">Exportovat spis JSON</a>'
+            from .case_dialogue import render as render_dialogue
+            suggestion_html+=render_dialogue(case,self.server.csrf)
             stop_form=('<form method="post" action="../investigate/cancel"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="job_id" value="'+escape(jobs[0]['id'],quote=True)+'"><button>Zastavit vyšetřování</button></form>') if jobs and jobs[0]['state']=='investigating' else ''
             reads=''.join('<li>'+escape(row['name'])+': '+escape(row['result']['status'])+'</li>' for job in jobs[:1] for row in job['reads'])
             acknowledge='<label><input type="checkbox" name="ack_unknown" value="yes"> Povolím další pokus i v případě, že předchozí nedokončené modelové volání mohlo být účtováno.</label>' if jobs and jobs[0]['state']=='blocked' else ''
@@ -296,7 +305,7 @@ class Handler(BaseHTTPRequestHandler):
                 +'</h1><p>'+escape(case_summary(case['incident']))+'</p><h2>Průběh vyšetřování</h2><ul>'+progress+'</ul>'+stop_form+'<details><summary>Čtení a dostupnost zdrojů</summary><ul>'+reads+'</ul></details><form method="post" action="../investigate"><input type="hidden" name="csrf" value="'+self.server.csrf+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'">'+acknowledge+'<button>Spustit nebo obnovit čtecí vyšetřování Hermes</button></form><a href="../setup/ai">Nastavení AI</a>'
                 + '<h2>Pracovní závěr</h2><p>' + escape(result.get('summary_cs','Vyšetřování ještě nemá závěr.'))
                 + '</p><h2>Další potřebné důkazy</h2><ul>' + ''.join('<li>'+escape(str(x))+'</li>' for x in result.get('needed',[]))
-                + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','Doplň chybějící důkazy nebo spusť vyšetřování.'))+'</p>'+suggestion_html+'<p>'+('Funkční podmínka byla ověřena; report je v historii.' if case['incident']['status']=='resolved' else 'Případ zůstává otevřený do ověření funkční podmínky.')+'</p><details><summary>Technické důkazy spisu</summary><pre>'
+                + '</ul><h2>Další krok</h2><p>'+escape(result.get('next_test_cs','HADS pokračuje dostupnými čteními bez AI. Chybějící přístup uvede jako konkrétní omezení; případnou nezjistitelnou informaci můžeš doplnit do konverzace.'))+'</p>'+suggestion_html+'<p>'+('Funkční podmínka byla ověřena; report je v historii.' if case['incident']['status']=='resolved' else 'Případ zůstává otevřený do ověření funkční podmínky.')+'</p><details><summary>Technické důkazy spisu</summary><pre>'
                 + escape(json.dumps(case,ensure_ascii=False,indent=2)) + '</pre></details></html>')
         if path not in {"/", "/index.html"}:
             return self.send_body(404, "Stránka nebyla nalezena.")
@@ -326,7 +335,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(415, "Nepodporovaný formát.")
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            limit=2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 128*1024 if urlsplit(self.path).path=='/setup/provider-settings' else 8192
+            limit=2*1024*1024 if urlsplit(self.path).path=='/setup/import' else 128*1024 if urlsplit(self.path).path=='/setup/provider-settings' else 32768 if urlsplit(self.path).path in {'/case/message','/setup/tool-connection','/setup/backup-verifier'} else 8192
             if not 0 < size <= limit:
                 raise ValueError()
             form = parse_qs(self.rfile.read(size).decode(), max_num_fields=10, strict_parsing=True)
@@ -335,6 +344,19 @@ class Handler(BaseHTTPRequestHandler):
             path = urlsplit(self.path).path
             if path == "/read":
                 self.server.app.refresh()
+            elif path == '/case/message':
+                identity=form.get('incident_id',[''])[0]
+                self.server.app.dialogue.add(identity,form.get('message',[''])[0],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','../case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/case/attention':
+                identity=form.get('incident_id',[''])[0]
+                self.server.app.dialogue.attention(identity,form.get('decision',[''])[0],self.headers['X-Remote-User-Id'])
+                self.send_response(303);self.send_header('Location','../case/'+identity);self.send_header('Content-Length','0');self.end_headers();return
+            elif path == '/setup/backup-verifier':
+                if not self.server.verified_admin(self.headers.get('X-Remote-User-Id'),fresh=True):
+                    return self.send_body(403,'Aktuální oprávnění vlastníka nelze potvrdit.')
+                self.server.app.approved_tools.backups.connection.configure(form.get('url',[''])[0],form.get('token',[''])[0],form.get('public_key',[''])[0],principal=self.headers['X-Remote-User-Id'],owner=self.server.app.owner())
+                self.send_response(303);self.send_header('Location','backup-verifier');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/ai':
                 self.server.app.investigations.provider.configure(endpoint=form.get('endpoint',[''])[0],model=form.get('model',[''])[0],
                     api_key=form.get('api_key',[''])[0],consent=form.get('consent')==['yes'],principal=self.headers['X-Remote-User-Id'],mode=form.get('mode',['trial'])[0])
@@ -518,6 +540,7 @@ def main():
     threading.Thread(target=app.refresh, daemon=True).start()
     try:serve(Server(("0.0.0.0", 8099), app, owner_user_id=owner))
     finally:
+        app.resource_study.close()
         app.system.automatic.close()
         app.investigations.zha_observer.close()
         app.detection.close();app.repairs.close()

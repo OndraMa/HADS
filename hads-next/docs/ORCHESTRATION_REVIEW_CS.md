@@ -1,3 +1,5 @@
+> **Aktualizace 19. 11. 2026:** následující text uchovává přejímku předchozí zdrojové revize PR #19 z 17. 11. Aktuální instalační kandidát, nová integrační část a přesné zbývající meze jsou v [CANDIDATE_20261119_CS.md](CANDIDATE_20261119_CS.md). Starší protokoly se nevydávají za test nové revize.
+
 # Souhrnná kontrola orchestrace po RC7
 
 Změny jsou v jednom [PR #19](https://github.com/OndraMa/HADS/pull/19), nad RC7

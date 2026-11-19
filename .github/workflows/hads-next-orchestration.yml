@@ -1,4 +1,4 @@
-name: HADS orchestration acceptance (no installer or release)
+name: HADS orchestration and installable candidate acceptance
 on:
   push:
     branches: [codex/hads-next-orchestration]
@@ -33,6 +33,9 @@ jobs:
         run: |
           python -m pip install -e . websockets==16.0 mcp==1.29.0 uvicorn==0.54.0
           python scripts/check.py
+      - name: Exact candidate payload and production image boot without household network
+        working-directory: hads-next
+        run: python scripts/candidate_smoke.py --docker --output .test-tmp/installable-candidate
       - name: Actual Core, pinned Inspector and confined original Hermes
         working-directory: hads-next
         run: |
@@ -65,6 +68,14 @@ jobs:
           path: |
             hads-next/docs/evidence/offline-tests.json
             hads-next/.test-tmp/orchestration-result/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: candidate-${{ matrix.architecture }}-${{ github.sha }}
+          retention-days: 7
+          path: |
+            hads-next/.test-tmp/installable-candidate/assets/
+            hads-next/.test-tmp/installable-candidate/CANDIDATE_PROOF.json
       - name: Explicit scope
         if: ${{ always() }}
-        run: echo 'No installer, release, production writes, paid model or live HAOS. Scripted reasoning is protocol proof only.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Installable acceptance candidate only; no production release, household writes, paid model or live HAOS. Scripted reasoning is protocol proof only.' >> "$GITHUB_STEP_SUMMARY"

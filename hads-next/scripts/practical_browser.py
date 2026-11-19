@@ -50,7 +50,7 @@ def main():
                 app._entities=[{'entity_id':'automation.entry','name':'Světlo na chodbě – ukázka prohlížeče','state':'off'}]
                 for width in [1280,390]:
                     page.set_viewport_size({'width':width,'height':900})
-                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/setup/tools','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case,'/case/'+entity_case['id']]:
+                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/setup/tools','/setup/resources','/setup/backup-verifier','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case,'/case/'+entity_case['id']]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
                         assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'

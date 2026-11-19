@@ -13,7 +13,7 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read,is_app_slug
 
-VERSION = "1.0.0-rc7"
+from .build_identity import VERSION, current_build
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -59,6 +59,8 @@ class Application:
         self.detection=DetectionEngine(self)
         from .system_diagnostics import SystemDiagnostics
         self.system=SystemDiagnostics(self)
+        from .resource_study import ResourceStudy
+        self.resource_study=ResourceStudy(self)
         from .provider_verification import ProviderVerification
         self.providers=ProviderVerification(self)
         from .entity_context import EntityContext
@@ -71,6 +73,10 @@ class Application:
         from .orchestration_cases import OrchestrationCases
         self.tools=ToolOrchestration(self)
         self.approved_tools=ApprovedRepairBroker(self)
+        from .build_identity import invalidate_previous_approvals
+        invalidate_previous_approvals(self)
+        from .case_dialogue import CaseDialogue
+        self.dialogue=CaseDialogue(self)
         from .repair_recovery import RepairRecovery
         self.repair_recovery=RepairRecovery(self)
         self.orchestration=OrchestrationCases(self)
@@ -98,6 +104,7 @@ class Application:
     def request_initial_diagnostics(self):
         """HAOS entrypoint only: owner already enrolled; no paid work starts."""
         if not self.owner():return
+        self.resource_study.start()
         self.request_source_check()
         if self.investigations.launcher is not None and not self.investigations.status()['worker_active']:
             self.investigations.request_probe(self.owner())
@@ -258,7 +265,7 @@ class Application:
             item["components"] = json.loads(item["components"])
             cases.append(item)
         with self._lock:
-            return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
+            return {"version": VERSION, "build": current_build(), "mode": "read_only_development", "core": dict(self._summary),
                     "entities": list(self._entity_catalog or self._entities), "cases": cases,
                     "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": (self.repairs.status()["enabled"] or self.repairs.status()["native_state_targets"]>0),
                     'investigation_service':self.investigations.status(),

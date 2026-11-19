@@ -1,3 +1,5 @@
+> **Aktualizace 19. 11. 2026:** následující text uchovává přejímku předchozí zdrojové revize PR #19 z 17. 11. Aktuální instalační kandidát, nová integrační část a přesné zbývající meze jsou v [CANDIDATE_20261119_CS.md](CANDIDATE_20261119_CS.md). Starší protokoly se nevydávají za test nové revize.
+
 # Orchestrace po RC7 — implementace a přejímka
 
 Výchozí revize: `c1372a392f213ab995c9848ae9721b3732967268` z větve `codex/hads-next-zha-followup`.

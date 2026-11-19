@@ -225,6 +225,9 @@ class EvidenceBroker:
         elif name=='hads_get_incident':
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
+            value['owner_statements']=[{'text':e['payload']['text'][:1000],'evidence_id':e['evidence_id'],
+                'authority':'owner_statement_not_approval_or_independent_confirmation'} for e in case['evidence']
+                if e['source']=='authenticated_owner' and e['kind']=='owner_statement' and isinstance(e['payload'].get('text'),str)][-8:]
             automatic=[r['content'] for r in case['records'] if r['kind']=='automatic_read_report']
             system=getattr(self,'runtime_system',None)
             followup=system.followup.report(incident_id) if system is not None else None

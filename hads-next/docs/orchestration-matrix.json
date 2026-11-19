@@ -398,5 +398,58 @@
       ],
       "result": "isolated_contracts_passed_live_HAOS_and_hardware_pressure_pending"
     }
-  ]
+  ],
+  "november_19_followup": [
+    {
+      "area": "installation",
+      "implementation": "build_identity.py + upgrade_next.py + candidate_smoke.py",
+      "tool": "native Supervisor same-identity update",
+      "test": "real published RC6/RC7 source trees; candidate native production image boot",
+      "result": "isolated_passed_native_candidate_and_live_pending",
+      "limit": "live HAOS update not performed; no pre-install backup per explicit request"
+    },
+    {
+      "area": "HA-MCP setup",
+      "implementation": "mask URL + per-status outcome + actual three-path read-only probe",
+      "tool": "MCPConnection",
+      "test": "initialize attempted against supplied cloud/LAN paths; HTTP 503 received",
+      "result": "live_access_blocked_before_authentication_catalog_or_incident_read"
+    },
+    {
+      "area": "OneDrive verifier integration",
+      "implementation": "RestoreConnection private HTTPS + pinned independent public key + bounded signed receipt cache",
+      "tool": "independent verifier exact resource, no invented HABS endpoint",
+      "test": "actual local trusted/untrusted TLS, wrong signature/target/scope/expiry",
+      "result": "consumer_implemented_real_independent_restoration_service_not_identified_or_connected"
+    },
+    {
+      "area": "RAM",
+      "implementation": "ResourceStudy minute batches, persistent gap-aware coverage and guarded worker admission",
+      "tool": "Linux proc/cgroup + Supervisor core/supervisor/application stats",
+      "test": "isolated clock-controlled 15-minute coverage and gaps",
+      "result": "implemented_actual_15_minute_RPi_measurement_blocked_by_live_access"
+    },
+    {
+      "area": "conversation and decisions",
+      "implementation": "CaseDialogue durable owner statements and history, local recheck/ignore without resolving",
+      "tool": "existing incident DB + owner/CSRF boundary",
+      "test": "real HTTP forged CSRF rejection; restart; no approval or paid calls",
+      "result": "isolated_passed_native_candidate_and_live_pending"
+    },
+    {
+      "area": "scripts and actions",
+      "implementation": "ha_config_get_script actual upstream schema + current scoped Core services catalog",
+      "tool": "HA-MCP read-only + Core get_services",
+      "test": "source contract and scope/unknown replacement checks",
+      "result": "diagnostic_reads_implemented_general_script_write_adapter_not_implemented"
+    },
+    {
+      "area": "AI contract",
+      "implementation": "exact official OpenAI max_completion_tokens, other compatible endpoints unchanged",
+      "tool": "official OpenAI SDK 0d50c9daece1a4a0f4920f64b5ff90846b4e2050",
+      "test": "isolated budget transport, no real model invocation",
+      "result": "source_contract_verified_real_model_reasoning_pending"
+    }
+  ],
+  "candidate_version": "1.0.0-rc8"
 }

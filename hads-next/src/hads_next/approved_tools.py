@@ -45,10 +45,12 @@ class ApprovedRepairBroker:
                 db.execute('INSERT OR REPLACE INTO entity_identity_observations VALUES(?,?,?,?)',(key,r['entity_id'],r['device_id'],self.app.clock()))
 
     def binding(self,row):
+        from .build_identity import current_build
         provider=next(p for p in self.tools.registry.providers() if p['id']==row['provider'])
         return {'provider':row['provider'],'tool':row['name'],'schema_hash':row['schema_hash'],
                 'upstream_schema_hash':row.get('upstream_schema_hash'),'version':provider.get('version'),
-                'server_version':provider.get('server_version'),'origin_digest':provider.get('origin_digest'),'identity':provider.get('identity')}
+                'server_version':provider.get('server_version'),'origin_digest':provider.get('origin_digest'),'identity':provider.get('identity'),
+                'executor_build':current_build()['build_id'] or current_build()['version']}
 
     def _owner(self,principal):
         if not principal or principal!=self.app.owner():raise RepairBlocked('Operaci může schválit pouze ověřený vlastník.')
@@ -278,6 +280,8 @@ class ApprovedRepairBroker:
             if previous and previous[0]==canonical(value):return value
             db.execute('INSERT INTO repair_reports(execution_id,created_at,classification,document) VALUES(?,?,?,?)',(execution_id,self.app.clock(),classification,canonical(value)))
         self.app.store.record(plan.document['incident_id'],'repair_report',value)
+        if classification in {'Oprava selhala','Problém se opakoval'} and getattr(self.app,'automatic_initial_setup',False):
+            self.app.request_source_check()
         return value
 
     def rollback_plan(self,identity,*,exclusive=False):

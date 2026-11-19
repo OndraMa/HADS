@@ -60,6 +60,8 @@ class OrchestrationCases:
                     for entity in sorted(t for t in targets if isinstance(t,str) and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+',t))[:4]:
                         if name in {'ha_get_state','ha_get_device'} or name=='ha_config_get_automation' and entity.startswith('automation.'):
                             requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity}})
+                        elif name=='ha_config_get_script' and entity.startswith('script.'):
+                            requests.append({'provider':provider,'tool':name,'arguments':{'script_id':entity}})
             for request in requests:
                 if budget<=0:break
                 report=tools.reports.get((request['provider'],request['tool']),{})
@@ -107,6 +109,9 @@ class OrchestrationCases:
             if isinstance(when,str):when=stamp(when)
             if type(when) not in {int,float} or not isinstance(message,str):continue
             text=message.lower()
+            component=str(event.get('component','unknown'))[:128]
+            if component.startswith(('hads_next','custom_components.hads','homeassistant.components.hads')):
+                continue  # Our reports are outputs, never new independent incidents.
             kind='dns' if any(s in text for s in ('name resolution','dns','getaddrinfo','gaierror')) else 'network' if any(s in text for s in ('connection reset','connection refused','cannot connect','timed out')) else 'restart' if any(s in text for s in ('restarting','started home assistant','starting home assistant')) else 'exception'
             from .observability import redact
             row={'source':event['source'],'observed_at':when,'component':str(event.get('component','unknown'))[:128],'kind':kind,'message':redact(message)[:1000]}

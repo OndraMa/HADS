@@ -101,7 +101,10 @@ class AIProvider:
                     raise ProviderDisabled('Nastavení AI se změnilo; další volání zastavena.')
             messages=body.get('messages')
             if not isinstance(messages,list) or len(messages)>80:raise ProviderDisabled('Kontext modelu překročil limit.')
-            payload={'model':settings['model'],'messages':messages,'max_tokens':output_limit,'stream':False,'n':1}
+            # Official OpenAI includes reasoning tokens in this documented cap.
+            origin=urlsplit(settings['endpoint'])
+            token_parameter='max_completion_tokens' if origin.hostname=='api.openai.com' and origin.port in {None,443} and origin.path=='/v1/chat/completions' else 'max_tokens'
+            payload={'model':settings['model'],'messages':messages,token_parameter:output_limit,'stream':False,'n':1}
             if 'tools' in body:payload['tools']=body['tools'];payload['tool_choice']='auto'
             data=json.dumps(payload,ensure_ascii=False,allow_nan=False).encode()
             if len(data)>input_limit:raise ProviderDisabled('Kontext modelu překročil testovací limit; požadavek nebyl odeslán.')

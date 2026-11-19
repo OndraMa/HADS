@@ -8,15 +8,24 @@ from .provider_reports import safe_report
 def install(tools):
     rows=[descriptor('statistics',object_schema({'entity_id':ENTITY}),contract='Core_2026.11_recorder/list_statistic_ids_and_statistics_during_period'),
           descriptor('core_logs',object_schema(),contract='Supervisor_GET_/core/logs'),
-          descriptor('supervisor_logs',object_schema(),contract='Supervisor_GET_/supervisor/logs')]
+          descriptor('supervisor_logs',object_schema(),contract='Supervisor_GET_/supervisor/logs'),
+          descriptor('services',object_schema({'domain':{'type':'string','pattern':'^[a-z][a-z0-9_]{0,79}$'}}),contract='Core_2026.11_get_services_current_schemas')]
     # Install after native catalog replacement each pass.
-    for provider,names in [('core',{'statistics','core_logs'}),('supervisor',{'supervisor_logs'})]:
+    for provider,names in [('core',{'statistics','core_logs','services'}),('supervisor',{'supervisor_logs'})]:
         old=[{k:v for k,v in t.items() if k not in {'available','diagnostic_read_verified'}} for t in tools.registry.tools() if t['provider']==provider]
         tools.registry.replace(provider,old+[r for r in rows if r['name'] in names])
         for name in names:tools.routes[(provider,name)]=('native_extra',None)
 
 
 def read(app,name,args):
+    if name=='services':
+        if app.core_ws is None:raise ToolDenied('Core není připojený.')
+        value=app.core_ws.transport({'type':'get_services'})
+        if not isinstance(value,dict):raise ToolDenied('Katalog akcí nebyl přečtený.')
+        services=value.get(args['domain'])
+        if services is None:return {'domain':args['domain'],'registered':False,'services':{},'replacement_proven':False}
+        if not isinstance(services,dict) or len(services)>128:raise ToolDenied('Neplatný nebo příliš velký katalog integrace.')
+        return {'domain':args['domain'],'registered':True,'services':safe_report(services),'replacement_proven':False,'authority':'current_schema_not_permission_to_execute'}
     if name in {'core_logs','supervisor_logs'}:
         if app.supervisor is None:raise ToolDenied('Supervisor není připojený.')
         value=app.supervisor._read('/core/logs' if name=='core_logs' else '/supervisor/logs')

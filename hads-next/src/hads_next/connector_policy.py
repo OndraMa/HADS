@@ -6,6 +6,7 @@ READS={
  'ha_get_state':object_schema({'entity_id':ENTITY}),
  'ha_get_device':object_schema({'entity_id':ENTITY}),
  'ha_config_get_automation':object_schema({'entity_id':ENTITY}),
+ 'ha_config_get_script':object_schema({'script_id':{'type':'string','pattern':r'^script\.[a-z0-9_]+$','maxLength':160}}),
  'ha_get_system_health':object_schema({'include':{'type':'string','enum':['repairs','zha_network','supervisor']}},[]),
 }
 WRITES={

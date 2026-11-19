@@ -2,6 +2,7 @@
 import json
 from html import escape
 from .tool_connections import KINDS
+from .dashboard import display_time
 
 
 def settings(app,csrf):
@@ -14,12 +15,14 @@ def settings(app,csrf):
         labels={'installed':'Nainstalováno','running':'Běží','connected':'Připojeno','authenticated':'Autentizováno','catalog_loaded':'Katalog načten','diagnostic_read_verified':'Vlastní diagnostická odpověď přečtená'}
         body+='<ul>'+''.join('<li>'+label+': '+('ano' if provider.get(key) is True else 'ne' if provider.get(key) is False else 'neověřeno / rozhraní bez vlastní autentizace')+'</li>' for key,label in labels.items())+'</ul>'
         if provider.get('diagnostic_read_at') is not None:
-            from .dashboard import display_time
             body+='<p>Poslední konkrétní diagnostické čtení: '+escape(display_time(provider['diagnostic_read_at'],app.snapshot()['timezone']))+'. Obnovení katalogu tento čas neposouvá.</p>'
         if provider.get('last_error'):body+='<p>'+escape(provider['last_error'])+'</p>'
+        if provider.get('last_used_at') is not None:
+            body+='<p>Data byla použita ve spisu <a href="../case/'+escape(provider['last_used_incident'],quote=True)+'">otevřít případ</a>. Čas čtení není novým nezávislým potvrzením.</p>'
+        body+='<p>Čas vlastního reportu: '+('zdroj jej v tomto čtení nedoložil' if provider.get('source_data_at') is None else escape(display_time(provider['source_data_at'],app.snapshot()['timezone'])))+'.</p>'
         body+='<details><summary>Skutečné funkce a jejich omezení</summary><ul>'+''.join('<li>'+escape(t['name'])+' — '+escape(t['effect'])+', '+escape(t['policy'])+(' — opravný adaptér implementovaný, každý plán vyžaduje zvláštní souhlas' if t['repair_operation_implemented'] else '')+'</li>' for t in tools)+'</ul></details></article>'
     body+='<h2>Jednorázové připojení</h2><p>Inspector a HADocs se HADS pokusí připojit přes ověřený inventář Supervisoru a jejich doložený interní port. Ostatní MCP endpointy nastav zde nebo aktivuj vybraný starý návrh. Nepřidávej k Hermesu neomezený shell nebo obecný MCP přístup.</p>'
-    body+='<form method="post" action="tool-connection">'+token+'<label>Poskytovatel<select name="provider">'+''.join('<option>'+p+'</option>' for p in KINDS)+'</select></label><label>Privátní adresa serveru<input name="url" type="text" required autocomplete="off"></label><label>Token, pokud jej server vyžaduje<input name="token" type="password" autocomplete="new-password"></label><label><input type="checkbox" name="private_http" value="yes">Výslovně povoluji HTTP pouze uvnitř soukromé sítě HA</label><label><input type="checkbox" name="enabled" value="yes" checked>Povolit diagnostické připojení</label><button>Uložit a ověřit připojení bez AI a bez oprav</button></form>'
+    body+='<form method="post" action="tool-connection">'+token+'<label>Poskytovatel<select name="provider">'+''.join('<option>'+p+'</option>' for p in KINDS)+'</select></label><label>Privátní adresa serveru (skrytá stejně jako token)<input name="url" type="password" required autocomplete="new-password" spellcheck="false"></label><label>Token pouze pokud jej skutečný server vyžaduje<input name="token" type="password" autocomplete="new-password"></label><p>U adresy s tajnou cestou obvykle stačí samotná adresa. HADS žádný další token neodhaduje. OAuth zde není podporovaný.</p><label><input type="checkbox" name="private_http" value="yes">Výslovně povoluji HTTP pouze uvnitř soukromé sítě HA</label><label><input type="checkbox" name="enabled" value="yes" checked>Povolit diagnostické připojení</label><button>Uložit a ověřit připojení bez AI a bez oprav</button></form>'
     for p in app.legacy_connectors.public_status()['staged_providers']:
         if p in KINDS:body+='<form method="post" action="tool-activate">'+token+'<input type="hidden" name="provider" value="'+escape(p,quote=True)+'"><button>Aktivovat pouze připravené připojení '+escape(p)+'</button></form>'
     return body+'<p>Rizikové registry/konfigurační změny vyžadují nezávislý podepsaný důkaz obnovení OneDrive zálohy. Chybějící důkaz nelze nahradit přepínačem ani textem AI.</p>'

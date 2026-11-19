@@ -131,9 +131,10 @@ class ToolOrchestration:
                 if provider in {'automation_inspector','hadocs'}:self._http(provider,client)
                 else:self._mcp(provider,client)
             except Exception as e:
+                from .connection_diagnostics import connection_failure
                 code=e.status if isinstance(e,ReadFailure) else None
                 self.registry.provider(provider,connected=False,authenticated=False if code in {401,403} else None,catalog_loaded=False,diagnostic_read_verified=False,
-                    last_error='Připojení vyžaduje ověření přístupu.' if code in {401,403} else 'Konektor nepřečetl platný katalog nebo report; další zdroje pokračují.')
+                    **connection_failure(e))
         self._services()
         from .native_tool_reads import install
         install(self)
@@ -175,7 +176,7 @@ class ToolOrchestration:
         if generated is None and provider!='hadocs' or generated is not None and not -60<=self.app.clock()-generated<=86400:raise ToolDenied('Report nemá aktuální ověřitelný čas.')
         self._report(provider,name,value,generated_at=generated)
         self.registry.provider(provider,connected=True,authenticated=None,authentication_basis='private_report_listener_no_auth_in_upstream',catalog_loaded=True,
-            diagnostic_read_verified=True,version=version,version_basis='actual_report',last_error=value.get('freshness_limitation'),origin_digest=fingerprint(client.base))
+            diagnostic_read_verified=True,version=version,version_basis='actual_report',last_error=value.get('freshness_limitation'),origin_digest=fingerprint(client.base),source_data_at=generated,error_code=None,last_response_status=None,next_step_cs=None)
         self.registry.replace(provider,[descriptor(name,object_schema(),contract='upstream_structured_HTTP_report')])
 
     def _mcp(self,provider,client):
@@ -202,7 +203,7 @@ class ToolOrchestration:
         same_source=previous.get('origin_digest')==fingerprint(client.endpoint) and previous.get('server_version')==client._server['version'] and previous.get('identity')==client._server['name'][:100] and previous.get('catalog_digest')==catalog_digest
         verified=same_source and previous.get('diagnostic_read_verified') is True and type(read_at) in {int,float} and 0<=self.app.clock()-read_at<=900
         self.registry.provider(provider,connected=True,authenticated=bool(client._token) or None,authentication_basis='MCP_server_accepted_credential_or_private_endpoint',catalog_loaded=True,
-             diagnostic_read_verified=bool(verified),diagnostic_read_at=read_at if verified else None,catalog_digest=catalog_digest,server_version=client._server['version'],version=previous.get('version') if previous.get('version_basis')=='installed_HA_integration_manifest' else client._server['version'],version_basis='installed_HA_integration_manifest' if previous.get('version_basis')=='installed_HA_integration_manifest' else 'MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None)
+             diagnostic_read_verified=bool(verified),diagnostic_read_at=read_at if verified else None,catalog_digest=catalog_digest,server_version=client._server['version'],version=previous.get('version') if previous.get('version_basis')=='installed_HA_integration_manifest' else client._server['version'],version_basis='installed_HA_integration_manifest' if previous.get('version_basis')=='installed_HA_integration_manifest' else 'MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None,error_code=None,last_response_status=None,next_step_cs=None)
         self.registry.replace(provider,tools)
 
     def _services(self):
@@ -231,6 +232,8 @@ class ToolOrchestration:
             if e['source']=='native_entity_context':known.add(e['payload'].get('entity_id'))
         for report in self.app.entity_context.reports(case):known.add(report['entity_id'])
         if 'entity_id' in args and args['entity_id'] not in known:raise ToolDenied('Cíl není doložený v tomto spisu.')
+        if 'script_id' in args and args['script_id'] not in known:raise ToolDenied('Skript není doložený v tomto spisu.')
+        if 'domain' in args and args['domain'] not in {str(k).removeprefix('integration:').split('.',1)[0] for k in known}:raise ToolDenied('Integrace není doložená v tomto spisu.')
         return known
 
     def diagnostic_read(self,incident_id,args):
@@ -256,9 +259,12 @@ class ToolOrchestration:
             elif route in {'mcp','hamster'}:
                 value=client.call(args['tool'] if route=='mcp' else 'call',args['arguments'] if route=='mcp' else {'path':args['tool'],'arguments':args['arguments']})
                 if not isinstance(value,(dict,list)) or isinstance(value,dict) and (value.get('success') is False or value.get('error')):raise ToolDenied('Nástroj nevrátil úspěšnou strukturovanou odpověď.')
-                if args['tool']=='ha_config_get_automation':
+                if args['tool'] in {'ha_config_get_automation','ha_config_get_script'}:
                     if not isinstance(value.get('config'),dict) or not isinstance(value.get('config_hash'),str):raise ToolDenied('Chybí konfigurace nebo konfigurační hash.')
-                    value={'automation':project_automation(value['config']),'config_hash':value['config_hash'],'references':safe_report(value.get('references')),'validation':safe_report(value.get('validation'))}
+                    script=args['tool']=='ha_config_get_script'
+                    config=value['config']
+                    if script:config={'actions':config.get('sequence',[]),'alias':config.get('alias'),'mode':config.get('mode')}
+                    value={'script' if script else 'automation':project_automation(config),'config_hash':value['config_hash'],'references':safe_report(value.get('references')),'validation':safe_report(value.get('validation'))}
                 else:
                     if isinstance(value,list) and args['provider']=='hamster_mcp':
                         targets=self._scope(case,{})
@@ -287,7 +293,8 @@ class ToolOrchestration:
                 value={**value,'provider_version':provider.get('version'),'provider_version_basis':provider.get('version_basis')}
             if len(canonical(value).encode())>11500:raise ToolDenied('Zúžení výsledku je nutné; report překročil limit důkazu.')
             result=self.app.investigations.broker._result(incident_id,'tool:'+args['provider']+':'+args['tool'],args['provider'],'available' if value not in ({},[]) else 'no_relevant_data',value,self.app.clock(),'Výsledek poskytovatele není automaticky příčina ani povolení zápisu.',observed=observed)
-            self.registry.provider(args['provider'],diagnostic_read_verified=True,diagnostic_read_at=self.app.clock())
+            self.registry.provider(args['provider'],diagnostic_read_verified=True,diagnostic_read_at=self.app.clock(),
+                last_used_at=self.app.clock(),last_used_incident=incident_id,source_data_at=observed)
             return result
         except Exception:
             return {'status':'not_read','data':None,'evidence_ids':[],'source':args['provider'],'detail_cs':'Konkrétní čtení selhalo, má neplatný formát nebo vyžaduje zúžení. Výpadek není nulový nález.'}
