@@ -79,7 +79,8 @@ class OrchestratedWire(unittest.TestCase):
                         if name in {'ha_call_read_tool','ha_call_write_tool'}:name=args['name'];args=args['arguments']
                         if name=='ha_get_skill_guide':value={'success':True,'file':args['file'],'content':'Acknowledgment key: '+outer.guide_ack+' — strict best-practices. Use literal targets and supported state triggers.'}
                         elif name=='ha_config_get_automation':value={'success':True,'config':copy.deepcopy(outer.config),'config_hash':fingerprint(outer.config),'references':{'entities':[outer.old]}}
-                        elif name=='ha_get_state':value={'success':True,'data':{'entity_id':args['entity_id'],'state':'unavailable','private_token':'NEVER_EXPORT'}}
+                        elif name=='ha_get_state':
+                            value={'data':{'entity_id':getattr(outer,'unexpected_mcp_target',args['entity_id']),'state':'unavailable','private_token':'NEVER_EXPORT'},'metadata':{'timestamp_format':'native'}}
                         elif name=='ha_config_set_automation':
                             outer.assertEqual(args['config_hash'],fingerprint(outer.config));outer.assertIs(args['run_actions'],False);outer.assertEqual(args['BestPracticeKey'],outer.guide_ack)
                             outer.writes.append(copy.deepcopy(args));outer.config=copy.deepcopy(args['config'])
@@ -100,6 +101,26 @@ class OrchestratedWire(unittest.TestCase):
         return Handler
     @staticmethod
     def iso(t):return datetime.fromtimestamp(t,timezone.utc).isoformat()
+
+    def test_saved_ha_mcp_connection_proves_read_without_incident_and_rejects_wrong_target(self):
+        states = [{'entity_id':self.new, 'state':'on'}]
+        app = Application(self.tmp.name+'/no-incidents', CoreReader(self.core))
+        with app.store._connect() as db:
+            db.execute("INSERT INTO application_settings VALUES('owner','owner-fixture')")
+        app.tools.connections.configure('ha_mcp',url=self.url+'/mcp',token='fixture-only-token',
+                                        private_http=True,enabled=True,principal='owner-fixture')
+        self.unexpected_mcp_target=self.old
+        app.tools.refresh({},states)
+        status = lambda: next(row for row in app.tools.registry.providers() if row['id']=='ha_mcp')
+        self.assertTrue(status()['catalog_loaded'])
+        self.assertFalse(status()['diagnostic_read_verified'])
+        del self.unexpected_mcp_target
+        app.tools.refresh({},states)
+        self.assertTrue(status()['diagnostic_read_verified'])
+        self.assertIn('diagnostic_read_at',status())
+        self.assertNotIn(self.new,canonical(status()))
+        self.assertEqual(app.snapshot()['cases'],[])
+        self.assertEqual(self.writes,[])
     def core(self,path):
         if path=='/api/states/'+self.old:raise ReadFailure('http_error',404)
         if path=='/api/states/'+self.new:return {'entity_id':self.new,'state':self.light_state,'last_updated':self.iso(self.now)}

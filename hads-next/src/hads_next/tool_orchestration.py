@@ -125,11 +125,16 @@ class ToolOrchestration:
             if client is None and provider in {'automation_inspector','hadocs'}:
                 client=self._internal_report_client(provider,values)
             if client is None:
-                self.registry.provider(provider,connected=False,authenticated=None,catalog_loaded=False,diagnostic_read_verified=False,last_error='Chybí aktivní připojení; starý návrh je třeba jednorázově potvrdit.')
+                message = ('V Nástrojích servisního týmu ulož adresu HA-MCP dosažitelnou z HAOS a povol diagnostické připojení.'
+                           if provider == 'ha_mcp' else 'Chybí aktivní připojení.')
+                self.registry.provider(provider,connected=False,authenticated=None,catalog_loaded=False,diagnostic_read_verified=False,last_error=message)
                 continue
             try:
                 if provider in {'automation_inspector','hadocs'}:self._http(provider,client)
-                else:self._mcp(provider,client)
+                else:
+                    self._mcp(provider,client)
+                    if provider == 'ha_mcp':
+                        self._check_ha_mcp_state(client)
             except Exception as e:
                 from .connection_diagnostics import connection_failure
                 code=e.status if isinstance(e,ReadFailure) else None
@@ -205,6 +210,41 @@ class ToolOrchestration:
         self.registry.provider(provider,connected=True,authenticated=bool(client._token) or None,authentication_basis='MCP_server_accepted_credential_or_private_endpoint',catalog_loaded=True,
              diagnostic_read_verified=bool(verified),diagnostic_read_at=read_at if verified else None,catalog_digest=catalog_digest,server_version=client._server['version'],version=previous.get('version') if previous.get('version_basis')=='installed_HA_integration_manifest' else client._server['version'],version_basis='installed_HA_integration_manifest' if previous.get('version_basis')=='installed_HA_integration_manifest' else 'MCP_server_reported_not_package_attestation',identity=client._server['name'][:100],origin_digest=fingerprint(client.endpoint),last_error=None,error_code=None,last_response_status=None,next_step_cs=None)
         self.registry.replace(provider,tools)
+
+    def _check_ha_mcp_state(self, client):
+        """Prove one actual read, even when there are no open incidents."""
+        provider = next(row for row in self.registry.providers() if row['id'] == 'ha_mcp')
+        if provider.get('diagnostic_read_verified'):
+            return
+        target = next((row['entity_id'] for row in self.snapshot_states
+                       if isinstance(row, dict)
+                       and isinstance(row.get('state'), str)
+                       and isinstance(row.get('entity_id'), str)
+                       and re.fullmatch(ENTITY['pattern'], row['entity_id'])), None)
+        if target is None:
+            self.registry.provider('ha_mcp', last_error='Katalog je dostupný. Čtecí test čeká na skutečný stav entity z Core.')
+            return
+        args = {'entity_id': target}
+        try:
+            tool = self.registry.get('ha_mcp', 'ha_get_state', effect='read')
+            validate(tool['schema'], args)
+        except ToolDenied:
+            self.registry.provider('ha_mcp', last_error='Katalog je dostupný, ale neposkytuje podporované čtení ha_get_state.')
+            return
+        try:
+            result = client.call('ha_get_state', args)
+            data = result.get('data') if isinstance(result, dict) and result.get('success', True) is True and not result.get('error') else None
+            if not isinstance(data, dict) or data.get('entity_id') != target or not isinstance(data.get('state'), str):
+                raise ReadFailure('invalid_state_response')
+        except (ValueError, ReadFailure, TypeError, AttributeError) as error:
+            from .connection_diagnostics import connection_failure
+            status = connection_failure(error)
+            status['last_error'] = 'Katalog je dostupný, ale konkrétní čtení stavu selhalo. ' + status['last_error']
+            self.registry.provider('ha_mcp', **status)
+            return
+        # Record the result of the test, never the chosen entity or its state.
+        self.registry.provider('ha_mcp', diagnostic_read_verified=True, diagnostic_read_at=self.app.clock(),
+                               last_error=None, error_code=None, last_response_status=None, next_step_cs=None)
 
     def _services(self):
         ws=self.app.core_ws

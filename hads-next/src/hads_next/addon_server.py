@@ -431,11 +431,16 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/repair/rollback':
                 self.server.app.repairs.rollback(form.get('plan_id',[''])[0],self.headers['X-Remote-User-Id'])
             elif path == '/setup/tool-connection':
-                self.server.app.tools.connections.configure(form.get('provider',[''])[0],url=form.get('url',[''])[0],token=form.get('token',[''])[0],private_http=form.get('private_http')==['yes'],enabled=form.get('enabled')==['yes'],principal=self.headers['X-Remote-User-Id'])
+                try:
+                    self.server.app.tools.connections.configure(form.get('provider',[''])[0],url=form.get('url',[''])[0].strip(),token=form.get('token',[''])[0],private_http=form.get('private_http')==['yes'],enabled=form.get('enabled')==['yes'],principal=self.headers['X-Remote-User-Id'])
+                except ValueError:
+                    return self.send_body(400,'Připojení se neuložilo. Zadej celou MCP adresu. U soukromé adresy HTTP potvrď použití soukromé sítě. <a href="tools">Zpět k nástrojům</a>')
                 self.server.app.request_source_check()
+                self.send_response(303);self.send_header('Location','tools');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/setup/tool-activate':
                 self.server.app.tools.connections.activate_previous(form.get('provider',[''])[0],self.headers['X-Remote-User-Id'])
                 self.server.app.request_source_check()
+                self.send_response(303);self.send_header('Location','tools');self.send_header('Content-Length','0');self.end_headers();return
             elif path == '/tool-repair/decide':
                 self.server.app.approved_tools.decide(form.get('plan_id',[''])[0],form.get('decision',[''])[0],self.headers['X-Remote-User-Id'],exclusive=form.get('exclusive')==['yes'])
             elif path == '/tool-repair/adopt':

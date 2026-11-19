@@ -15,6 +15,18 @@ Pro samotný sběr není potřeba OpenAI klíč ani další samostatný Hermes.
 
 ## HA-MCP
 
+Pokud HADS u HA-MCP ukazuje **Nainstalováno** a zároveň **Chybí aktivní připojení**,
+načetl verzi integrace z Home Assistantu. Připojení vyžaduje samostatné uložení
+v **Nástrojích servisního týmu → Jednorázové připojení → ha_mcp**. Pro HADS běžící
+uvnitř HAOS použij lokální připojovací adresu z HA-MCP. U HTTP potvrď volbu pro soukromou síť
+a ponech povolené diagnostické připojení. Pokud adresa s privátní cestou slouží zároveň jako
+přihlašovací údaj, pole Token může zůstat prázdné.
+
+Ve vydaném RC8 se po uložení znovu otevře přehled domácnosti. Vrať se do Nástrojů
+servisního týmu a zkontroluj kartu HA-MCP. Úprava v PR po uložení vrací přímo na nástroje
+a ověří skutečné čtení stavu jedné entity známé z Core, jakmile je dostupný katalog
+s podporovaným nástrojem `ha_get_state`. Výsledek ověření se ukládá bez údajů o vybrané entitě.
+
 1. V nástrojích HADS vyber `ha_mcp`. Použij skutečný endpoint z již nainstalovaného HA-MCP, bez odhadování callback URL.
    Endpoint s privátní cestou je přístupový údaj; patří jen do privátního formuláře HADS.
 2. Povol diagnostické připojení. Pro lokální HTTP je nutný výslovný souhlas se soukromou sítí; HTTPS se ověřuje a redirecty se odmítají.
@@ -50,6 +62,18 @@ Pokud se katalog oproti tabulce liší, HADS používá jen skutečně nalezenou
 nevyhledává náhradu pomocí obecného shellu. Pro nativní ZHA čtení není HA-MCP povinný.
 
 ## Nativní MCP a Hamster
+
+**MCP Client** v HA předává nástroje připojených MCP serverů konverzačnímu agentovi Assist.
+Music Assistant je jedním z takových serverů. Další službu lze přidat, pokud nabízí
+vlastní dosažitelné MCP rozhraní. Watchman, Spook, Automation Inspector ani HADocs se kvůli
+HADS přes tento klient nepřidávají. HADS čte jejich vlastní reporty nebo podporovaná rozhraní.
+[Oficiální dokumentace klienta](https://www.home-assistant.io/integrations/mcp/).
+
+**Model Context Protocol** je server Home Assistantu. Jeho hlavní URL `/api/mcp` nabízí
+sady nástrojů, které vybereš v **Nastavení → Systém → AI**. Nastavení „Pouze pro čtení“
+hlavní URL se nevztahuje na jednotlivé adresy sad. HADS ověřuje svůj nativní MCP katalog
+samostatně a používá vlastní omezený katalog operací.
+[Oficiální dokumentace serveru](https://www.home-assistant.io/integrations/mcp_server/).
 
 Nativní MCP se může připojit přes stávající Supervisor proxy, pokud daná verze tuto cestu podporuje;
 jinak se jednou nastaví skutečné URL z HA. Uplatňuje se skutečný katalog a pouze ověřená čtecí podmnožina.

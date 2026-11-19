@@ -9,10 +9,17 @@ def settings(app,csrf):
     token='<input type="hidden" name="csrf" value="'+escape(csrf,quote=True)+'">'
     body='<h1>Nástroje servisního týmu</h1><p>HADS sám vybírá diagnostická čtení. Připojení není schválení opravy. Adresy ani tokeny se nezobrazují v katalogu, důkazech nebo Hermesu.</p>'
     if app.tools.connections.load_error:body+='<p>'+escape(app.tools.connections.load_error)+'</p>'
+    configured = {row['provider']: row for row in app.tools.connections.public()}
+    if app.snapshot()['source_job']['state'] == 'running':
+        body += '<p role="status">Probíhá čtecí kontrola. <a href="tools">Obnovit výsledek</a></p>'
     for provider in app.tools.registry.providers():
         tools=[r for r in app.tools.registry.tools() if r['provider']==provider['id']]
         body+='<article><h2>'+escape(provider['id'])+'</h2><p>Verze: '+escape(str(provider.get('version') or 'neověřená'))+'; původ: '+escape(str(provider.get('version_basis','neověřeno')))+'</p>'
         labels={'installed':'Nainstalováno','running':'Běží','connected':'Připojeno','authenticated':'Autentizováno','catalog_loaded':'Katalog načten','diagnostic_read_verified':'Vlastní diagnostická odpověď přečtená'}
+        if provider['id'] in KINDS:
+            connection = configured.get(provider['id'])
+            if connection:
+                body += '<p>Soukromé nastavení je uloženo. Diagnostické připojení je '+('povolené' if connection['enabled'] else 'vypnuté')+'.</p>'
         body+='<ul>'+''.join('<li>'+label+': '+('ano' if provider.get(key) is True else 'ne' if provider.get(key) is False else 'neověřeno / rozhraní bez vlastní autentizace')+'</li>' for key,label in labels.items())+'</ul>'
         if provider.get('diagnostic_read_at') is not None:
             body+='<p>Poslední konkrétní diagnostické čtení: '+escape(display_time(provider['diagnostic_read_at'],app.snapshot()['timezone']))+'. Obnovení katalogu tento čas neposouvá.</p>'
