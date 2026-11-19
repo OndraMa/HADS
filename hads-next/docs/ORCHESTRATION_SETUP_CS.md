@@ -81,6 +81,22 @@ MCP Client v HA je opačný směr; není potřeba propojovat HA klienta zpět do
 
 Hamster vyžaduje vlastní skutečný endpoint. HADS čte schema pro konkrétní nativní příkazy a používá
 jen nezávisle povolené parametry. Obecný Hamster call ani všechny jeho služby se neposkytují modelu.
+Pokud pro konkrétní případ stačí Core, HA-MCP nebo Toolkit, Hamster může zůstat nepřipojený.
+
+## ZHA Toolkit
+
+ZHA Toolkit nabízí akce v Home Assistantu. HADS si přes `zha_toolkit.zha_devices` čte
+seznam známých zařízení a existující údaje o jejich poslední komunikaci a signálu.
+Z řádku **Vlastní diagnostická odpověď přečtená: ano** u Toolkitu poznáš, že toto čtení proběhlo.
+Ve spisu nahlášeného Zigbee problému vybírej konkrétní entitu. HADS ji spojuje se zařízením
+přes registr Core. Aktualizace ve zdrojovém PR do spisu přidá pouze odpovídající řádky Toolkitu,
+aby velikost celé sítě nebránila použití důkazu.
+
+Cílené `attr_read` je v brokeru omezené na známé zařízení, podporované atributy a jediný pokus.
+Například atribut 33 clusteru 1 udává u kompatibilního zařízení zbývající baterii v půlprocentech.
+Spící zařízení může na okamžité čtení odpovědět až při probuzení. Obecný `scan_device`, zápisy
+atributů, změny reportingu a bindingu nejsou součástí rutinního čtení HADS.
+[Dokumentace ZHA Toolkitu](https://github.com/mdeweerd/zha-toolkit/tree/main).
 
 ## Staré připojení Hermes RC3
 

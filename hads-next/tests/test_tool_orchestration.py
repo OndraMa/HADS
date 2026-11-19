@@ -270,6 +270,26 @@ class OrchestratedWire(unittest.TestCase):
         fail=True;result=self.app.tools.diagnostic_read(case['id'],request)
         self.assertEqual(result['status'],'not_read');self.assertEqual(result['evidence_ids'],[])
         self.assertEqual(self.writes,[])
+
+    def test_toolkit_automatically_attaches_only_bound_device_from_large_cache(self):
+        entity = self.entry['entity_id']
+        case = self.app.store.open_incident('manual_functional', 'Kontakt neodpovídá', [entity], self.now)
+        self.app.tools.snapshot_values = {'entity_registry': [self.entry]}
+        devices = [{'device_id': f'unrelated_{i}', 'ieee': f'00:11:22:33:44:55:66:{i:02x}'}
+                   for i in range(240)]
+        bound = {'device_id': self.entry['device_id'], 'ieee': '00:11:22:33:44:55:77:88', 'lqi': 75}
+        self.app.entity_context.toolkit = {'read_succeeded': True, 'version': 'v1.2.6', 'devices': devices + [bound]}
+        self.app.tools._sensors(self.app.tools.snapshot_values, [])
+        self.app.orchestration.cycle(budget=6)
+        proof = next(row for row in self.app.store.case(case['id'])['evidence'] if row['source'] == 'zha_toolkit')
+        self.assertEqual(proof['payload']['data']['devices'], [bound])
+        self.app.tools.snapshot_values = {'entity_registry': []}
+        unrelated = self.app.tools.diagnostic_read(self.case['id'], {
+            'provider': 'zha_toolkit', 'tool': 'diagnostics', 'arguments': {},
+        })
+        self.assertEqual(unrelated['status'], 'no_relevant_data')
+        self.assertEqual(unrelated['evidence_ids'], [])
+        self.assertEqual(self.writes, [])
     def test_F_unknown_shell_hint_and_write_through_diagnostic_route_are_denied(self):
         for name,args in [('run_arbitrary_shell',{'command':'echo forbidden'}),('ha_config_set_automation',{})]:
             with self.assertRaises(ToolDenied):self.app.tools.diagnostic_read(self.case['id'],{'provider':'ha_mcp','tool':name,'arguments':args})

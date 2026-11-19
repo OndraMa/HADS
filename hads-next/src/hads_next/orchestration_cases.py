@@ -35,6 +35,12 @@ class OrchestrationCases:
             if budget<=0:break
             case=self.app.store.case(incident['id']);targets=tools._scope(case,{})
             requests=[]
+            registry = tools.snapshot_values.get('entity_registry')
+            if isinstance(registry, list) and any(
+                isinstance(row, dict) and row.get('platform') == 'zha' and row.get('entity_id') in targets
+                for row in registry
+            ) and any(row['provider'] == 'zha_toolkit' and row['name'] == 'diagnostics' for row in available):
+                requests.append({'provider':'zha_toolkit','tool':'diagnostics','arguments':{}})
             if incident['kind']=='system_resource_pressure' and any(r['provider']=='core' and r['name']=='hads_get_runtime_health' for r in available):
                 requests.append({'provider':'core','tool':'hads_get_runtime_health','arguments':{}})
             if incident['kind'] in {'system_resource_pressure','application_failure','system_health_failure','manual_functional'}:
@@ -67,7 +73,11 @@ class OrchestrationCases:
             for request in requests:
                 if budget<=0:break
                 report=tools.reports.get((request['provider'],request['tool']),{})
-                request_id=fingerprint([request,fingerprint(report.get('data')) if report else int(self.app.clock()//600)])
+                report_data = report.get('data')
+                if request['provider'] == 'zha_toolkit' and report_data:
+                    # The refresh timestamp changes even when the cache contents do not.
+                    report_data = {key: value for key, value in report_data.items() if key != 'checked_at'}
+                request_id=fingerprint([request,fingerprint(report_data) if report else int(self.app.clock()//600)])
                 with self.app.store._connect() as db:
                     previous=db.execute('SELECT * FROM orchestration_reads WHERE incident_id=? AND request_hash=?',(incident['id'],request_id)).fetchone()
                     if previous and (previous['state']=='available' or previous['attempts']>=2 or self.app.clock()-previous['checked_at']<300):continue

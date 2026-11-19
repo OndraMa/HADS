@@ -25,7 +25,7 @@ def settings(app,csrf):
             body+='<p>Poslední konkrétní diagnostické čtení: '+escape(display_time(provider['diagnostic_read_at'],app.snapshot()['timezone']))+'. Obnovení katalogu tento čas neposouvá.</p>'
         if provider.get('last_error'):body+='<p>'+escape(provider['last_error'])+'</p>'
         if provider.get('last_used_at') is not None:
-            body+='<p>Data byla použita ve spisu <a href="../case/'+escape(provider['last_used_incident'],quote=True)+'">otevřít případ</a>. Čas čtení není novým nezávislým potvrzením.</p>'
+            body+='<p>Poslední použití ve spisu: '+escape(display_time(provider['last_used_at'],app.snapshot()['timezone']))+' · <a href="../case/'+escape(provider['last_used_incident'],quote=True)+'">otevřít případ</a>. Ověření aktuálního čtení je uvedené výše.</p>'
         body+='<p>Čas vlastního reportu: '+('zdroj jej v tomto čtení nedoložil' if provider.get('source_data_at') is None else escape(display_time(provider['source_data_at'],app.snapshot()['timezone'])))+'.</p>'
         body+='<details><summary>Skutečné funkce a jejich omezení</summary><ul>'+''.join('<li>'+escape(t['name'])+' — '+escape(t['effect'])+', '+escape(t['policy'])+(' — opravný adaptér implementovaný, každý plán vyžaduje zvláštní souhlas' if t['repair_operation_implemented'] else '')+'</li>' for t in tools)+'</ul></details></article>'
     body+='<h2>Jednorázové připojení</h2><p>Inspector a HADocs se HADS pokusí připojit přes ověřený inventář Supervisoru a jejich doložený interní port. Ostatní MCP endpointy nastav zde nebo aktivuj vybraný starý návrh. Nepřidávej k Hermesu neomezený shell nebo obecný MCP přístup.</p>'

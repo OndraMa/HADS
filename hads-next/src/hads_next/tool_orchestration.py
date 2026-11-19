@@ -295,6 +295,20 @@ class ToolOrchestration:
                 elif args['provider']=='hadocs':
                     value={**value,'incidents':[r for r in value['incidents'] if isinstance(r,dict) and (r.get('entity_id') in targets or set(r.get('affected_entities',[]))&targets)][:8],
                            'recommendations':value['recommendations'][:8]}
+                elif args['provider']=='zha_toolkit':
+                    registry = self.snapshot_values.get('entity_registry')
+                    device_ids = {row['device_id'] for row in registry
+                                  if isinstance(row, dict) and row.get('entity_id') in targets
+                                  and row.get('platform') == 'zha' and isinstance(row.get('device_id'), str)
+                                  } if isinstance(registry, list) else set()
+                    matched = [row for row in value['devices'] if row.get('device_id') in device_ids]
+                    if not matched:
+                        return self.app.investigations.broker._result(
+                            incident_id, 'tool:zha_toolkit:diagnostics', 'zha_toolkit',
+                            'no_relevant_data', None, self.app.clock(),
+                            'V přečtené cache Toolkitu není zařízení s doloženou vazbou na tento spis.')
+                    value = {key: item for key, item in value.items() if key not in {'checked_at', 'devices'}}
+                    value.update(devices=matched[:16], matched_devices=len(matched), truncated=len(matched) > 16)
 
             elif route in {'mcp','hamster'}:
                 value=client.call(args['tool'] if route=='mcp' else 'call',args['arguments'] if route=='mcp' else {'path':args['tool'],'arguments':args['arguments']})

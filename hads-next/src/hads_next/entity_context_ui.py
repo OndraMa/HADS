@@ -14,8 +14,14 @@ def render_context(app,case=None):
         body+='<article><h3>'+escape(name)+'</h3><p>'+escape(row['entity_id'])+' — '+escape(labels[row['classification']])+'.</p><p>'+escape(row['summary_cs'])+'</p>'
         body+='<p>Poslední konkrétní čtení: '+escape(display_time(row['checked_at'],zone))+'.</p>'
         if 'case_evidence_budget' in row['gaps']:body+='<p>Spis dosáhl limitu důkazů. Aktuální čtení pokračuje, ale nový podklad není plně uložený; nesmí autorizovat opravu. Historii je nutné řízeně exportovat a archivovat.</p>'
-        radio=row.get('zha') or row.get('toolkit')
-        if radio:
-            body+='<p>ZHA: poslední komunikace '+escape(display_time(radio.get('last_seen'),zone))+'; LQI '+escape(str(radio.get('lqi')) if radio.get('lqi') is not None else 'nezjištěno')+'; RSSI '+escape(str(radio.get('rssi')) if radio.get('rssi') is not None else 'nezjištěno')+'. Tyto údaje samy neurčují příčinu ani fyzický výsledek.</p>'
+        for key, label in (('zha', 'ZHA'), ('toolkit', 'ZHA Toolkit')):
+            radio = row.get(key)
+            if radio:
+                lqi = escape(str(radio['lqi'])) if radio.get('lqi') is not None else 'nezjištěno'
+                rssi = escape(str(radio['rssi'])) if radio.get('rssi') is not None else 'nezjištěno'
+                body += ('<p><strong>'+label+'</strong> · Poslední komunikace '+escape(display_time(radio.get('last_seen'),zone))
+                         +' · LQI '+lqi+' · RSSI '+rssi+'</p>')
+        if row.get('zha') or row.get('toolkit'):
+            body += '<p>Obě čtení vycházejí ze ZHA a mohou sdílet stejné měření. Čas komunikace ani signál sám neurčuje příčinu výpadku.</p>'
         body+='<p><strong>Další krok:</strong> '+escape(row['next_test_cs'])+'</p><p><strong>Oprava ke schválení:</strong> '+escape(row['repair']['reason_cs'])+'</p></article>'
     return body+'</section>'
