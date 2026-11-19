@@ -32,5 +32,16 @@
   "interpretation": "HTTP 503 was received before MCP identity or catalog. The response may come from a proxy or access infrastructure; it does not establish an HA-MCP defect.",
   "production_household_writes": 0,
   "paid_model_calls": 0,
-  "fifteen_minute_target_hardware_measurement_performed": false
+  "fifteen_minute_target_hardware_measurement_performed": false,
+  "environment_network_policy": {
+    "mode": "unrestricted",
+    "state": "enforced",
+    "observations_current": true
+  },
+  "latest_cloud_probe": {
+    "http_status": 503,
+    "content_type": "text/plain",
+    "recognized_error_marker": "upstream connect error",
+    "response_body_saved": false
+  }
 }

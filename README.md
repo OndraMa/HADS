@@ -1,16 +1,27 @@
-# HADS Next — vývoj orchestrace po RC7
+# HADS Next 1.0.0-rc8 — instalační kandidát
 
-Zdrojová větev **codex/hads-next-orchestration**, [souhrnný PR #19](https://github.com/OndraMa/HADS/pull/19).
-Nový instalátor ani RC zatím nevychází. Instalovaná RC7 změny z této větve ještě neobsahuje.
+Navazuje na [PR #19](https://github.com/OndraMa/HADS/pull/19), větev **codex/hads-next-orchestration**.
+Kandidát je určený k přejímce. Úplné původní zadání a živý HAOS zatím nejsou potvrzené.
 
-- [Implementace, výsledky kontrol a přesné zbývající části](hads-next/docs/ORCHESTRATION_REVIEW_CS.md)
-- [Matice požadavek → implementace → nástroj → propojení → test → výsledek](hads-next/docs/orchestration-matrix.json)
-- [Jednorázové nastavení HA-MCP, Hermesu a konektorů](hads-next/docs/ORCHESTRATION_SETUP_CS.md)
-- [Kontrakty všech providerů a živá přejímka](hads-next/docs/ORCHESTRATION_ACCEPTANCE_CS.md)
-- [Přesný živý přejímací protokol po RC7](hads-next/docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md)
-- [Protokoly s přesnou zdrojovou revizí a SHA-256](hads-next/docs/evidence/orchestration/RESULTS.json)
+- **[Instalátor, kompletní ZIP, návody a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc8-kandidat/)**
+- [Přesné kroky aktualizace z RC6/RC7 a hotovo / chybí / blokováno](hads-next/docs/CANDIDATE_DELIVERY_CS.md)
+- [Skutečné výsledky a zdrojové otisky](hads-next/docs/evidence/candidate-20261119/RESULTS.json)
+- [Jednorázové nastavení HA-MCP a původního Hermesu](hads-next/docs/ORCHESTRATION_SETUP_CS.md)
+- [Přijímací integrace nezávislého důkazu obnovy](hads-next/docs/RESTORE_VERIFIER_CONTRACT.md)
+- [Čekající živá přejímka](hads-next/docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md)
 
-Vydané balíčky níže zůstávají zachované; nepředstavují instalaci nového vývoje.
+**323 testů na každé architektuře ARM64/AMD64**, produkční image spuštěný bez domácí sítě,
+ověřený commit a sestavení, čistý SIGTERM (0), skutečný Core a původní izolovaný Hermes se
+skriptovaným modelem, 26 mobilních/desktopových pohledů. Instalační soubory obou architektur jsou totožné.
+
+Zdroj kandidáta: `476587fb9f7593ff951143b2f4c7c3bac011c51b`.
+Aktualizace používá stejnou identitu a zachovává data; starou aplikaci předem neodinstalovávej.
+Podle zadání nevytváří novou předinstalační HA/OneDrive zálohu; povinné zálohy před opravami zůstávají.
+
+Z cloudu poskytnuté adresy HA-MCP vrátily HTTP503 před initialize. Živá autentizace, katalog a fyzická
+funkce nejsou potvrzené. Příjem podepsaného důkazu obnovy je implementovaný; skutečný nezávislý ověřovatel
+zatím není připojený. Obecné statistické/registry/skriptové/Zigbee opravy zůstávají neimplementované automatické operace.
+HABS není povinnou závislostí instalace ani diagnostiky HADS.
 
 ---
 

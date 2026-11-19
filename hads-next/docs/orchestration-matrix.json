@@ -3,7 +3,7 @@
   "baseline": "c1372a392f213ab995c9848ae9721b3732967268",
   "live_haos": false,
   "real_model_reasoning_tested": false,
-  "new_RC_published": false,
+  "new_RC_published": true,
   "full_original_assignment_complete": false,
   "requirements": [
     {
@@ -180,20 +180,20 @@
     {
       "requirement": "20",
       "description": "Milestones a release gate",
-      "implementation": "No RC or installer published in this work",
+      "implementation": "Explicitly requested installable acceptance candidate, preserved earlier archives and independent repair gates",
       "tool": "GitHub source PR + test workflow",
       "operational_link": "no release job",
       "test": "no new release/archive diff",
-      "result": "not_full_M5"
+      "result": "acceptance_candidate_not_full_M5"
     },
     {
       "requirement": "21",
       "description": "Předání zdrojů/testů/návodů",
-      "implementation": "One cumulative source PR, acceptance matrix and receipts",
+      "implementation": "One cumulative PR #19, installable candidate, complete current source/tests/docs, source-bound receipts",
       "tool": "GitHub",
       "operational_link": "reviewable branch",
       "test": "exact source/run references",
-      "result": "source_PR_and_receipts_available_no_new_installer"
+      "result": "source_PR_candidate_and_receipts_available_live_pending"
     },
     {
       "requirement": "22",
@@ -215,7 +215,7 @@
       "tool": "HADS",
       "operational_link": "check_sources and repair services",
       "test": "baseline diff, regression suite",
-      "result": "implemented_no_RC"
+      "result": "same_installation_identity_preserved_acceptance_candidate"
     },
     {
       "requirement": "2",
@@ -337,11 +337,11 @@
     {
       "requirement": "15",
       "description": "Jeden ucelený výsledek bez předčasného RC",
-      "implementation": "One cumulative draft PR #19 and exact live protocol",
+      "implementation": "One cumulative draft PR #19 and explicit November 19 request for an installable candidate",
       "tool": "GitHub",
       "operational_link": "same existing application, no parallel installation",
       "test": "lab/approved_orchestration_probe.py + same provider wire suite + actual Core/Inspector/Hermes lab + live protocol",
-      "result": "draft_source_delivery_incomplete_live_acceptance"
+      "result": "draft_PR_and_installable_candidate_live_pending"
     }
   ],
   "practical_scenarios": [
@@ -405,7 +405,7 @@
       "implementation": "build_identity.py + upgrade_next.py + candidate_smoke.py",
       "tool": "native Supervisor same-identity update",
       "test": "real published RC6/RC7 source trees; candidate native production image boot",
-      "result": "isolated_passed_native_candidate_and_live_pending",
+      "result": "isolated_and_native_candidate_passed_live_pending",
       "limit": "live HAOS update not performed; no pre-install backup per explicit request"
     },
     {
@@ -434,7 +434,7 @@
       "implementation": "CaseDialogue durable owner statements and history, local recheck/ignore without resolving",
       "tool": "existing incident DB + owner/CSRF boundary",
       "test": "real HTTP forged CSRF rejection; restart; no approval or paid calls",
-      "result": "isolated_passed_native_candidate_and_live_pending"
+      "result": "isolated_and_native_candidate_passed_live_pending"
     },
     {
       "area": "scripts and actions",
@@ -451,5 +451,16 @@
       "result": "source_contract_verified_real_model_reasoning_pending"
     }
   ],
-  "candidate_version": "1.0.0-rc8"
+  "candidate_version": "1.0.0-rc8",
+  "production_verified_release": false,
+  "current_candidate_delivery": {
+    "version": "1.0.0-rc8",
+    "source_commit": "476587fb9f7593ff951143b2f4c7c3bac011c51b",
+    "scope": "explicitly_requested_acceptance_candidate_not_complete_product",
+    "report": "CANDIDATE_DELIVERY_CS.md",
+    "evidence": "evidence/candidate-20261119/RESULTS.json",
+    "native_tests_per_arch": 323,
+    "browser_views": 26,
+    "live_HAOS": false
+  }
 }

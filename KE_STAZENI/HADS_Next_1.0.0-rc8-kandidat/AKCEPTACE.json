@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-11-19T14:25:46.284358+00:00",
+  "source_commit": "476587fb9f7593ff951143b2f4c7c3bac011c51b",
+  "version": "1.0.0-rc8",
+  "delivery": "installable_acceptance_candidate_not_production_verified",
+  "base_PR19_commit": "fdca61f57aade176637f8fcaa4f1ee28d3dc6fd2",
+  "RC7_baseline": "c1372a392f213ab995c9848ae9721b3732967268",
+  "run_url": "https://github.com/OndraMa/HADS/actions/runs/44542135579",
+  "pull_request": "https://github.com/OndraMa/HADS/pull/19",
+  "native": {
+    "arm64": {
+      "job_id": 135622986033,
+      "job_url": "https://github.com/OndraMa/HADS/actions/runs/44542135579/job/135622986033",
+      "conclusion": "success",
+      "tests_run": 323,
+      "orchestration_artifact": {
+        "id": 14538798527,
+        "archive_sha256": "a7d36538f8a6021a9a8c0a20432de7776c892b9b782fec90163a0e339acc8098"
+      },
+      "candidate_artifact": {
+        "id": 14538229143,
+        "archive_sha256": "f0a401b80274b4a860e4d116ccca2e817f264a04dba0194ac325165bc7bd4493"
+      },
+      "retained_receipt_sha256": {
+        "arm64/CANDIDATE_PROOF.json": "6ff32071f9c95f9c956223b6ec69c5502ab68dda2655607d96331c8e4dff1c89",
+        "arm64/ORCHESTRATION_PROOF.json": "aaa9bb7266bb61cb325c609a31e9048bf59fd10bc4f9aa375b9de8279d544e17",
+        "arm64/core-hermes-proof.json": "c98de9bfcb9b91623210757dbb0231fbf9ebefd8855e5f368498c37a6c1136b5",
+        "arm64/offline-tests.json": "f7195ddc3fac7749ada14fcf774213301d37ec8edac5d8698c32d7103bb697ce"
+      }
+    },
+    "amd64": {
+      "job_id": 135622986726,
+      "job_url": "https://github.com/OndraMa/HADS/actions/runs/44542135579/job/135622986726",
+      "conclusion": "success",
+      "tests_run": 323,
+      "orchestration_artifact": {
+        "id": 14538443785,
+        "archive_sha256": "98e34ff4d761651cf81285c731b8458774ef9ca32ed60ee5b392bb384e4e0300"
+      },
+      "candidate_artifact": {
+        "id": 14538198946,
+        "archive_sha256": "9e1fea4ab50dfdc6e3fd28dc7c844fe67d817d87a84da88abd2219f84a867a82"
+      },
+      "retained_receipt_sha256": {
+        "amd64/CANDIDATE_PROOF.json": "6ff32071f9c95f9c956223b6ec69c5502ab68dda2655607d96331c8e4dff1c89",
+        "amd64/ORCHESTRATION_PROOF.json": "a14e53c5ed6d1ec9ccc1a166d2092d5c66ccd73fa8a7bc7020afa91ebc01697c",
+        "amd64/core-hermes-proof.json": "f2f597a5341e3b21ee82c62784450564fdc84a46d14230a07605cdeae526812a",
+        "amd64/offline-tests.json": "d26525485b82bbbdfad8e396319da9a4dadc6d5c561891ebd936da6683d6f5a0"
+      }
+    }
+  },
+  "same_installation_assets_on_ARM64_AMD64": true,
+  "local_assets_equal_CI_assets": true,
+  "build_id": "ed84b262c3b8303c2c08aeae2728dc942e8e86674b1cfd299632254e7c2bfce0",
+  "installer_sha256": "83e57cfe030f0476507fde9e549de995b89094fcf81ee92920174f1ceaf01163",
+  "payload_sha256": "5eba598e6bddbce887b641ab0a52120bd34c0745aa40612157ff4b1dfc9c5fc4",
+  "payload_files": 86,
+  "browser_views_passed": 26,
+  "source_input_files": 174,
+  "source_inputs_sha256": "20c6eca5a1498dc3435fdffccb480a2ee7b3598bac3e9a9040a42dc458f3d8fb",
+  "local_browser_receipt_sha256": "0a0f0326d01682e15ca435d7dcf1f47448426413d26f696919159a98c7a741b1",
+  "live_attempt_receipt_sha256": "c32ef555161f9b687dda8e399728badd7701195ca4de3267cca95be6a8240677",
+  "scope": [
+    "offline",
+    "actual_native_production_image_with_network_none",
+    "actual_Core_and_original_Hermes_scripted_endpoint",
+    "provider_wire_contracts",
+    "offline_browser"
+  ],
+  "live_HAOS_acceptance": false,
+  "actual_installed_provider_processes_verified": false,
+  "actual_Supervisor_upgrade_tested": false,
+  "real_model_reasoning_tested": false,
+  "real_independent_OneDrive_restore_service_connected": false,
+  "actual_15_minute_RPi_study_completed": false,
+  "full_original_assignment_complete": false,
+  "paid_model_calls": 0,
+  "production_household_writes": 0,
+  "installer_backup_policy": "no_preinstall_HA_or_cloud_backup_user_requested",
+  "runtime_repair_backup_policy": "independent_restoration_proof_still_required",
+  "limits": [
+    "Native production image boot and clean SIGTERM exit are container checks, not HAOS acceptance.",
+    "Original Hermes is real; model answers are free scripted protocol fixtures, not live reasoning.",
+    "Inspector builder runs against actual Core; installed Inspector/HADocs/HA-MCP/Spook runtimes remain unverified.",
+    "Approved provider wire test injects physical observations and clock; it does not claim a physical household repair.",
+    "The independent restoration receiving integration is implemented. A real restoration service, trusted independent signer and restored isolated HAOS are not connected.",
+    "General statistics/Recorder, registry rename/delete, script configuration, dashboard and Zigbee binding/reporting/channel/attribute-write repair adapters remain unimplemented automatic operations.",
+    "The 15-minute study collector is implemented and isolated gap tests pass; live RPi memory data cannot be read because provided access paths returned HTTP503.",
+    "Remote Hermes worker is a documented deployment option requiring further implementation; the candidate uses original Hermes locally and keeps the 576MiB reserve.",
+    "Review is a second author pass with independent contract tests, not an external security audit."
+  ],
+  "upstream_contract_receipt_sha256": "186acfd69835825bdde74ffea31bae61aded0d092cb345b514a0f1ab833bd691"
+}
