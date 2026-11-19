@@ -156,6 +156,11 @@ class CandidateTests(unittest.TestCase):
             self.assertEqual(result['state'],'measured');self.assertGreaterEqual(result['covered_seconds'],900)
             self.assertFalse(result['worker_allowed_at_every_sample']);self.assertFalse(result['target_hardware_verified'])
             self.assertEqual(reads.count('/core/stats'),16);self.assertEqual(reads.count('/supervisor/stats'),16)
+            evidence=self.app.investigations.broker._read(self.case['id'],'hads_get_runtime_health',{})
+            self.assertEqual(evidence['data']['resource_study']['samples'],16)
+            self.assertEqual(evidence['data']['resource_study']['minimum_available_bytes'],300*1024*1024)
+            self.assertNotIn('samples_detail',evidence['data']['resource_study'])
+            self.assertTrue(evidence['evidence_ids'])
             self.now+=91;self.assertEqual(self.app.resource_study.status()['state'],'interrupted')
             self.app.resource_study.tick();self.assertEqual(self.app.resource_study.status()['samples'],1)
 
@@ -163,6 +168,16 @@ class CandidateTests(unittest.TestCase):
         result=self.app.orchestration.correlate([{'source':'core','observed_at':self.now,'component':'hads_next.report','message':'DNS connection reset'}])
         self.assertEqual(result,[])
         with self.app.store._connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM orchestration_log_events').fetchone()[0],0)
+
+    def test_memory_case_autonomously_reads_the_same_study_broker_without_model(self):
+        memory=self.app.store.open_incident('system_resource_pressure','Fixture memory reserve',['hads_runtime'],self.now)
+        self.app.tools._native({'core_config':{'version':'2026.11.2'}})
+        self.app.orchestration.cycle(budget=1)
+        case=self.app.store.case(memory['id'])
+        self.assertTrue(any(e['source']=='hads_controller' for e in case['evidence']))
+        with self.app.store._connect() as db:
+            row=db.execute("SELECT state FROM orchestration_reads WHERE incident_id=? AND tool='hads_get_runtime_health'",(memory['id'],)).fetchone()
+            self.assertEqual(row[0],'available');self.assertEqual(db.execute('SELECT count(*) FROM investigation_model_calls').fetchone()[0],0)
 
     def test_current_service_catalog_is_scoped_and_never_guesses_a_replacement(self):
         from hads_next.native_tool_reads import install

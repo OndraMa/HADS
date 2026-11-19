@@ -35,6 +35,8 @@ class OrchestrationCases:
             if budget<=0:break
             case=self.app.store.case(incident['id']);targets=tools._scope(case,{})
             requests=[]
+            if incident['kind']=='system_resource_pressure' and any(r['provider']=='core' and r['name']=='hads_get_runtime_health' for r in available):
+                requests.append({'provider':'core','tool':'hads_get_runtime_health','arguments':{}})
             if incident['kind'] in {'system_resource_pressure','application_failure','system_health_failure','manual_functional'}:
                 for provider,name in [('core','core_logs'),('supervisor','supervisor_logs')]:
                     if any(r['provider']==provider and r['name']==name for r in available):requests.append({'provider':provider,'tool':name,'arguments':{}})
