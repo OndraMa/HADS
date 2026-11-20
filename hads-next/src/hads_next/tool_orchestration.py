@@ -135,6 +135,8 @@ class ToolOrchestration:
                     self._mcp(provider,client)
                     if provider == 'ha_mcp':
                         self._check_ha_mcp_state(client)
+                    elif provider == 'hamster_mcp':
+                        self._check_hamster_registry(client)
             except Exception as e:
                 from .connection_diagnostics import connection_failure
                 code=e.status if isinstance(e,ReadFailure) else None
@@ -195,7 +197,13 @@ class ToolOrchestration:
             self.routes[(provider,row['name'])]=('mcp',client)
         if provider=='hamster_mcp' and {'call','schema'}<={r['name'] for r in catalog}:
             for path in sorted(HAMSTER_READS):
-                response=client.call('schema',{'path':path})
+                try:
+                    response=client.call('schema',{'path':path})
+                except ReadFailure as error:
+                    if str(error) != 'mcp_tool_rejected':
+                        raise
+                    # Hamster returns isError when this HA installation lacks the command.
+                    continue
                 # Upstream has human-readable schema, not JSON schema. Only reviewed no-argument paths.
                 if not isinstance(response,str) or path.split('/',1)[1] not in response:continue
                 scoped=path.endswith('/get')
@@ -244,6 +252,39 @@ class ToolOrchestration:
             return
         # Record the result of the test, never the chosen entity or its state.
         self.registry.provider('ha_mcp', diagnostic_read_verified=True, diagnostic_read_at=self.app.clock(),
+                               last_error=None, error_code=None, last_response_status=None, next_step_cs=None)
+
+    def _check_hamster_registry(self, client):
+        """Verify the fixed registry read against one entity already known to Core."""
+        provider = next(row for row in self.registry.providers() if row['id'] == 'hamster_mcp')
+        if provider.get('diagnostic_read_verified'):
+            return
+        path = 'hass/config/entity_registry/get'
+        try:
+            tool = self.registry.get('hamster_mcp', path, effect='read')
+        except ToolDenied:
+            self.registry.provider('hamster_mcp', last_error='Připojení a katalog fungují. Hamster neposkytl podporované schéma čtení registru entit.')
+            return
+        registry = self.snapshot_values.get('entity_registry')
+        entity = next((row['entity_id'] for row in registry
+                       if isinstance(row, dict) and isinstance(row.get('entity_id'), str)
+                       and re.fullmatch(ENTITY['pattern'], row['entity_id'])), None) if isinstance(registry, list) else None
+        if entity is None:
+            self.registry.provider('hamster_mcp', last_error='Připojení a katalog fungují. Test čtení čeká na entitu ověřenou v registru Core.')
+            return
+        args = {'entity_id': entity}
+        try:
+            validate(tool['schema'], args)
+            value = client.call('call', {'path': path, 'arguments': args})
+            if not isinstance(value, dict) or value.get('entity_id') != entity:
+                raise ReadFailure('invalid_registry_response')
+        except (ReadFailure, ToolDenied) as error:
+            from .connection_diagnostics import connection_failure
+            status = connection_failure(error)
+            status['last_error'] = 'Katalog je dostupný. Konkrétní čtení registru selhalo. ' + status['last_error']
+            self.registry.provider('hamster_mcp', **status)
+            return
+        self.registry.provider('hamster_mcp', diagnostic_read_verified=True, diagnostic_read_at=self.app.clock(),
                                last_error=None, error_code=None, last_response_status=None, next_step_cs=None)
 
     def _services(self):

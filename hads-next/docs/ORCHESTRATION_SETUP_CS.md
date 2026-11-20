@@ -83,6 +83,13 @@ Hamster vyžaduje vlastní skutečný endpoint. HADS čte schema pro konkrétní
 jen nezávisle povolené parametry. Obecný Hamster call ani všechny jeho služby se neposkytují modelu.
 Pokud pro konkrétní případ stačí Core, HA-MCP nebo Toolkit, Hamster může zůstat nepřipojený.
 
+Pro Hamster 0.2.2 zadej lokální adresu Home Assistantu s cestou `/api/hamster_mcp`.
+Do maskovaného pole Token patří samotný dlouhodobý token Home Assistantu.
+Po uložení HADS ověří přihlášení a katalog. Pokud je dostupné schéma čtení registru,
+provede jeden test proti entitě známé z Core. Příkaz může v konkrétní instalaci chybět.
+V takovém případě karta ukazuje dostupné připojení a chybějící čtení zvlášť.
+[Dokumentace Hamster MCP 0.2.2](https://github.com/altendky/hamster-mcp/tree/v0.2.2).
+
 ## ZHA Toolkit
 
 ZHA Toolkit nabízí akce v Home Assistantu. HADS si přes `zha_toolkit.zha_devices` čte

@@ -58,7 +58,10 @@ class OrchestratedWire(unittest.TestCase):
                 outer.assertEqual(self.headers.get('Authorization'),outer.expected_auth)
                 msg=json.loads(self.rfile.read(int(self.headers['Content-Length'])));outer.calls.append(msg)
                 if msg['method']=='notifications/initialized':self.send_response(202);self.send_header('Content-Length','0');self.end_headers();return
-                if msg['method']=='initialize':result={'protocolVersion':'2025-06-18','serverInfo':{'name':'ha-mcp','version':'fixture-contract-1'}}
+                if msg['method']=='initialize':
+                    hamster = outer.provider_mode == 'hamster_mcp'
+                    result={'protocolVersion':'2025-03-26' if hamster else '2025-06-18',
+                            'serverInfo':{'name':'hamster-mcp' if hamster else 'ha-mcp','version':'fixture-contract-1'}}
                 elif msg['method']=='tools/list':
                     if outer.provider_mode=='native_mcp':result={'tools':[{'name':'GetLiveContext','inputSchema':object_schema()},{'name':'DangerousWrite','inputSchema':object_schema(),'annotations':{'readOnlyHint':True}}]}
                     elif outer.provider_mode=='hamster_mcp':result={'tools':[{'name':'schema','inputSchema':object_schema({'path':{'type':'string'}})},{'name':'call','inputSchema':object_schema({'path':{'type':'string'},'arguments':{'type':'object'}})}]}
@@ -70,7 +73,12 @@ class OrchestratedWire(unittest.TestCase):
                 elif msg['method']=='tools/call':
                     name=msg['params']['name'];args=msg['params']['arguments']
                     if name=='GetLiveContext':value={'success':True,'entities':[{'entity_id':outer.old,'state':'unavailable'}]}
-                    elif name=='schema':value=args['path'].split('/',1)[1]+'\n'+('**entity_id** (required)' if args['path'].endswith('/get') else 'No parameters required.')
+                    elif name=='schema':
+                        if args['path'] in getattr(outer,'missing_hamster_commands',()):
+                            self.output({'jsonrpc':'2.0','id':msg['id'],'result':{
+                                'isError':True,'content':[{'type':'text','text':'Schema not found'}]}})
+                            return
+                        value=args['path'].split('/',1)[1]+'\n'+('**entity_id** (required)' if args['path'].endswith('/get') else 'No parameters required.')
                     elif name=='call':
                         outer.assertEqual(args['path'],'hass/config/entity_registry/get')
                         value={'entity_id':args['arguments']['entity_id'],'platform':'zha','disabled_by':None,'private_token':'NEVER_EXPORT'}
@@ -223,6 +231,25 @@ class OrchestratedWire(unittest.TestCase):
                 for blocked in ('call','DangerousWrite'):
                     with self.assertRaises(ToolDenied):self.app.tools.registry.get(provider,blocked,effect='read')
         self.assertEqual(self.writes,[])
+
+    def test_hamster_missing_optional_schema_keeps_connection_and_verifies_registry_read(self):
+        self.provider_mode = 'hamster_mcp'
+        self.missing_hamster_commands = {'hass/config/device_registry/list'}
+        self.app.tools.connections.configure('hamster_mcp', url=self.url+'/mcp', token='fixture-only-token',
+                                             private_http=True, enabled=True, principal='owner-fixture')
+        # Keep the HA-MCP fixture separate from Hamster's simulated server.
+        self.app.tools.connections.clients.pop('ha_mcp')
+        self.app.tools.refresh({'entity_registry': [{'entity_id': self.old}]}, [])
+        status = next(row for row in self.app.tools.registry.providers() if row['id']=='hamster_mcp')
+        self.assertTrue(status['connected'])
+        self.assertTrue(status['authenticated'])
+        self.assertTrue(status['catalog_loaded'])
+        self.assertTrue(status['diagnostic_read_verified'])
+        self.assertNotIn(self.old, canonical(status))
+        self.assertNotIn('fixture-only-token', canonical(status))
+        for blocked in ('call', 'hass/config/device_registry/list'):
+            with self.assertRaises(ToolDenied):
+                self.app.tools.registry.get('hamster_mcp', blocked, effect='read')
 
     def test_statistics_metadata_and_history_are_compared_without_import_or_causal_guess(self):
         from hads_next.native_tool_reads import install
