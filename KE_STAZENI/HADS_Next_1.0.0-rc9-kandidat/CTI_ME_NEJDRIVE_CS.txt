@@ -1,0 +1,9 @@
+﻿HADS Next 1.0.0-rc9 — instalační kandidát, živá přejímka čeká.
+Zdroj: 885b288a295e8277ea6bca7751e50a5a62d87a67
+Sestavení: ed889e0911081ad6d7c7b2ae7eb076309d6c037a666a358e2bf1d36bb8961ff4
+
+Pro ověřené RC6–RC8 použij --upgrade, neodinstalovávej aplikaci. Přesný postup je v NAVOD_CS.md.
+Nevytváří se nová předinstalační HA/OneDrive záloha; zálohové ochrany oprav zůstávají.
+Soukromé adresy a klíče nejsou součástí balíčku. Žádné placené volání se tím neschvaluje.
+Obecné statistické/registry/skriptové/Zigbee opravy nejsou implementované automatické operace.
+Aktuální testy a živá omezení jsou na větvi PR #19.

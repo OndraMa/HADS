@@ -1,0 +1,62 @@
+{
+  "source_commit": "885b288a295e8277ea6bca7751e50a5a62d87a67",
+  "version": "1.0.0-rc9",
+  "build_id": "ed889e0911081ad6d7c7b2ae7eb076309d6c037a666a358e2bf1d36bb8961ff4",
+  "installer_sha256": "6526370bb19bee4b7cc3529d2c24aea5b69c86b590ebe07d3659fd7c5338eb12",
+  "payload_sha256": "f2daa7e25991afeb8af7ea98a789d118ef4f655cdddbf70540b30aaef18fdbbd",
+  "browser_views_passed": 27,
+  "local_tests_passed": 326,
+  "native": {
+    "amd64": {
+      "job_id": 136238631745,
+      "artifacts": {
+        "candidate": {
+          "id": 14622706363,
+          "zip_sha256": "82c4341b20710e5e79cd213226e41f04475a4e9d3f4c09d6665ddc7d1db4cdb8"
+        },
+        "orchestration": {
+          "id": 14622227672,
+          "zip_sha256": "eecb3287d88723166af698364a4ec611ff5730c9e61f4a119b5fbfabf6481cba"
+        }
+      },
+      "candidate_booted": true,
+      "tests_passed": 326,
+      "core_hermes_container_passed": true
+    },
+    "arm64": {
+      "job_id": 136238631969,
+      "artifacts": {
+        "candidate": {
+          "id": 14621214741,
+          "zip_sha256": "cfcdef7c14b642a97c3d5bd56714cf1eeef5af0e4e62b58e8c5a216d1f57d8bc"
+        },
+        "orchestration": {
+          "id": 14621214737,
+          "zip_sha256": "9089d340ea7e102bea034a59b55291b680b2e4e4d081d1f9c58a1d1ec5b14cf5"
+        }
+      },
+      "candidate_booted": true,
+      "tests_passed": 326,
+      "core_hermes_container_passed": true
+    }
+  },
+  "github_actions": "https://github.com/OndraMa/HADS/actions/runs/44721650462",
+  "live_haos_tested": false,
+  "real_model_reasoning_tested": false,
+  "paid_model_calls": 0,
+  "video_reviewed": false,
+  "video_transfer_limit_mib": 32,
+  "proof_sha256": {
+    "amd64/CANDIDATE_PROOF.json": "f96466c77a92dc358d336c6a4d2dc3e32b308549e1d790a0c9626e972ba5848b",
+    "amd64/ORCHESTRATION_PROOF.json": "4cf493a6fcbb4df2c15ca625a2ccac0710fb30545def34bc6e7ce6e1a504c96a",
+    "amd64/core-hermes-proof.json": "7cc1dc826d1819867bf85f932bf985228fc81653f134ac13f79a2a7dc5b9ac6b",
+    "amd64/offline-tests.json": "977c75ec087be67e246413b0cee21d45c77e946c240e2a1c5a92686384701471",
+    "arm64/CANDIDATE_PROOF.json": "f96466c77a92dc358d336c6a4d2dc3e32b308549e1d790a0c9626e972ba5848b",
+    "arm64/ORCHESTRATION_PROOF.json": "e5c75c7c5ecaa6d22547fd45cb4de965d94f705c87c713d34d431136e41c0e77",
+    "arm64/core-hermes-proof.json": "cf369f8f953690eb921f525212e981a3eb16b03e17448c10e60c78e216ac4f05",
+    "arm64/offline-tests.json": "2180de679e2b7423aae5d43aa28ec93d8b11f943e4af47ccaa61ebc7b2a9efa8",
+    "browser.json": "8ea2272d5ad04a95188dc072c959be2ba1605a24a0eef182139bbb5737508144",
+    "installer-local.json": "d8f75bd70df83c24167d4ecc50fa1572f2ffbe775a50e1de1e7839b31b1d880a",
+    "offline-local.json": "0dde0bf79b5a60924ce7fc05f0712cc070aba90cea3e138e97a2d544b4c82a47"
+  }
+}

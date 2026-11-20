@@ -454,13 +454,28 @@
   "candidate_version": "1.0.0-rc8",
   "production_verified_release": false,
   "current_candidate_delivery": {
-    "version": "1.0.0-rc8",
-    "source_commit": "476587fb9f7593ff951143b2f4c7c3bac011c51b",
-    "scope": "explicitly_requested_acceptance_candidate_not_complete_product",
-    "report": "CANDIDATE_DELIVERY_CS.md",
-    "evidence": "evidence/candidate-20261119/RESULTS.json",
-    "native_tests_per_arch": 323,
-    "browser_views": 26,
-    "live_HAOS": false
+    "version": "1.0.0-rc9",
+    "source_commit": "885b288a295e8277ea6bca7751e50a5a62d87a67",
+    "scope": "acceptance_candidate_not_complete_product",
+    "report": "CANDIDATE_20261120_CS.md",
+    "evidence": "evidence/candidate-20261120/RESULTS.json",
+    "native_tests_per_arch": 326,
+    "browser_views": 27,
+    "live_HAOS": false,
+    "verified_changes": [
+      "sidebar layout and scrolling",
+      "RC8 manifest upgrade in simulated Supervisor",
+      "HA-MCP state read",
+      "Hamster catalog with missing optional schema",
+      "ZHA Toolkit scoped evidence"
+    ],
+    "pending": [
+      "authenticated live RC9 run",
+      "actual Hamster registry read on the household",
+      "independent OneDrive restore",
+      "physical verification",
+      "real model",
+      "full repair catalog"
+    ]
   }
 }

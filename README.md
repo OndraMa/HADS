@@ -1,3 +1,16 @@
+# HADS Next 1.0.0-rc9 — instalační kandidát
+
+RC9 opravuje překrytí záložky Domácnost, doplňuje ověření čtení přes HA-MCP a Hamster a vybírá Zigbee důkazy ze ZHA Toolkitu podle cíle spisu. Aktualizace z vydaných RC6 až RC8 používá stejnou identitu aplikace a zachovává její data.
+
+- [Balíček, instalátor, český návod a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc9-kandidat/)
+- [Rozsah kandidáta](hads-next/docs/CANDIDATE_20261120_CS.md)
+- [Přesné výsledky testů](hads-next/docs/evidence/candidate-20261120/RESULTS.json)
+- [PR #19](https://github.com/OndraMa/HADS/pull/19)
+
+Zdroj `885b288a295e8277ea6bca7751e50a5a62d87a67`. Prošlo 326 testů na AMD64 i ARM64, start a čisté ukončení instalačního obrazu, kontejnerová kontrola Core a izolovaného Hermesu se skriptovaným modelem a 27 lokálních kontrol prohlížeče. Živá přejímka RC9 zůstává otevřená.
+
+---
+
 # HADS Next 1.0.0-rc8 — instalační kandidát
 
 Navazuje na [PR #19](https://github.com/OndraMa/HADS/pull/19), větev **codex/hads-next-orchestration**.
