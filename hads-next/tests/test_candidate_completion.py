@@ -133,6 +133,26 @@ class CandidateTests(unittest.TestCase):
             self.assertTrue(value['next_step_cs'])
         page=settings(self.app,'csrf')
         self.assertIn('name="url" type="password"',page)
+        self.app.tools.registry.provider('hamster_mcp',**connection_failure(ReadFailure('private',401)))
+        page=settings(self.app,'csrf')
+        self.assertIn('samotný dlouhodobý token Home Assistantu',page)
+        self.assertNotIn('neověřeno / rozhraní bez vlastní autentizace',page)
+
+    def test_inspector_uses_supervisor_detail_when_inventory_omits_running_state(self):
+        slug='local_automation_inspector'
+        values={'applications':{'addons':[{'slug':slug,'name':'Automation Inspector'}]}}
+        self.app.providers.update(values,[])
+        with patch.object(self.app.tools,'_internal_report_client',return_value=None):
+            self.app.tools.refresh(values,[])
+        row=next(p for p in self.app.tools.registry.providers() if p['id']=='automation_inspector')
+        self.assertIsNone(row['running'])
+        info={'slug':slug,'hostname':'local-automation-inspector','ingress_port':1234}
+        self.app.supervisor=SupervisorReader(lambda path:{'result':'ok','data':info})
+        self.assertIsNone(self.app.tools._internal_report_client('automation_inspector',values))
+        info['state']='started'
+        with patch('hads_next.tool_orchestration.ReportHTTP') as client:
+            self.assertIs(self.app.tools._internal_report_client('automation_inspector',values),client.return_value)
+            client.assert_called_once_with('http://local-automation-inspector:1234',allow_private_http=True)
 
     def test_failed_connector_preserves_specific_error_without_interrupting_native_catalog(self):
         class Unavailable:

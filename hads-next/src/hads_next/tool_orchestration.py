@@ -116,8 +116,10 @@ class ToolOrchestration:
         for provider in ('spook','watchman','ha_mcp','hamster_mcp','zha_toolkit','zha','automation_inspector','hadocs','haghs','entity_availability','music_assistant'):
             report=inventory.get(provider,{})
             apps=report.get('applications',[])
+            app_states={a.get('state') for a in apps}
+            running=True if 'started' in app_states or provider in loaded else False if apps and None not in app_states else None
             self.registry.provider(provider,installed=True if report.get('presence_confirmed') or provider in loaded else None,
-                running=any(a.get('state')=='started' for a in apps) if apps else True if provider in loaded else None)
+                running=running)
 
         # Only bounded sequential remote discovery. No paid model or write runs here.
         for provider in KINDS:
@@ -127,7 +129,8 @@ class ToolOrchestration:
             if client is None:
                 message = ('V Nástrojích servisního týmu ulož adresu HA-MCP dosažitelnou z HAOS a povol diagnostické připojení.'
                            if provider == 'ha_mcp' else 'Chybí aktivní připojení.')
-                self.registry.provider(provider,connected=False,authenticated=None,catalog_loaded=False,diagnostic_read_verified=False,last_error=message)
+                self.registry.provider(provider,connected=False,authenticated=None,catalog_loaded=False,diagnostic_read_verified=False,last_error=message,
+                    error_code=None,last_response_status=None,next_step_cs=None)
                 continue
             try:
                 if provider in {'automation_inspector','hadocs'}:self._http(provider,client)
@@ -162,10 +165,12 @@ class ToolOrchestration:
         if not isinstance(apps,list) or self.app.supervisor is None:return None
         for row in apps:
             slug=row.get('slug','') if isinstance(row,dict) else ''
-            if not slug.endswith('_'+provider) or row.get('state')!='started':continue
+            if not isinstance(slug,str) or not slug.endswith('_'+provider) or row.get('state') not in (None,'started'):continue
             info=self.app.supervisor.app_info(slug)
             # Published app contract + Supervisor-provided private hostname, not a guessed URL/port.
             if not isinstance(info,dict) or info.get('slug')!=slug or not isinstance(info.get('hostname'),str) or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)+',info['hostname']):continue
+            if info.get('state',row.get('state'))!='started':continue
+            self.registry.provider(provider,running=True)
             port={'automation_inspector':1234,'hadocs':8099}[provider]
             if info.get('ingress_port')!=port:continue
             client=ReportHTTP('http://'+info['hostname']+':'+str(port),allow_private_http=True)

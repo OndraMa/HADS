@@ -20,10 +20,14 @@ def settings(app,csrf):
             connection = configured.get(provider['id'])
             if connection:
                 body += '<p>Soukromé nastavení je uloženo. Diagnostické připojení je '+('povolené' if connection['enabled'] else 'vypnuté')+'.</p>'
-        body+='<ul>'+''.join('<li>'+label+': '+('ano' if provider.get(key) is True else 'ne' if provider.get(key) is False else 'neověřeno / rozhraní bez vlastní autentizace')+'</li>' for key,label in labels.items())+'</ul>'
+        body+='<ul>'+''.join('<li>'+label+': '+('ano' if provider.get(key) is True else 'ne' if provider.get(key) is False else 'neověřeno')+'</li>' for key,label in labels.items())+'</ul>'
         if provider.get('diagnostic_read_at') is not None:
             body+='<p>Poslední konkrétní diagnostické čtení: '+escape(display_time(provider['diagnostic_read_at'],app.snapshot()['timezone']))+'. Obnovení katalogu tento čas neposouvá.</p>'
         if provider.get('last_error'):body+='<p>'+escape(provider['last_error'])+'</p>'
+        if provider['id']=='hamster_mcp' and provider.get('last_response_status')==401:
+            body+='<p>Pro Hamster vyber níže hamster_mcp. Použij adresu Home Assistantu s cestou /api/hamster_mcp a do soukromého pole Token vlož samotný dlouhodobý token Home Assistantu. Při stejné adrese prázdné pole ponechá dříve uložený token. Hamster je volitelný.</p>'
+        if provider['id']=='music_assistant' and not provider.get('diagnostic_read_verified'):
+            body+='<p><a href="music">Nastavit nebo ověřit čtení Music Assistant FastMCP</a></p>'
         if provider.get('last_used_at') is not None:
             body+='<p>Poslední použití ve spisu: '+escape(display_time(provider['last_used_at'],app.snapshot()['timezone']))+' · <a href="../case/'+escape(provider['last_used_incident'],quote=True)+'">otevřít případ</a>. Ověření aktuálního čtení je uvedené výše.</p>'
         body+='<p>Čas vlastního reportu: '+('zdroj jej v tomto čtení nedoložil' if provider.get('source_data_at') is None else escape(display_time(provider['source_data_at'],app.snapshot()['timezone'])))+'.</p>'

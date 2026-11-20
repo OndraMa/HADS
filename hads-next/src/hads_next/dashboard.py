@@ -71,6 +71,17 @@ def render_dashboard(app,csrf):
     diagnostics=[c for c in diagnostics if c['id'] not in historical_ids]
     grouped=app.orchestration.grouped_children() if hasattr(app,'orchestration') else set()
     opened=[c for c in cases if c['status']=='open' and c['id'] not in observation_ids|diagnostic_ids|grouped]
+    now=app.clock()
+    entity_reports={r['entity_id']:r for r in app.entity_context.reports() if 0<=now-r['checked_at']<=600}
+    contexts={c['id']:[entity_reports[entity] for entity in sorted(set(c['components']) & entity_reports.keys())] for c in cases}
+    restored_ids=set()
+    for c in opened:
+        reports=contexts[c['id']]
+        if (c['kind']=='device_unavailable' and not plans[c['id']] and reports
+                and all(r['classification']=='state_available' and r['checked_at']>=c['last_seen'] for r in reports)):
+            restored_ids.add(c['id'])
+    restored=[c for c in opened if c['id'] in restored_ids]
+    opened=[c for c in opened if c['id'] not in restored_ids]
     resolved=[c for c in cases if c['status']=='resolved']
     recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids|grouped]
     def plan_action(c,p):
@@ -85,8 +96,11 @@ def render_dashboard(app,csrf):
         if c['id'] in observation_ids and not latest:label='Stav bez potvrzeného dopadu'
         if c['status']=='open' and c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components']:label='Rezerva pro AI nebyla splněná'
         summary='Funkční ověření potvrdilo výsledek. Podrobnosti jsou v reportu.' if c['status']=='resolved' else case_summary(c)
-        context=app.entity_context.reports({'incident':c,'evidence':[]})
+        context=contexts[c['id']]
         if context:summary=context[0]['summary_cs']
+        if c['id'] in restored_ids:
+            label='Entita znovu poskytuje stav'
+            summary='Poslední čtení potvrdilo návrat stavu entity. Spis zůstává otevřený pro případ opakování a funkční ověření.'
         automatic=app.system.automatic.report(c['id']) if c['id'] in diagnostic_ids else None
         followup=app.system.followup.report(c['id']) if c['id'] in diagnostic_ids else None
         if followup and (not latest or not provider['enabled']):
@@ -104,9 +118,17 @@ def render_dashboard(app,csrf):
         return '<article class="case-card"><div class="case-top"><span class="case-kind">'+('Aplikace HAOS' if c['kind']=='application_failure' else 'Diagnostická kontrola' if c['kind']=='system_health_failure' else 'Prostředky pro AI' if c['kind']=='system_resource_pressure' and 'hads_runtime' in c['components'] else 'Zachycený případ')+'</span><span class="badge">'+esc(label)+'</span></div><h3>'+esc(case_title(c,applications))+'</h3><p>'+esc(summary)+'</p><div class="case-footer"><span>Výskytů: '+str(c['occurrence_count'])+' · '+esc(display_time(c['last_seen'],value['timezone']))+'</span><a href="case/'+esc(c['id'])+'">Otevřít důkazy spisu <span aria-hidden="true">→</span></a></div></article>'
     def cards(rows,empty):return ''.join(card(c) for c in rows) if rows else '<div class="empty-state">'+esc(empty)+'</div>'
     findings=health['active_findings']
-    health_message='Systémová kontrola ještě neproběhla.' if health['last_check_at'] is None else plural_findings(findings) if findings else 'Poslední kontrola nezachytila aktivní systémový nález.'
+    source_job=value['source_job']['state']
+    if source_job=='running':
+        health_message='Probíhá systémová kontrola.'
+    elif source_job=='failed' or health.get('last_error'):
+        health_message='Systémová kontrola je neúplná.'
+    elif health['last_check_at'] is None:
+        health_message='Systémová kontrola v tomto běhu zatím nemá výsledek.'
+    else:
+        health_message=plural_findings(findings) if findings else 'Poslední kontrola nezachytila aktivní systémový nález.'
     source_count=sum(bool(v.get('read_succeeded')) for v in value['sources'].values());source_total=len(value['sources'])
-    source_text=str(source_count)+' z '+str(source_total)+' zdrojů přečteno' if source_total else 'Čtení zdrojů zatím není ověřené'
+    source_text=str(source_count)+' z '+str(source_total)+' základních zdrojů přečteno' if source_total else 'Čtení zdrojů zatím není ověřené'
     ai_text=('Probíhá '+str(active)+' čtecí vyšetřování.' if active else 'AI je povolená. Žádné vyšetřování právě neběží.') if provider['enabled'] else 'AI je vypnutá. Sběr důkazů a místní diagnostika pokračují.'
     if provider['enabled'] and provider.get('mode')=='trial':ai_text='Testovací AI má samostatný omezený rozpočet a spouští se pouze výslovně pro vybraný případ. Nativní čtení HADS provádí automaticky bez placeného modelu.'
     if provider['enabled'] and not runtime['runtime_installed']:ai_text='Poskytovatel je povolený, ale runtime Hermes není dostupný. AI vyšetřování nemůže běžet.'
@@ -119,6 +141,7 @@ def render_dashboard(app,csrf):
     if observations:body+='<details id="application-observations"><summary>Stavy aplikací k ověření ('+str(len(observations))+')</summary><p>Tyto údaje nepočítám jako potvrzené funkční problémy. Samotný stav error může následovat i po záměrném zastavení. Evidence zůstává uložená a není označená jako vyřešená.</p>'+cards(observations,'')+'</details>'
     if diagnostics:body+='<section id="diagnostic-observations"><h2>Diagnostika a připravenost ('+str(len(diagnostics))+')</h2><p>Tyto nálezy vyžadují prověření nebo omezují HADS. Samy nepotvrzují poruchu funkce domácnosti. Spisy a důkazy zůstávají otevřené.</p>'+cards(diagnostics,'')+'</section>'
     if historical:body+='<details id="historical-diagnostics"><summary>Dřívější diagnostické nálezy ('+str(len(historical))+')</summary><p>Poslední kontrola je už nepotvrzuje. Důkazy zůstávají zachované; není to potvrzení provedené a funkčně ověřené opravy.</p>'+cards(historical,'')+'</details>'
+    if restored:body+='<details id="restored-entity-states"><summary>Nedostupnost se při posledním čtení nepotvrdila ('+str(len(restored))+')</summary>'+cards(restored,'')+'</details>'
     body+='<div class="results-grid"><section id="resolved"><p class="eyebrow">POTVRZENÁ NÁPRAVA</p><h2>Co se podařilo vyřešit</h2>'+cards(resolved,'Dosud žádný ověřený výsledek. Pouhý úspěch příkazu případ neuzavírá.')+'</section><section id="recurring"><p class="eyebrow">DLOUHODOBÉ SOUVISLOSTI</p><h2>Co se opakuje</h2>'+cards(recurring,'Zatím nejsou opakované případy. Stejné načtení důkazu se nepočítá znovu.')+'</section></div>'
     entities=''.join('<option value="'+esc(e['entity_id'])+'">'+esc(e.get('name',e['entity_id']))+'</option>' for e in value['entities'])
     apps=''.join('<option value="'+esc(a['slug'])+'">'+esc(a['name'])+'</option>' for a in applications)

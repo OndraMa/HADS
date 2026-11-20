@@ -77,6 +77,7 @@ class EntityContextTests(unittest.TestCase):
         self.assertFalse(report['repair']['approval_available'])
     def test_repeat_reads_deduplicate_and_recovery_does_not_fake_functional_repair(self):
         self.app.check_sources();case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        self.assertIn('Otevřené funkční případy</span><strong>1',render_dashboard(self.app,'fixture'))
         first=self.app.store.case(case['id']);self.now+=300;self.app.check_sources()
         again=self.app.store.case(case['id'])
         self.assertEqual(first['evidence'],again['evidence']);self.assertEqual(len(again['occurrences']),1)
@@ -85,8 +86,15 @@ class EntityContextTests(unittest.TestCase):
         self.now+=300;self.app.check_sources()
         self.assertEqual(self.app.entity_context.reports()[0]['classification'],'state_available')
         self.assertEqual(self.app.store.case(case['id'])['incident']['status'],'open')
+        html=render_dashboard(self.app,'fixture')
+        self.assertIn('Otevřené funkční případy</span><strong>0',html)
+        self.assertIn('Ověřené výsledky</span><strong>0',html)
+        self.assertIn('Nedostupnost se při posledním čtení nepotvrdila (1)',html)
+        self.now+=601
+        self.assertNotIn('id="restored-entity-states"',render_dashboard(self.app,'fixture'))
         self.states[-1]['state']='unavailable';self.now+=300;self.app.check_sources()
         self.assertEqual(len(self.app.store.case(case['id'])['occurrences']),2)
+        self.assertIn('Otevřené funkční případy</span><strong>1',render_dashboard(self.app,'fixture'))
     def test_scoped_hermes_read_uses_collected_evidence_and_rejects_other_entities(self):
         self.app.check_sources();case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
         result=self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':self.target})
