@@ -15,7 +15,7 @@ def page(content,path):
     links.extend([('setup/resources','Měření prostředků'),('setup/backup-verifier','Ověřovatel záloh')])
     links.insert(2,('setup/providers','Doplňky a ověření'))
     nav=''.join('<a href="'+prefix+href+'"'+(' aria-current="page"' if path in {'/','/index.html'} and href=='./' or path=='/'+href else '')+'>'+label+'</a>' for href,label in links)
-    return '<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HADS Next</title><style>'+STYLE+'</style></head><body><header class="app-header"><a class="brand" href="'+prefix+'./"><span class="brand-mark" aria-hidden="true">H</span><strong>HADS Next</strong></a><small>Domácnost pod dohledem</small><small>'+escape(identity)+'</small></header><nav class="main-nav" aria-label="Hlavní navigace">'+nav+'</nav><main>'+content+'</main></body></html>'
+    return '<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HADS Next</title><style>'+STYLE+'</style></head><body><div class="app-sidebar"><header class="app-header"><a class="brand" href="'+prefix+'./"><span class="brand-mark" aria-hidden="true">H</span><strong>HADS Next</strong></a><small>Domácnost pod dohledem</small><small>'+escape(identity)+'</small></header><nav class="main-nav" aria-label="Hlavní navigace">'+nav+'</nav></div><main>'+content+'</main></body></html>'
 
 
 def repair_cards(app,identity,csrf):

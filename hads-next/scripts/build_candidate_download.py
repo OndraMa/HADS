@@ -38,10 +38,10 @@ def build(ref,package,output):
     assets={installer.name:installer.read_bytes(),archive.name:archive.read_bytes(),
         'PACKAGE_MANIFEST.json':(json.dumps(manifest,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(),
         'NAVOD_CS.md':manual}
-    for name in ('CANDIDATE_20261119_CS.md','ORCHESTRATION_SETUP_CS.md','RESTORE_VERIFIER_CONTRACT.md','ORCHESTRATION_LIVE_ACCEPTANCE_CS.md','orchestration-matrix.json'):
+    for name in ('CANDIDATE_20261120_CS.md','ORCHESTRATION_SETUP_CS.md','RESTORE_VERIFIER_CONTRACT.md','ORCHESTRATION_LIVE_ACCEPTANCE_CS.md','orchestration-matrix.json'):
         assets[name]=git('show',commit+':hads-next/docs/'+name)
     assets['CTI_ME_NEJDRIVE_CS.txt']=(f'HADS Next {version} — instalační kandidát, živá přejímka čeká.\nZdroj: {commit}\nSestavení: {manifest["build_id"]}\n\n'
-        'Pro ověřené RC6/RC7 použij --upgrade, neodinstalovávej aplikaci. Přesný postup je v NAVOD_CS.md.\n'
+        'Pro ověřené RC6–RC8 použij --upgrade, neodinstalovávej aplikaci. Přesný postup je v NAVOD_CS.md.\n'
         'Nevytváří se nová předinstalační HA/OneDrive záloha; zálohové ochrany oprav zůstávají.\n'
         'Soukromé adresy a klíče nejsou součástí balíčku. Žádné placené volání se tím neschvaluje.\n'
         'Obecné statistické/registry/skriptové/Zigbee opravy nejsou implementované automatické operace.\n'

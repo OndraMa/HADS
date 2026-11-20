@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import re
 
-VERSION = '1.0.0-rc8'
+VERSION = '1.0.0-rc9'
 
 
 def inspect_build(package):

@@ -103,6 +103,21 @@ def main():
                     report=context.request.get(origin+'/'+download).json();assert len(report['steps'])==12
                     assert report['all_steps_passed'] is False and 'offline-ui-owner' not in json.dumps(report)
                     if width==390:page.screenshot(path=str(ROOT/'.test-tmp/practical-acceptance-mobile.png'),full_page=True)
+                # Ingress may be short, and the deployed build identity wraps.
+                page.set_viewport_size({'width':1000,'height':450})
+                page.goto(origin+'/')
+                page.locator('.app-header small').last.evaluate(
+                    "(el) => el.textContent = 'Verze 1.0.0-rc9 · zdroj 476587fb9f75 · sestavení ed84b262c3b8'")
+                home = page.get_by_role('navigation').get_by_role('link',name='Domácnost',exact=True)
+                header = page.locator('.app-header')
+                assert home.bounding_box()['y'] >= header.bounding_box()['height']
+                home.click(trial=True)
+                backup = page.get_by_role('navigation').get_by_role('link',name='Ověřovatel záloh')
+                backup.focus()
+                backup.click(trial=True)
+                home.focus()
+                home.click(trial=True)
+                views.append({'width':1000,'height':450,'path':'/','sidebar_wrap_and_keyboard_scroll':True,'passed':True})
                 assert context.request.get(origin+'/acceptance?session=invalid').status==404
                 assert not errors;browser.close()
             files=list((ROOT/'src/hads_next').glob('*.py'))+[Path(__file__)]

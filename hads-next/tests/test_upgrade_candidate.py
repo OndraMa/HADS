@@ -19,7 +19,8 @@ class CandidateUpgradeTests(unittest.TestCase):
         builder=module('candidate_builder',ROOT/'scripts/build_haos_installer.py')
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);apps=root/'apps';apps.mkdir();old=apps/'hads_next_practical';old.mkdir()
-            published=ROOT.parent/'KE_STAZENI'/('HADS_Next_'+version)/('HADS_Next_'+version+'-source.tar.gz')
+            release_folder = 'HADS_Next_'+version+('-kandidat' if version=='1.0.0-rc8' else '')
+            published=ROOT.parent/'KE_STAZENI'/release_folder/('HADS_Next_'+version+'-source.tar.gz')
             with tarfile.open(published) as archive:archive.extractall(old,filter='data')
             built=builder.build_installer(root/'candidate');new=root/'new';new.mkdir()
             with tarfile.open(built['source_archive']) as archive:archive.extractall(new,filter='data')
@@ -53,8 +54,8 @@ class CandidateUpgradeTests(unittest.TestCase):
                 self.assertFalse(any(len(a)>1 and a[1] in {'uninstall','stop','restore'} for a in calls))
             self.assertEqual(sentinel.read_bytes(),b'owner history and decisions')
 
-    def test_both_published_versions_upgrade_same_identity_without_preinstall_backup(self):
-        for version in ('1.0.0-rc6','1.0.0-rc7'):
+    def test_published_versions_upgrade_same_identity_without_preinstall_backup(self):
+        for version in ('1.0.0-rc6','1.0.0-rc7','1.0.0-rc8'):
             with self.subTest(version=version):self.exercise(version)
 
     def test_uncertain_native_update_is_not_replayed(self):self.exercise('1.0.0-rc7',fail=True)

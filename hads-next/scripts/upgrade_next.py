@@ -1,4 +1,4 @@
-"""Verified RC6/RC7 to orchestration candidate; never reads or rewrites /data.
+"""Verified RC6–RC8 to orchestration candidate; never reads or rewrites /data.
 
 Installer exemption: no pre-install HA/cloud backup. Source retention is not
 a backup of application data. Runtime repair backup gates remain unchanged.
@@ -7,9 +7,10 @@ import fcntl,hashlib,json,os,shutil,stat,subprocess,sys,tarfile,uuid
 from pathlib import Path
 
 SLUG='local_hads_next_practical'
-VERSION='1.0.0-rc8'
+VERSION='1.0.0-rc9'
 VERIFIED_ORIGINS={'1.0.0-rc6':'4c8a8559b750013dc86588cac75ef81055d9b0ccd0334bbeeadaefacb8306dab',
-                  '1.0.0-rc7':'27e16eeb43c3b374761e0046c886cad9f46d40f3eac687f722f9ff0dc2f0ec5f'}
+                  '1.0.0-rc7':'27e16eeb43c3b374761e0046c886cad9f46d40f3eac687f722f9ff0dc2f0ec5f',
+                  '1.0.0-rc8':'3129a7241716c937b4ca15ae8878969f21569f334223d29e101b64f7c08f508d'}
 
 class UpgradeBlocked(ValueError):pass
 
@@ -21,7 +22,7 @@ def verify_tree(root,version,expected_manifest=None):
     manifest_path=root/'PACKAGE_MANIFEST.json'
     if manifest_path.is_symlink() or not manifest_path.is_file():raise UpgradeBlocked('Chybí původní manifest. Ruční instalaci nepřepisuji.')
     raw=manifest_path.read_bytes()
-    if expected_manifest and digest(raw)!=expected_manifest:raise UpgradeBlocked('Původ neodpovídá vydanému RC6; žádné soubory se nepřepisují.')
+    if expected_manifest and digest(raw)!=expected_manifest:raise UpgradeBlocked('Původ neodpovídá manifestu vydané verze; žádné soubory se nepřepisují.')
     manifest=json.loads(raw)
     if manifest.get('version')!=version or manifest.get('slug')!='hads_next_practical':raise UpgradeBlocked('Jiná verze nebo identita aplikace.')
     files=manifest['files']
@@ -63,11 +64,11 @@ def upgrade(app_root,command,new_source,call=cli_call):
         old_manifest=target/'PACKAGE_MANIFEST.json'
         if old_manifest.is_symlink() or not old_manifest.is_file() or old_manifest.stat().st_size>262144:raise UpgradeBlocked('Chybí bezpečný manifest stávající instalace; nic neodinstalovávej.')
         old_version=json.loads(old_manifest.read_text()).get('version')
-        if old_version not in VERIFIED_ORIGINS:raise UpgradeBlocked('Automatická aktualizace podporuje pouze ověřené RC6 nebo RC7.')
+        if old_version not in VERIFIED_ORIGINS:raise UpgradeBlocked('Automatická aktualizace podporuje pouze ověřené RC6 až RC8.')
         verify_tree(target,old_version,VERIFIED_ORIGINS[old_version]);verify_tree(new_source,VERSION)
         call([command,'update','--help'])
         info=call([command,'info',SLUG,'--raw-json'])
-        if not isinstance(info,dict) or info.get('version')!=old_version or info.get('state') not in {'started','stopped'}:raise UpgradeBlocked('Potřebuji potvrzený Next RC6/RC7 ve stavu started nebo stopped. Stav error nepovažuji za zastavení; nic neodinstalovávej.')
+        if not isinstance(info,dict) or info.get('version')!=old_version or info.get('state') not in {'started','stopped'}:raise UpgradeBlocked('Potřebuji potvrzený Next RC6–RC8 ve stavu started nebo stopped. Stav error nepovažuji za zastavení; nic neodinstalovávej.')
         initial_state=info['state']
         identity=uuid.uuid4().hex
         backup=root/('.hads-next-original-sources-'+identity+'.tar.gz')
