@@ -52,6 +52,7 @@ class ProviderVerification:
         self.app = app
         with app.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS provider_verifications(provider_id TEXT PRIMARY KEY,checked_at REAL NOT NULL,document TEXT NOT NULL)')
+            db.execute("DELETE FROM provider_verifications WHERE provider_id='hamster_mcp'")
 
     def update(self, values, states):
         config = values.get('core_config')

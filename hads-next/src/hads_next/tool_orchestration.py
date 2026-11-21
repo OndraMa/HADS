@@ -91,10 +91,15 @@ class ToolOrchestration:
                     if result is None:raise ToolDenied('Nativní seznam ZHA nebyl přečtený.')
                 else:
                     music=self.app.investigations.broker.music
-                    if music is None:raise ToolDenied('FastMCP připojení není nastavené.')
+                    if music is None or not music.mapping:raise ToolDenied('FastMCP nebo vazba přehrávače není nastavená.')
                     # The existing fixed-catalog adapter is used; player mapping is owner supplied.
                     tools=[descriptor(section,object_schema({'entity_id':ENTITY,'start':{'type':'string'},'end':{'type':'string'}}),contract='existing_verified_MusicMCP_fixed_ma_api_'+section) for section in ('player','health','events','buffer','logs')]
-                    self.registry.provider(provider,connected=True,catalog_loaded=True,authenticated=None,version=None,version_basis='verify_on_actual_MA_response',diagnostic_read_verified=False,last_error=None)
+                    status=music.status
+                    verified=status.read_succeeded and status.last_read_at is not None and 0<=self.app.clock()-status.last_read_at<=600
+                    self.registry.provider(provider,connected=bool(verified),catalog_loaded=bool(verified),authenticated=status.authenticated,
+                        version=None,version_basis='verify_on_actual_MA_response',diagnostic_read_verified=bool(verified),
+                        diagnostic_read_at=status.last_read_at if verified else None,
+                        last_error=None if verified else 'Čeká na platnou odpověď FastMCP. HADS mezitím využívá historii Core a dostupné protokoly.')
                     self.registry.replace(provider,tools)
                     for t in tools:self.routes[(provider,t['name'])]=('music',t['name'])
                     continue
@@ -306,19 +311,20 @@ class ToolOrchestration:
                 elif args['provider']=='hadocs':
                     value={**value,'incidents':[r for r in value['incidents'] if isinstance(r,dict) and (r.get('entity_id') in targets or set(r.get('affected_entities',[]))&targets)][:8],
                            'recommendations':value['recommendations'][:8]}
-                elif args['provider']=='zha_toolkit':
+                elif args['provider'] in {'zha','zha_toolkit'}:
                     registry = self.snapshot_values.get('entity_registry')
                     device_ids = {row['device_id'] for row in registry
                                   if isinstance(row, dict) and row.get('entity_id') in targets
                                   and row.get('platform') == 'zha' and isinstance(row.get('device_id'), str)
                                   } if isinstance(registry, list) else set()
-                    matched = [row for row in value['devices'] if row.get('device_id') in device_ids]
+                    devices=value['devices'] if args['provider']=='zha_toolkit' else value
+                    matched = [row for row in devices if row.get('device_id') in device_ids]
                     if not matched:
                         return self.app.investigations.broker._result(
-                            incident_id, 'tool:zha_toolkit:diagnostics', 'zha_toolkit',
+                            incident_id, 'tool:'+args['provider']+':diagnostics', args['provider'],
                             'no_relevant_data', None, self.app.clock(),
-                            'V přečtené cache Toolkitu není zařízení s doloženou vazbou na tento spis.')
-                    value = {key: item for key, item in value.items() if key not in {'checked_at', 'devices'}}
+                            'Zdroj Zigbee neposkytl zařízení s doloženou vazbou na tento případ.')
+                    value = {key: item for key, item in value.items() if key not in {'checked_at', 'devices'}} if isinstance(value,dict) else {}
                     value.update(devices=matched[:16], matched_devices=len(matched), truncated=len(matched) > 16)
 
             elif route=='mcp':

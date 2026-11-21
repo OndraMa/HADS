@@ -12,7 +12,7 @@ import tarfile
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.0.0-rc9"
+VERSION = "1.0.0-rc10"
 SLUG = "hads_next_practical"
 
 EXTRACTOR = r'''
@@ -75,7 +75,7 @@ Použití:
   bash HADS_Next_install_@@VERSION@@.sh --extract-only /absolutni/novy-adresar
   bash HADS_Next_install_@@VERSION@@.sh --install-dev
   bash HADS_Next_install_@@VERSION@@.sh --upgrade
-Nová instalace přidá local_@@SLUG@@. Výslovný --upgrade aktualizuje ověřený Next RC6 až RC8 přes nativní Supervisor update a zachová /data. Podle zadání nevytváří novou předinstalační HA/OneDrive zálohu. Povinné zálohy před opravami zůstávají. Starý Hermes 2.0.0-rc3 se nemění.
+Nová instalace přidá local_@@SLUG@@. Výslovný --upgrade aktualizuje ověřený Next RC6 až RC9 přes nativní Supervisor update a zachová /data. Podle zadání nevytváří novou předinstalační HA/OneDrive zálohu. Povinné zálohy před opravami zůstávají. Starý Hermes 2.0.0-rc3 se nemění.
 Původní Hermes je součástí balíčku. AI i vlastní testovací opravný katalog vyžadují výslovný souhlas. Obecné produkční zápisy jsou zakázané. Živá HAOS přejímka čeká.
 HADS_NEXT_USAGE
 }
@@ -112,7 +112,7 @@ else echo 'Chybí připojený adresář /local_apps nebo /addons. Nic neměním.
 fi
 TARGET="$APP_ROOT/@@SLUG@@"
 if [ "$MODE" = '--install-dev' ] && { [ -e "$TARGET" ] || [ -L "$TARGET" ]; }; then
-  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6–RC8 použij --upgrade. Neodinstalovávej aplikaci ani nemaž data.' >&2
+  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6–RC9 použij --upgrade. Neodinstalovávej aplikaci ani nemaž data.' >&2
   exit 1
 fi
 if ha apps --help >/dev/null 2>&1; then APP_COMMAND=apps
@@ -126,7 +126,7 @@ if [ "$MODE" = '--upgrade' ] || [ "$MODE" = '--upgrade-rc6' ] || [ "$MODE" = '--
 HADS_NEXT_UPGRADE
   exit 0
 fi
-[ ! -e "$TARGET" ] && [ ! -L "$TARGET" ] || { echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6 až RC8 použij --upgrade.' >&2; exit 1; }
+[ ! -e "$TARGET" ] && [ ! -L "$TARGET" ] || { echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6 až RC9 použij --upgrade.' >&2; exit 1; }
 # The list must succeed. A failed authorization is never treated as absence.
 ha "$APP_COMMAND" --raw-json > "$STAGING/apps.json"
 python3 - "$STAGING/apps.json" <<'HADS_NEXT_APPS'
@@ -175,7 +175,7 @@ def build_installer(output_dir: Path) -> dict:
     sources.update({"hads_next/" + p.name: p for p in (ROOT / "src/hads_next").glob("*.py")})
     if any(path.is_symlink() for path in sources.values()):
         raise ValueError("Source symlinks are forbidden")
-    for name in ('ORCHESTRATION_SETUP_CS.md','ORCHESTRATION_REVIEW_CS.md','ORCHESTRATION_LIVE_ACCEPTANCE_CS.md','ORCHESTRATION_ACCEPTANCE_CS.md','CANDIDATE_20261120_CS.md','RESTORE_VERIFIER_CONTRACT.md'):
+    for name in ('ORCHESTRATION_SETUP_CS.md','ORCHESTRATION_REVIEW_CS.md','ORCHESTRATION_LIVE_ACCEPTANCE_CS.md','ORCHESTRATION_ACCEPTANCE_CS.md','RC10_CONNECTORS_CS.md','PR19_ACCEPTANCE_MATRIX_CS.md','RESTORE_VERIFIER_CONTRACT.md'):
         source=ROOT/'docs'/name
         if source.is_file():sources['docs/'+name]=source
     contents = {name: path.read_bytes() for name, path in sources.items()}

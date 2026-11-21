@@ -56,7 +56,7 @@ def main():
         'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest(),'payload_files':len(manifest['files']),
         'production_image_boot_passed':image_passed,'production_image_health':health,'SIGTERM_exit_code':stopped_exit,
         'network':'none' if args.docker else 'no_container','paid_model_calls':0,'live_haos':False,
-        'actual_Supervisor_upgrade':False,'source_upgrade_tests':'separate test_upgrade_candidate.py with actual published RC6–RC8 source trees'}
+        'actual_Supervisor_upgrade':False,'source_upgrade_tests':'separate test_upgrade_candidate.py with actual published RC6–RC9 source trees'}
     (output/'CANDIDATE_PROOF.json').write_text(json.dumps(proof,ensure_ascii=False,indent=2)+'\n')
     print('HADS_CANDIDATE_PROOF='+json.dumps(proof,ensure_ascii=False,sort_keys=True))
 

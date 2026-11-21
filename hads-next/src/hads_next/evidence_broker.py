@@ -295,6 +295,16 @@ class EvidenceBroker:
                 projection=lambda rows:[{k:x[k] for k in ('entity_id','unique_id','platform','device_id','config_entry_id','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('entity_id')==args['entity_id']]
             elif name=='hads_get_device_registry':
                 projection=lambda rows:[{k:x[k] for k in ('id','manufacturer','model','config_entries','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('id')==args['device_id']]
+            elif name=='hads_get_action_history':
+                targets=set(case['incident']['components'])
+                def projection(rows):
+                    projected=[]
+                    for action in rows:
+                        entities=sorted(targets.intersection(action.get('targets',{}).get('entity_id',[])))
+                        if not entities:continue
+                        projected.append({**{k:action[k] for k in ('when','domain','service','context_id','context_user_id') if k in action},
+                                          'targets':{'entity_id':entities}})
+                    return projected[-64:]
             elif name in {'hads_get_supervisor_status','hads_get_haos_status','hads_get_addon_info','hads_get_addon_stats'}:
                 projection=lambda value:project_supervisor_read(method,value)
             elif name=='hads_get_applications':

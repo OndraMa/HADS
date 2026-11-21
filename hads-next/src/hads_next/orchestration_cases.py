@@ -54,12 +54,15 @@ class OrchestrationCases:
             device_outage=incident['kind']=='device_unavailable'
             if device_outage:
                 requests.extend(self._device_requests(case,available))
+            else:
+                requests.extend(self._media_requests(case,available))
             registry = tools.snapshot_values.get('entity_registry')
             if isinstance(registry, list) and any(
                 isinstance(row, dict) and row.get('platform') == 'zha' and row.get('entity_id') in targets
                 for row in registry
-            ) and any(row['provider'] == 'zha_toolkit' and row['name'] == 'diagnostics' for row in available):
-                requests.append({'provider':'zha_toolkit','tool':'diagnostics','arguments':{}})
+            ):
+                requests.extend({'provider':row['provider'],'tool':'diagnostics','arguments':{}} for row in available
+                                if row['provider'] in {'zha','zha_toolkit'} and row['name']=='diagnostics')
             if incident['kind']=='system_resource_pressure' and any(r['provider']=='core' and r['name']=='hads_get_runtime_health' for r in available):
                 requests.append({'provider':'core','tool':'hads_get_runtime_health','arguments':{}})
             if incident['kind'] in {'system_resource_pressure','application_failure','system_health_failure','manual_functional'}:
@@ -75,11 +78,6 @@ class OrchestrationCases:
                 elif provider=='core' and name=='statistics':
                     for entity in sorted(t for t in targets if isinstance(t,str) and t.startswith('sensor.'))[:2]:
                         requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity}})
-                elif provider=='music_assistant':
-                    for entity in sorted(t for t in targets if isinstance(t,str) and t.startswith('media_player.'))[:1]:
-                        from datetime import datetime,timezone
-                        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
-                        requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity,'start':iso(incident['first_seen']-300),'end':iso(min(self.app.clock(),incident['last_seen']+300))}})
                 elif provider=='ha_mcp':
                     if device_outage:continue
                     for entity in sorted(t for t in targets if isinstance(t,str) and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+',t))[:4]:
@@ -96,6 +94,8 @@ class OrchestrationCases:
                     report_data = {key: value for key, value in report_data.items() if key != 'checked_at'}
                 per_occurrence=device_outage and request['tool'] in {
                     'hads_get_entity_history','core_logs','supervisor_logs','host_logs','ha_get_state','ha_get_entity','ha_get_device','ha_get_history'}
+                per_occurrence=per_occurrence or request['tool'] in {'hads_get_action_history','hads_get_addon_logs'} or (
+                    request['tool']=='hads_get_entity_history' and request['arguments'].get('entity_id','').startswith('media_player.'))
                 freshness=incident['last_seen'] if per_occurrence else int(self.app.clock()//600)
                 request_id=fingerprint([request,fingerprint(report_data) if report else freshness,message_id]) if message_id else fingerprint([request,fingerprint(report_data) if report else freshness])
                 with self.app.store._connect() as db:
@@ -156,6 +156,74 @@ class OrchestrationCases:
         supported={(row['provider'],row['name']) for row in available if row['effect']=='read'}
         return [{'provider':provider,'tool':tool,'arguments':args}
                 for provider,tool,args in reads if (provider,tool) in supported]
+
+    def _media_requests(self,case,available):
+        incident=case['incident']
+        entity=next((item for item in incident['components'] if item.startswith('media_player.')),None)
+        if entity is None:return []
+        when=incident['last_seen']
+        if when>self.app.clock():return []
+        end=when+120 if self.app.clock()>=when+120 else when
+        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        window={'start':iso(when-300),'end':iso(end)}
+        reads=[('core','hads_get_entity_history',{'entity_id':entity,**window}),('core','hads_get_action_history',window)]
+        registry=self.app.tools.snapshot_values.get('entity_registry')
+        if isinstance(registry,list) and any(isinstance(row,dict) and row.get('entity_id')==entity and
+                row.get('platform')=='music_assistant' for row in registry):
+            music=next((row for row in self.app.providers.snapshot() if row['provider_id']=='music_assistant' and not row['stale']),{})
+            apps=music.get('applications',[])
+            running=[row for row in apps if row.get('state')=='started']
+            app=running[0] if len(running)==1 else apps[0] if len(apps)==1 else None
+            if app:
+                reads.append(('supervisor','hads_get_addon_logs',{'slug':app['slug']}))
+        reads.extend(('music_assistant',section,{'entity_id':entity,**window}) for section in ('events','player','health','logs','buffer'))
+        supported={(row['provider'],row['name']) for row in available if row['effect']=='read'}
+        return [{'provider':provider,'tool':tool,'arguments':args}
+                for provider,tool,args in reads if (provider,tool) in supported]
+
+    def playback_followup(self,case):
+        from .diagnostics import investigate_radio
+        incident=case['incident']
+        entity=next((item for item in incident['components'] if item.startswith('media_player.')),None)
+        if entity is None:return None
+        when=incident['last_seen']
+        states={};events=[];log_read=False
+        for evidence in case['evidence']:
+            kind=evidence['kind'];payload=evidence['payload']
+            if kind=='hads_get_addon_logs':
+                log_read=True
+            if kind=='hads_get_action_history':
+                for action in payload.get('data',[]):
+                    if not isinstance(action,dict):continue
+                    observed=action.get('when')
+                    if type(observed) not in {int,float} or entity not in action.get('targets',{}).get('entity_id',[]):continue
+                    events.append({'kind':'ha_action','source':evidence['source'],'observed_at':observed,
+                                   'event_id':evidence['event_id'],
+                                   'payload':{'action':str(action.get('domain',''))+'.'+str(action.get('service','')),
+                                              'target_entity_id':entity,'context':{'id':action.get('context_id')}}})
+            history=payload.get('data',[]) if kind=='hads_get_entity_history' else [[payload]] if kind=='entity_state' and evidence['source']=='ha_core_history' else []
+            for group in history if isinstance(history,list) else []:
+                if not isinstance(group,list):continue
+                for row in group:
+                    if not isinstance(row,dict) or row.get('entity_id')!=entity or not isinstance(row.get('state'),str):continue
+                    observed=stamp(row.get('last_updated') or row.get('last_changed'))
+                    if observed is None or not when-300<=observed<=when+120:continue
+                    previous=states.get(observed)
+                    if previous and previous[0].get('state')!=row.get('state'):
+                        states[observed]=({},evidence);continue
+                    if previous is None or row.get('context'):states[observed]=(row,evidence)
+        previous=None
+        for observed,(row,evidence) in sorted(states.items()):
+            state=row.get('state')
+            if previous is not None and state!=previous:
+                events.append({'kind':'player_state','source':evidence['source'],'observed_at':observed,
+                               'event_id':evidence['event_id'],'payload':{'entity_id':entity,'from':previous,'to':state,
+                               'context':row.get('context')}})
+            previous=state
+        if not states and not events and not log_read:return None
+        conclusion=investigate_radio(events,entity,when,window=300)
+        if log_read:conclusion['summary_cs']+=' HADS přečetl také dostupný výřez protokolu aplikace. Přiřazení protokolu k přehrávači samo neurčuje příčinu.'
+        return conclusion
 
     @staticmethod
     def _outage_entity(case):

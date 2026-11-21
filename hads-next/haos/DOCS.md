@@ -1,17 +1,17 @@
-# HADS Next 1.0.0-rc9 — instalační kandidát
+# HADS Next 1.0.0-rc10 — instalační kandidát
 
-Kandidát PR #19 obsahuje aktuální orchestraci. RC6–RC8 ji neobsahují.
+Kandidát PR #19 doplňuje automatické prověření přehrávání bez FastMCP, cílená čtení Zigbee, migraci bez Hamsteru a další opravy po RC9.
 Živá HAOS přejímka a úplné splnění původního zadání nejsou potvrzené.
 
-## Aktualizace ověřeného RC6–RC8
+## Aktualizace ověřeného RC6–RC9
 
-Stáhni kandidát z GitHubu a přenes `HADS_Next_install_1.0.0-rc9.sh` do `/config` v HAOS.
+Stáhni kandidát z GitHubu a přenes `HADS_Next_install_1.0.0-rc10.sh` do `/config` v HAOS.
 Neodinstalovávej stávající aplikaci. Ve Windows instalátor nespouštěj a nic dalšího neinstaluj.
 V terminálové aplikaci HAOS spusť:
 
 ```bash
-bash /config/HADS_Next_install_1.0.0-rc9.sh --verify
-bash /config/HADS_Next_install_1.0.0-rc9.sh --upgrade
+bash /config/HADS_Next_install_1.0.0-rc10.sh --verify
+bash /config/HADS_Next_install_1.0.0-rc10.sh --upgrade
 ```
 
 Instalátor nezaměňuje `error` za potvrzené zastavení. Ověří původní manifest a všechny zdroje;
@@ -28,7 +28,7 @@ To neruší bezpečnostní požadavky před opravami domácnosti.
 Pouze pokud HADS Next není instalovaný a jeho zdrojový adresář neexistuje:
 
 ```bash
-bash /config/HADS_Next_install_1.0.0-rc9.sh --install-dev
+bash /config/HADS_Next_install_1.0.0-rc10.sh --install-dev
 ```
 
 Je potřeba HA CLI (`ha`), `bash`, `python3`, `base64` a připojený místní adresář aplikací
@@ -42,7 +42,7 @@ Otevři HADS v HAOS. Přihlášeného vlastníka ověří Home Assistant; ID ani
 Záhlaví a `/health` ukazují verzi, zdrojový commit a ID sestavení. Neověřený původ je výslovně označený.
 HADS sám čte dostupné nativní zdroje a reporty; nemusíš kopírovat logy ani spouštět diagnostické příkazy.
 
-- `docs/CANDIDATE_20261120_CS.md`: jednorázové kroky a známé meze.
+- `docs/RC10_CONNECTORS_CS.md`: jednorázové kroky a známé meze.
 - `docs/ORCHESTRATION_SETUP_CS.md`: HA-MCP, původní Hermes a privátní připojení.
 - `docs/RESTORE_VERIFIER_CONTRACT.md`: příjem skutečného nezávislého důkazu obnovy.
 - `docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md`: čekající živá přejímka.

@@ -283,6 +283,9 @@ class Handler(BaseHTTPRequestHandler):
                                ('ha_mcp','ha_get_device'):'Zařízení přes HA-MCP'}
                 checks=''.join('<li>'+label+' · '+status_labels.get(device_followup['statuses'].get(key),'ověření zatím chybí')+'</li>' for key,label in source_labels.items())
                 suggestion_html='<h2>Automatické prověření výpadku</h2><p>'+escape(device_followup['summary_cs'])+'</p><ul>'+checks+'</ul>'+suggestion_html
+            playback=self.server.app.orchestration.playback_followup(case)
+            if playback:
+                suggestion_html='<h2>Automatické prověření přehrávání</h2><p>'+escape(playback['summary_cs'])+'</p>'+suggestion_html
             automation_case=any(component.startswith('automation.') for component in case['incident']['components'])
             reference_case=bool({'input_boolean.hads_next_test_target','automation.hads_next_reference_test'} & set(case['incident']['components']))
             if self.server.app.repairs.status()['enabled'] and reference_case:

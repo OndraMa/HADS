@@ -63,6 +63,58 @@ class EntityContextTests(unittest.TestCase):
         self.assertFalse(provider['diagnostic_read']['read_succeeded']);self.assertTrue(provider['last_error'])
         report=self.app.entity_context.reports()[0];self.assertIsNotNone(report['zha']);self.assertIsNone(report['toolkit'])
         self.assertNotIn('PRIVATE_EXCEPTION',json.dumps(provider))
+    def test_native_zha_broker_returns_only_registry_bound_devices(self):
+        original=self.app.core_ws.transport
+        unrelated={**self.device,'device_reg_id':'different_device','ieee':'10:11:22:33:44:55:66:77'}
+        self.app.core_ws.transport=lambda request: [self.device,unrelated] if request['type']=='zha/devices' else original(request)
+        self.app.check_sources()
+        case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        data=self.app.tools.diagnostic_read(case['id'],{'provider':'zha','tool':'diagnostics','arguments':{}})['data']
+        self.assertEqual(data['matched_devices'],1)
+        self.assertEqual(data['devices'][0]['device_id'],'device_fixture')
+        self.assertNotIn('different_device',json.dumps(data))
+
+    def test_radio_case_correlates_native_history_actions_and_app_logs_without_fastmcp(self):
+        player='media_player.fixture_radio'
+        when=self.now-120
+        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        self.registry.append({'entity_id':player,'platform':'music_assistant','device_id':'radio_fixture'})
+        case=self.app.store.open_incident('functional_monitor','Přehrávání se zastavilo',[player],when)
+        original_http=self.app.core.transport
+        original_ws=self.app.core_ws.transport
+        def http(path):
+            if path.startswith('/api/history/period/') and player in path:
+                return [[{'entity_id':player,'state':'playing','last_updated':iso(when-30)},
+                         {'entity_id':player,'state':'idle','last_updated':iso(when),'context':{'id':'fixture-stop'}}]]
+            return original_http(path)
+        def ws(request):
+            if request['type']=='logbook/get_action_calls':
+                return [{'when':when-2,'domain':'media_player','service':'media_stop','context_id':'fixture-stop',
+                         'service_data':{'entity_id':player,'pin':'NEVER_COPY'}},
+                        {'when':when-1,'domain':'media_player','service':'media_stop','context_id':'other',
+                         'service_data':{'entity_id':'media_player.unrelated'}}]
+            return original_ws(request)
+        def supervisor(path,*,raw=False):
+            if path=='/addons/abc_music_assistant_beta/logs':
+                self.calls.append(path);self.assertTrue(raw)
+                return iso(when)+' INFO music fixture'
+            return {'result':'ok','data':{'version':'2026.11.1','addons':[
+                {'slug':'abc_music_assistant_beta','name':'Music Assistant (Beta)','state':'started'},
+                {'slug':'abc_other','name':'Other','state':'started'}]}}
+        self.app.core.transport=http
+        self.app.core_ws.transport=ws
+        transport=SupervisorTransport('fixture-token');transport._http=supervisor
+        self.app.supervisor=SupervisorReader(transport)
+        self.app.investigations.broker.supervisor=self.app.supervisor
+        self.app.check_sources()
+        self.app.orchestration.cycle(budget=20)
+        saved=self.app.store.case(case['id'])
+        self.assertIn('/addons/abc_music_assistant_beta/logs',self.calls)
+        self.assertNotIn('media_player.unrelated',json.dumps(saved))
+        self.assertNotIn('NEVER_COPY',json.dumps(saved))
+        self.assertEqual(self.app.orchestration.playback_followup(saved)['category'],'commanded_stop')
+        self.assertIsNone(self.app.investigations.broker.music)
+        self.assertEqual(self.app.repairs.plans(case['id']),[])
     def test_case_lists_only_registry_siblings_and_marks_the_reported_entity(self):
         self.device_registry=[{'id':'device_fixture','name':'Výrobní název','name_by_user':'<Komora>','secret':'NEVER_COPY'}]
         self.registry.extend([
