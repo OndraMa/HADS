@@ -1,3 +1,16 @@
+# HADS Next 1.0.0-rc10 — instalační kandidát
+
+RC10 automaticky prověřuje výpadky přehrávání přes historii, akce a dostupný protokol Music Assistantu. Ke spisům Zigbee připojuje čtení nativního ZHA a Toolkitu pro konkrétní zařízení. Zahrnuje dřívější odstranění Hamsteru a schvalované povolení jednoho senzoru přes HA-MCP. Aktualizace z ověřeného RC9 používá stejnou identitu aplikace.
+
+- [Kompletní balíček, instalátor a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc10-kandidat/)
+- [Český návod k připojení doplňků](hads-next/docs/RC10_CONNECTORS_CS.md)
+- [Přejímací protokol RC10](KE_STAZENI/HADS_Next_1.0.0-rc10-kandidat/AKCEPTACE.json)
+- [PR #19](https://github.com/OndraMa/HADS/pull/19) · [CI AMD64 a ARM64](https://github.com/OndraMa/HADS/actions/runs/44941057507)
+
+Zdroj `78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e`. Místně prošlo 334 izolovaných testů. Na obou architekturách prošel také start instalačního obrazu a kontejnerová přejímka s Core a izolovaným Hermesem se skriptovaným modelem. Přejímka na živém HAOS stále čeká.
+
+---
+
 # HADS Next 1.0.0-rc9 — instalační kandidát
 
 RC9 opravuje překrytí záložky Domácnost, doplňuje ověření čtení přes HA-MCP a Hamster a vybírá Zigbee důkazy ze ZHA Toolkitu podle cíle spisu. Aktualizace z vydaných RC6 až RC8 používá stejnou identitu aplikace a zachovává její data.
