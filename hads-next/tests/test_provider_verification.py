@@ -73,7 +73,7 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(ProviderVerification(self.app).snapshot(),self.app.providers.snapshot())
     def test_czech_page_shows_missing_contract_not_fake_green(self):
         self.update();html=render_providers(self.app,'csrf')
-        self.assertIn('HADS zatím neověřil vlastní diagnostiku doplňku',html);self.assertNotIn('HASK',html);self.assertIn('Hamster MCP',html)
+        self.assertIn('HADS zatím neověřil vlastní diagnostiku doplňku',html);self.assertNotIn('HASK',html);self.assertNotIn('Hamster MCP',html)
         self.assertNotIn('NEVER_COPY',html)
     def test_owner_named_health_score_is_read_without_claiming_package_identity(self):
         self.states.append({'entity_id':'sensor.system_ha_global_health_score','state':'87','last_updated':'2026-11-14T00:00:00+00:00'})

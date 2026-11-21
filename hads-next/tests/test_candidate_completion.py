@@ -133,9 +133,6 @@ class CandidateTests(unittest.TestCase):
             self.assertTrue(value['next_step_cs'])
         page=settings(self.app,'csrf')
         self.assertIn('name="url" type="password"',page)
-        self.app.tools.registry.provider('hamster_mcp',**connection_failure(ReadFailure('private',401)))
-        page=settings(self.app,'csrf')
-        self.assertIn('samotný dlouhodobý token Home Assistantu',page)
         self.assertNotIn('neověřeno / rozhraní bez vlastní autentizace',page)
 
     def test_inspector_uses_supervisor_detail_when_inventory_omits_running_state(self):

@@ -102,7 +102,10 @@ class EntityContextTests(unittest.TestCase):
         self.assertIn('Otevřené funkční případy</span><strong>1',render_dashboard(self.app,'fixture'))
         first=self.app.store.case(case['id']);self.now+=300;self.app.check_sources()
         again=self.app.store.case(case['id'])
-        self.assertEqual(first['evidence'],again['evidence']);self.assertEqual(len(again['occurrences']),1)
+        current=[ev for ev in again['evidence'] if ev['source']=='native_entity_context']
+        self.assertEqual([ev for ev in first['evidence'] if ev['source']=='native_entity_context'],current)
+        self.assertEqual(len({ev['evidence_id'] for ev in again['evidence']}),len(again['evidence']))
+        self.assertEqual(len(again['occurrences']),1)
         self.states[-1]['state']='off';self.app.check_sources()
         self.states[0]['state']='0';self.states[0]['attributes']={'entities':[]}
         self.now+=300;self.app.check_sources()

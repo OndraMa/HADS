@@ -16,7 +16,7 @@ from .observability import ReadFailure,_NoRedirect,bounded_body,redact
 
 PROJECTS={'core':'home-assistant/core','supervisor':'home-assistant/supervisor',
           'music_assistant':'music-assistant/server','zha':'home-assistant/core','community':None,
-          'ha_mcp':'homeassistant-ai/ha-mcp','hamster_mcp':'altendky/hamster-mcp','spook':'frenck/spook',
+          'ha_mcp':'homeassistant-ai/ha-mcp','spook':'frenck/spook',
           'watchman':'dummylabs/thewatchman','zha_toolkit':'mdeweerd/zha-toolkit',
           'automation_inspector':'ITSpecialist111/Automation-Inspector','hadocs':'SirBlondieDK/HADocs',
           'haghs':'HA-Pulse/home-assistant-global-health-score','entity_availability':'italo-lombardi/Home-Assistant-EntityAvailability'}

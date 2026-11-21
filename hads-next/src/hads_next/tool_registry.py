@@ -4,7 +4,7 @@ import json
 import time
 from .evidence import canonical
 
-PROVIDERS=('core','supervisor','haos','spook','watchman','ha_mcp','native_mcp','hamster_mcp',
+PROVIDERS=('core','supervisor','haos','spook','watchman','ha_mcp','native_mcp',
            'zha_toolkit','zha','automation_inspector','hadocs','haghs','entity_availability','music_assistant')
 
 def fingerprint(value):
@@ -59,6 +59,10 @@ class ToolRegistry:
             CREATE TABLE IF NOT EXISTS tool_catalog(provider TEXT NOT NULL,name TEXT NOT NULL,document TEXT NOT NULL,
                 checked_at REAL NOT NULL,PRIMARY KEY(provider,name));''')
             if [r[0] for r in db.execute('SELECT version FROM tool_registry_schema')]!=[1]:raise ToolDenied('Neznámé schéma katalogu.')
+
+        with store._connect() as db:
+            db.execute("DELETE FROM tool_catalog WHERE provider='hamster_mcp'")
+            db.execute("DELETE FROM tool_providers WHERE id='hamster_mcp'")
 
     def provider(self,provider,**fields):
         if provider not in PROVIDERS:raise ToolDenied('Neznámý poskytovatel.')

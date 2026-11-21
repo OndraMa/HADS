@@ -16,7 +16,6 @@ SPECS = {
     'automation_inspector': ('Automation Inspector', ('automation_inspector',), ('automation_inspector',)),
     'hadocs': ('HADocs', ('hadocs',), ('hadocs',)),
     'entity_availability': ('Entity Availability', ('entity_availability',), ('entity_availability',)),
-    'hamster_mcp': ('Hamster MCP', ('hamster_mcp',), ('hamster_mcp',)),
     'haghs': ('Home Assistant Global Health Score', ('haghs',), ('haghs', 'home_assistant_global_health_score')),
     'watchman': ('Watchman', ('watchman',), ('watchman',)),
     'music_assistant': ('Music Assistant', ('music_assistant',), ('music_assistant', 'music_assistant_beta')),

@@ -30,11 +30,26 @@ class OrchestrationCases:
         cases=[c for c in self.app.snapshot()['cases'] if c['status']=='open']
         if not cases:return
         offset=self.cursor%len(cases);cases=cases[offset:]+cases[:offset];self.cursor+=1
+        with self.app.store._connect() as db:
+            pending={r['incident_id']:json.loads(r['content'])['message_id'] for r in db.execute(
+                """SELECT m.incident_id,m.content FROM case_records m
+                WHERE m.kind='owner_message'
+                AND m.id=(SELECT max(id) FROM case_records WHERE incident_id=m.incident_id AND kind='owner_message')
+                AND NOT EXISTS(SELECT 1 FROM case_records d WHERE d.incident_id=m.incident_id AND d.kind='owner_diagnostic_reply'
+                    AND d.id>m.id AND json_extract(d.content,'$.message_id')=json_extract(m.content,'$.message_id'))""")}
+        cases.sort(key=lambda incident:incident['id'] not in pending)
         tools=self.app.tools
         available=tools.registry.tools(include_blocked=False)
+        ai=self.app.investigations.provider.public_status()
+        autonomous=(ai['enabled'] and ai.get('mode')=='bounded' and self.app.investigations.launcher is not None
+                    and self.app.detection.snapshot()['autonomous_ai'])
+        case_budget=max(3,budget//min(3,len(cases)))
         for incident in cases:
             if budget<=0:break
             case=self.app.store.case(incident['id']);targets=tools._scope(case,{})
+            message_id=pending.get(incident['id'])
+            attempted=[]
+            evidence_acquired=False
             requests=[]
             device_outage=incident['kind']=='device_unavailable'
             if device_outage:
@@ -57,9 +72,6 @@ class OrchestrationCases:
                 if row['effect']!='read':continue
                 if provider in {'automation_inspector','hadocs','watchman','haghs','entity_availability','spook'} and name in {'dependency_report','analysis_report','diagnostics'}:
                     requests.append({'provider':provider,'tool':name,'arguments':{}})
-                elif provider=='hamster_mcp' and name=='hass/config/entity_registry/get':
-                    for entity in sorted(t for t in targets if isinstance(t,str) and '.' in t)[:2]:
-                        requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity}})
                 elif provider=='core' and name=='statistics':
                     for entity in sorted(t for t in targets if isinstance(t,str) and t.startswith('sensor.'))[:2]:
                         requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity}})
@@ -71,27 +83,29 @@ class OrchestrationCases:
                 elif provider=='ha_mcp':
                     if device_outage:continue
                     for entity in sorted(t for t in targets if isinstance(t,str) and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+',t))[:4]:
-                        if name in {'ha_get_state','ha_get_device'} or name=='ha_config_get_automation' and entity.startswith('automation.'):
+                        if name in {'ha_get_state','ha_get_device','ha_get_entity'} or name=='ha_config_get_automation' and entity.startswith('automation.'):
                             requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity}})
                         elif name=='ha_config_get_script' and entity.startswith('script.'):
                             requests.append({'provider':provider,'tool':name,'arguments':{'script_id':entity}})
             for request in requests:
-                if budget<=0:break
+                if budget<=0 or len(attempted)>=case_budget:break
                 report=tools.reports.get((request['provider'],request['tool']),{})
                 report_data = report.get('data')
                 if request['provider'] == 'zha_toolkit' and report_data:
                     # The refresh timestamp changes even when the cache contents do not.
                     report_data = {key: value for key, value in report_data.items() if key != 'checked_at'}
                 per_occurrence=device_outage and request['tool'] in {
-                    'hads_get_entity_history','core_logs','supervisor_logs','host_logs','ha_get_state','ha_get_device'}
+                    'hads_get_entity_history','core_logs','supervisor_logs','host_logs','ha_get_state','ha_get_entity','ha_get_device','ha_get_history'}
                 freshness=incident['last_seen'] if per_occurrence else int(self.app.clock()//600)
-                request_id=fingerprint([request,fingerprint(report_data) if report else freshness])
+                request_id=fingerprint([request,fingerprint(report_data) if report else freshness,message_id]) if message_id else fingerprint([request,fingerprint(report_data) if report else freshness])
                 with self.app.store._connect() as db:
                     previous=db.execute('SELECT * FROM orchestration_reads WHERE incident_id=? AND request_hash=?',(incident['id'],request_id)).fetchone()
                     if previous and (previous['state'] in {'available','no_relevant_data'} or previous['attempts']>=2 or self.app.clock()-previous['checked_at']<300):continue
                 budget-=1
                 try:result=tools.diagnostic_read(incident['id'],request)
                 except (ValueError,KeyError,TypeError):result={'status':'not_read','evidence_ids':[]}
+                attempted.append((request['provider'],request['tool'],result['status']))
+                evidence_acquired |= result['status']=='available' and bool(result.get('evidence_ids'))
                 with self.app.store._connect() as db:
                     db.execute('INSERT OR REPLACE INTO orchestration_reads VALUES(?,?,?,?,?,?,?,?)',(incident['id'],request_id,request['provider'],request['tool'],result['status'],1 if previous is None else previous['attempts']+1,self.app.clock(),canonical({k:v for k,v in result.items() if k!='data'})))
                 if result['status']=='available' and request['tool'] in {'core_logs','supervisor_logs','host_logs'}:
@@ -99,6 +113,23 @@ class OrchestrationCases:
                 if result['status']=='available' and request['provider']=='automation_inspector':self._dependencies(incident['id'],targets,result.get('data',{}))
             if not device_outage or not self._restored(case,self._outage_entity(case)):
                 self.prepare_candidates(incident['id'])
+            if message_id:
+                completed=[provider+' / '+tool for provider,tool,status in attempted if status in {'available','no_relevant_data'}]
+                text=('Po tvém doplnění jsem přečetl: '+', '.join(completed)+'.' if completed else
+                      'Po tvém doplnění se nepodařilo získat nový ověřený výsledek z dostupných zdrojů.')
+                if device_outage:text+=' '+self.device_followup(self.app.store.case(incident['id']))['summary_cs']
+                self.app.store.record(incident['id'],'owner_diagnostic_reply',{'message_id':message_id,'summary_cs':text,
+                    'attempted':attempted,'paid_model_calls':0})
+            elif autonomous and evidence_acquired and incident['kind'] in {
+                    'device_unavailable','automation_reference','provider_diagnostic','manual_functional','network_correlation'}:
+                last_seen=incident['last_seen']
+                prior=any(row['kind']=='autonomous_orchestration_attempt' and row['content'].get('occurrence_at')==last_seen for row in case['records'])
+                if not prior:
+                    self.app.store.record(incident['id'],'autonomous_orchestration_attempt',{'occurrence_at':last_seen})
+                    try:self.app.investigations.start(incident['id'],self.app.owner(),automatic=True)
+                    except ValueError:
+                        self.app.store.record(incident['id'],'automatic_investigation_deferred',{
+                            'summary_cs':'Hermes nyní nelze spustit. Čtecí důkazy zůstávají ve spisu pro pozdější pokračování.'})
             self.app.store.record(incident['id'],'orchestration_checkpoint',self.summary(incident['id']))
             with self.app.store._connect() as db:
                 for kind in ('orchestration_checkpoint','orchestration_repair_blocked','orchestration_repair_ready'):
@@ -115,9 +146,13 @@ class OrchestrationCases:
         # Keep the first look stable while an event is recent so retries deduplicate.
         end=when+300 if self.app.clock()>=when+300 else when
         iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
-        reads=[('core','hads_get_entity_history',{'entity_id':entity,'start':iso(when-300),'end':iso(end)}),
+        window={'start_time':iso(when-300),'end_time':iso(end)}
+        reads=[('core','hads_get_entity_history',{'entity_id':entity,'start':window['start_time'],'end':window['end_time']}),
+               ('ha_mcp','ha_get_entity',{'entity_id':entity}),('ha_mcp','ha_get_state',{'entity_id':entity}),
+               ('ha_mcp','ha_get_device',{'entity_id':entity}),
+               ('ha_mcp','ha_get_history',{'entity_ids':entity,**window,'source':'history','minimal_response':True,'limit':32}),
                ('core','core_logs',{}),('supervisor','supervisor_logs',{}),('haos','host_logs',{}),
-               ('ha_mcp','ha_get_state',{'entity_id':entity}),('ha_mcp','ha_get_device',{'entity_id':entity})]
+               ]
         supported={(row['provider'],row['name']) for row in available if row['effect']=='read'}
         return [{'provider':provider,'tool':tool,'arguments':args}
                 for provider,tool,args in reads if (provider,tool) in supported]
@@ -255,14 +290,22 @@ class OrchestrationCases:
         # Disabled registry entries are not assumed broken. Only an actual
         # owner-reported functional case can offer enabling as an explicit
         # intended-behavior choice in the immutable approval plan.
-        if case['incident']['kind']=='manual_functional' and any(r['provider']=='spook' and r['name']=='homeassistant.enable_entity' for r in catalog):
+        supported={(r['provider'],r['name']) for r in catalog if r['executor']=='entity_enabled'}
+        if case['incident']['kind']=='manual_functional':
             for report in self.app.entity_context.reports(case)[:2]:
                 if report['classification']!='disabled' or (report.get('registry') or {}).get('disabled_by')!='user':continue
+                params={'entity_id':report['entity_id']}
+                if ('spook','homeassistant.enable_entity') in supported:
+                    provider,tool='spook','homeassistant.enable_entity'
+                elif ('ha_mcp','ha_set_entity') in supported and report['entity_id'].startswith(('sensor.','binary_sensor.')):
+                    provider,tool='ha_mcp','ha_set_entity'
+                    params['enabled']=True
+                else:continue
                 try:
-                    self.app.approved_tools.prepare(identity,'spook','homeassistant.enable_entity',{'entity_id':report['entity_id']},evidence,
+                    self.app.approved_tools.prepare(identity,provider,tool,params,evidence,
                         'U nahlášeného funkčního problému je doložené zakázání uživatelem. Schválením tohoto přesného plánu vlastník výslovně potvrzuje, že entita má být povolená; nejde o automaticky zjištěnou poruchu Zigbee.',exclusive=True)
                 except (ValueError,KeyError,TypeError) as error:
-                    self.app.store.record(identity,'orchestration_repair_blocked',{'provider':'spook','tool':'homeassistant.enable_entity','reason_cs':str(error)[:700]})
+                    self.app.store.record(identity,'orchestration_repair_blocked',{'provider':provider,'tool':tool,'reason_cs':str(error)[:700]})
         candidates=[r for r in catalog if r['effect']=='write' and r.get('executor')=='replace_automation_reference']
         for row in candidates:
             client=tools.connections.clients.get(row['provider'])

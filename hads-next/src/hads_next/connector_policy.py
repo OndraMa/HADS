@@ -4,24 +4,28 @@ from .tool_registry import object_schema,ENTITY,ID
 READS={
  'ha_get_skill_guide':object_schema({'file':{'type':'string','enum':['references/triggers-and-conditions.md','references/automation-actions.md']}}),
  'ha_get_state':object_schema({'entity_id':ENTITY}),
+ 'ha_get_entity':object_schema({'entity_id':ENTITY}),
  'ha_get_device':object_schema({'entity_id':ENTITY}),
+ 'ha_get_history':object_schema({'entity_ids':ENTITY,'start_time':{'type':'string','maxLength':40},
+     'end_time':{'type':'string','maxLength':40},'source':{'const':'history'},'minimal_response':{'const':True},
+     'limit':{'const':32}}),
  'ha_config_get_automation':object_schema({'entity_id':ENTITY}),
  'ha_config_get_script':object_schema({'script_id':{'type':'string','pattern':r'^script\.[a-z0-9_]+$','maxLength':160}}),
  'ha_get_system_health':object_schema({'include':{'type':'string','enum':['repairs','zha_network','supervisor']}},[]),
 }
 WRITES={
+ 'ha_set_entity':object_schema({'entity_id':{'type':'string','pattern':r'^(binary_sensor|sensor)\.[a-z0-9_]+$','maxLength':160},
+     'enabled':{'type':'boolean'}}),
  'ha_config_set_automation':object_schema({'entity_id':ENTITY,'config':{'type':'object'},'config_hash':{'type':'string','minLength':16,'maxLength':128},
      'run_actions':{'const':False},'wait':{'const':True},'BestPracticeKey':{'type':'string','pattern':'^I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-[a-f0-9]{8}$'}},['entity_id','config','config_hash','run_actions','wait']),
 }
-HAMSTER_READS={'hass/config/entity_registry/get','hass/get_states','hass/config/entity_registry/list','hass/config/device_registry/list','hass/repairs/list_issues','hass/system_log/list'}
 
 
 def policy(provider,name):
     if provider=='ha_mcp':
         if name in READS:return 'read','allowed',READS[name],None
-        if name in WRITES:return 'write','allowed',WRITES[name],'replace_automation_reference'
+        if name in WRITES:return 'write','allowed',WRITES[name],('entity_enabled' if name=='ha_set_entity' else 'replace_automation_reference')
     if provider=='native_mcp' and name in {'GetLiveContext','homeassistant__GetLiveContext'}:return 'read','allowed',object_schema(),None
-    if provider=='hamster_mcp' and name in HAMSTER_READS:return 'read','allowed',object_schema({'entity_id':ENTITY}) if name.endswith('/get') else object_schema(),None
     return 'unknown','blocked',None,None
 
 

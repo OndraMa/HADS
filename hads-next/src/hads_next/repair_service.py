@@ -169,7 +169,7 @@ class RepairService:
         with self.app.store._connect() as db:
             for row in db.execute("SELECT document FROM repair_plans WHERE json_extract(document,'$.operation')='tool.approved'"):
                 d=json.loads(row[0])
-                if d['binding']['provider']=='ha_mcp':tracked.add(d['parameters']['entity_id'])
+                if d['binding']['tool']=='ha_config_set_automation':tracked.add(d['parameters']['entity_id'])
         if entity not in tracked:return
         try:stamp=datetime.fromisoformat(event['time_fired']).timestamp();context=event['context']['id']
         except (ValueError,KeyError,TypeError):return

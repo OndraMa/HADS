@@ -1,4 +1,4 @@
-> **Aktualizace 19. 11. 2026:** následující text uchovává přejímku předchozí zdrojové revize PR #19 z 17. 11. Aktuální instalační kandidát, nová integrační část a přesné zbývající meze jsou v [CANDIDATE_20261119_CS.md](CANDIDATE_20261119_CS.md). Starší protokoly se nevydávají za test nové revize.
+> Aktuální stav implementace a jednotlivé důkazy sleduje [matice PR #19](PR19_ACCEPTANCE_MATRIX_CS.md).
 
 # Živá přejímka orchestrace po RC7
 
@@ -14,7 +14,7 @@ Přístupové údaje se nastaví soukromě v prostředí, nikdy v chatu nebo tom
 ## 1. Původ instalace a čtecí připojení
 
 Přejímající zaznamená přesnou zdrojovou revizi, hash budoucího image/payloadu,
-architekturu, Core/Supervisor/HAOS verze a datum. Běžící RC7 není instalace tohoto PR.
+architekturu, Core/Supervisor/HAOS verze a datum. Dříve vydané RC9 neobsahuje všechny následné změny tohoto PR.
 Nejprve ověří vlastnictví přes skutečný ingress a nechá HADS dokončit jeho autonomní čtení.
 Označení `installed`, `running`, `connected`, `authenticated`, `catalog_loaded` a
 `diagnostic_read_verified` musí odpovídat skutečně provedeným krokům.
@@ -28,7 +28,7 @@ Označení `installed`, `running`, `connected`, `authenticated`, `catalog_loaded
 | Spook | Aktuální manifest, společné Repairs a skutečné HA služby | Podklady sdílené přes Repairs se neoznačí za výhradní nálezy Spooku; žádný nevyžádaný service call |
 | HAGHS/Entity Availability | Vlastní strukturované atributy z registru a stavů | Skóre a skupinové počty jsou podklad, nikoli důkaz funkce celé domácnosti |
 | HA-MCP | Initialize, identita/verze, celý dovolený katalog nebo tool-search a konkrétní čtení cíle spisu | Zaznamenat skutečný název nástroje, schema hash, úspěch a důkaz; obecné proxy model nedostane |
-| Nativní MCP/Hamster | Aktuální katalog a konkrétní povolené čtení | Pro Hamster ověřené schema/call cesty; obecný call není diagnostický nástroj modelu |
+| Nativní MCP | Aktuální katalog a konkrétní povolené čtení | Odpověď musí pocházet z ověřeného volání v případu |
 | ZHA/Toolkit | Vazba registru na IEEE, native/cache údaje, journal a případné konkrétní standardní attr_read | Žádné přepárování, binding, reporting, zápis atributu či síťový scan |
 | Music Assistant | Skutečné namapování přehrávače a odpovědi dovolených FastMCP sekcí | Health/player/events/buffer/logs podle skutečné dostupnosti, bez stop/play/volume testu |
 
@@ -82,7 +82,7 @@ Očekávané výsledky:
 
 - Provede se právě jedna schválená operace a zpětné čtení odpovídá přesnému rozdílu.
 - HA-MCP má `run_actions:false`. Uložení konfigurace samo nesmí spouštět světlo.
-- Spook mění pouze povolení konkrétní entity; nevypíná hlášení ani nemaže registr.
+- Spook nebo HA-MCP u nahlášeného nefunkčního senzoru mění pouze pole povolení cílové entity. HADS přečte registr znovu, vyžádá funkční podnět, ověří novou platnou hodnotu a dodrží dobu sledování.
 - Případ zůstane otevřený do nového skutečného triggeru/stavu/kontextu, požadovaného
   fyzického potvrzení a nejméně 30 sekund souvislého pokrytí podle konkrétní operace.
 - Předčasné potvrzení vlastníka nebo HTTP úspěch případ neuzavře.

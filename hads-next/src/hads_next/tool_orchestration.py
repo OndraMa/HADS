@@ -9,7 +9,7 @@ from datetime import datetime,timezone
 from .tool_registry import ToolRegistry,ToolDenied,object_schema,ENTITY,fingerprint,validate
 from .tool_connections import ToolConnections,KINDS
 from .connector_transport import ReportHTTP,MCPConnection
-from .connector_policy import descriptor,policy,HAMSTER_READS
+from .connector_policy import descriptor,policy
 from .provider_reports import inspector,hadocs,sensor_report,safe_report,stamp
 from .evidence_broker import project_automation
 from .evidence import canonical
@@ -113,7 +113,7 @@ class ToolOrchestration:
         self._native(values);self._sensors(values,states)
         inventory={r['provider_id']:r for r in self.app.providers.snapshot()}
         loaded=values.get('core_config',{}).get('components',[]) if isinstance(values.get('core_config'),dict) else []
-        for provider in ('spook','watchman','ha_mcp','hamster_mcp','zha_toolkit','zha','automation_inspector','hadocs','haghs','entity_availability','music_assistant'):
+        for provider in ('spook','watchman','ha_mcp','zha_toolkit','zha','automation_inspector','hadocs','haghs','entity_availability','music_assistant'):
             report=inventory.get(provider,{})
             apps=report.get('applications',[])
             app_states={a.get('state') for a in apps}
@@ -138,25 +138,28 @@ class ToolOrchestration:
                     self._mcp(provider,client)
                     if provider == 'ha_mcp':
                         self._check_ha_mcp_state(client)
-                    elif provider == 'hamster_mcp':
-                        self._check_hamster_registry(client)
             except Exception as e:
                 from .connection_diagnostics import connection_failure
                 code=e.status if isinstance(e,ReadFailure) else None
+                failure=connection_failure(e)
+                phase=getattr(client,'discovery_phase',None)
+                if phase in {'initialize','session','catalog','schema'}:
+                    label={'initialize':'Navázání MCP spojení','session':'Potvrzení relace MCP','catalog':'Načtení katalogu MCP','schema':'Ověření schémat MCP'}[phase]
+                    failure['last_error']=label+' selhalo. '+failure['last_error']
                 self.registry.provider(provider,connected=False,authenticated=False if code in {401,403} else None,catalog_loaded=False,diagnostic_read_verified=False,
-                    **connection_failure(e))
+                    **failure)
         self._services()
         from .native_tool_reads import install
         install(self)
         if self.app.core_ws:
             try:
-                requested=[p for p in ('spook','watchman','haghs','entity_availability','zha_toolkit','zha','ha_mcp_tools','hamster_mcp') if isinstance(loaded,list) and p in loaded]
+                requested=[p for p in ('spook','watchman','haghs','entity_availability','zha_toolkit','zha','ha_mcp_tools') if isinstance(loaded,list) and p in loaded]
                 manifests=self.app.core_ws.transport({'type':'manifest/list','integrations':requested}) if requested else []
                 if isinstance(manifests,list):
                     for row in manifests:
                         if not isinstance(row,dict):continue
                         provider={'ha_mcp_tools':'ha_mcp'}.get(row.get('domain'),row.get('domain'))
-                        if provider in {'spook','watchman','haghs','entity_availability','zha_toolkit','zha','ha_mcp','hamster_mcp'} and isinstance(row.get('version'),str):
+                        if provider in {'spook','watchman','haghs','entity_availability','zha_toolkit','zha','ha_mcp'} and isinstance(row.get('version'),str):
                             self.registry.provider(provider,version=row['version'],version_basis='installed_HA_integration_manifest')
             except Exception:pass
 
@@ -193,28 +196,16 @@ class ToolOrchestration:
 
     def _mcp(self,provider,client):
         catalog=client.discover()
+        client.discovery_phase='schema'
         if provider=='ha_mcp':catalog=client.reviewed_meta_catalog()
         tools=[]
         for row in catalog:
             effect,decision,local,executor=policy(provider,row['name'])
             schema={'allOf':[row['inputSchema'],local]} if local else row['inputSchema']
-            tools.append(descriptor(row['name'],schema,effect=effect,policy=decision,executor=executor,contract='reviewed_upstream_MCP_operation_and_dynamic_schema',upstream_schema_hash=fingerprint(row['inputSchema'])))
+            tools.append(descriptor(row['name'],schema,effect=effect,policy=decision,executor=executor,
+                risk='registry_change_requires_restore_verified_OneDrive' if executor=='entity_enabled' else None,
+                contract='reviewed_upstream_MCP_operation_and_dynamic_schema',upstream_schema_hash=fingerprint(row['inputSchema'])))
             self.routes[(provider,row['name'])]=('mcp',client)
-        if provider=='hamster_mcp' and {'call','schema'}<={r['name'] for r in catalog}:
-            for path in sorted(HAMSTER_READS):
-                try:
-                    response=client.call('schema',{'path':path})
-                except ReadFailure as error:
-                    if str(error) != 'mcp_tool_rejected':
-                        raise
-                    # Hamster returns isError when this HA installation lacks the command.
-                    continue
-                # Upstream has human-readable schema, not JSON schema. Only reviewed no-argument paths.
-                if not isinstance(response,str) or path.split('/',1)[1] not in response:continue
-                scoped=path.endswith('/get')
-                if scoped and '**entity_id** (required)' not in response or not scoped and 'No parameters required.' not in response:continue
-                tools.append(descriptor(path,object_schema({'entity_id':ENTITY}) if scoped else object_schema(),contract='Hamster_schema_text_no_argument_native_read',upstream_schema_hash=fingerprint(response)))
-                self.routes[(provider,path)]=('hamster',client)
         previous=next((r for r in self.registry.providers() if r['id']==provider),{})
         catalog_digest=fingerprint(sorted((r['name'],r['upstream_schema_hash']) for r in tools))
         read_at=previous.get('diagnostic_read_at')
@@ -259,39 +250,6 @@ class ToolOrchestration:
         self.registry.provider('ha_mcp', diagnostic_read_verified=True, diagnostic_read_at=self.app.clock(),
                                last_error=None, error_code=None, last_response_status=None, next_step_cs=None)
 
-    def _check_hamster_registry(self, client):
-        """Verify the fixed registry read against one entity already known to Core."""
-        provider = next(row for row in self.registry.providers() if row['id'] == 'hamster_mcp')
-        if provider.get('diagnostic_read_verified'):
-            return
-        path = 'hass/config/entity_registry/get'
-        try:
-            tool = self.registry.get('hamster_mcp', path, effect='read')
-        except ToolDenied:
-            self.registry.provider('hamster_mcp', last_error='Připojení a katalog fungují. Hamster neposkytl podporované schéma čtení registru entit.')
-            return
-        registry = self.snapshot_values.get('entity_registry')
-        entity = next((row['entity_id'] for row in registry
-                       if isinstance(row, dict) and isinstance(row.get('entity_id'), str)
-                       and re.fullmatch(ENTITY['pattern'], row['entity_id'])), None) if isinstance(registry, list) else None
-        if entity is None:
-            self.registry.provider('hamster_mcp', last_error='Připojení a katalog fungují. Test čtení čeká na entitu ověřenou v registru Core.')
-            return
-        args = {'entity_id': entity}
-        try:
-            validate(tool['schema'], args)
-            value = client.call('call', {'path': path, 'arguments': args})
-            if not isinstance(value, dict) or value.get('entity_id') != entity:
-                raise ReadFailure('invalid_registry_response')
-        except (ReadFailure, ToolDenied) as error:
-            from .connection_diagnostics import connection_failure
-            status = connection_failure(error)
-            status['last_error'] = 'Katalog je dostupný. Konkrétní čtení registru selhalo. ' + status['last_error']
-            self.registry.provider('hamster_mcp', **status)
-            return
-        self.registry.provider('hamster_mcp', diagnostic_read_verified=True, diagnostic_read_at=self.app.clock(),
-                               last_error=None, error_code=None, last_response_status=None, next_step_cs=None)
-
     def _services(self):
         ws=self.app.core_ws
         if ws is None:return
@@ -326,6 +284,13 @@ class ToolOrchestration:
         schema=self.app.investigations.broker.extensions['hads_diagnostic_tool']['schema']['parameters'];validate(schema,args)
         case=self.app.store.case(incident_id);self._scope(case,args['arguments'])
         row=self.registry.get(args['provider'],args['tool'],effect='read');validate(row['schema'],args['arguments'])
+        if args['tool']=='ha_get_history' and args['provider']=='ha_mcp':
+            values=args['arguments']
+            self._scope(case,{'entity_id':values['entity_ids']})
+            start,end=stamp(values['start_time']),stamp(values['end_time'])
+            incident=case['incident']
+            if start is None or end is None or not incident['first_seen']-1800<=start<end<=min(self.app.clock()+1,incident['last_seen']+1800) or end-start>1800:
+                raise ToolDenied('Historie HA-MCP musí být v půlhodinovém okně tohoto případu.')
         route,client=self.routes.get((args['provider'],args['tool']),(None,None))
         value=None;observed=None
         if route=='broker':return self.app.investigations.broker._read(incident_id,client,args['arguments'])
@@ -356,19 +321,35 @@ class ToolOrchestration:
                     value = {key: item for key, item in value.items() if key not in {'checked_at', 'devices'}}
                     value.update(devices=matched[:16], matched_devices=len(matched), truncated=len(matched) > 16)
 
-            elif route in {'mcp','hamster'}:
-                value=client.call(args['tool'] if route=='mcp' else 'call',args['arguments'] if route=='mcp' else {'path':args['tool'],'arguments':args['arguments']})
+            elif route=='mcp':
+                value=client.call(args['tool'],args['arguments'])
                 if not isinstance(value,(dict,list)) or isinstance(value,dict) and (value.get('success') is False or value.get('error')):raise ToolDenied('Nástroj nevrátil úspěšnou strukturovanou odpověď.')
-                if args['tool'] in {'ha_config_get_automation','ha_config_get_script'}:
+                if args['tool']=='ha_get_state':
+                    state=value.get('data') if isinstance(value,dict) else None
+                    if not isinstance(state,dict) or state.get('entity_id')!=args['arguments']['entity_id'] or not isinstance(state.get('state'),str):
+                        raise ToolDenied('HA-MCP nepotvrdil stav žádané entity.')
+                    value=safe_report(value)
+                elif args['tool']=='ha_get_entity':
+                    target=args['arguments']['entity_id']
+                    entry=value.get('entity_entry') if isinstance(value,dict) else None
+                    if not isinstance(entry,dict) or entry.get('entity_id')!=target:raise ToolDenied('Registr HA-MCP nepotvrdil žádanou entitu.')
+                    value={key:entry[key] for key in ('entity_id','device_id','platform','disabled_by') if key in entry}
+                    value=safe_report(value)
+                elif args['tool']=='ha_get_history':
+                    entries=value.get('entities') if isinstance(value,dict) and value.get('source')=='history' else None
+                    if not isinstance(entries,list) or len(entries)!=1 or not isinstance(entries[0],dict) or entries[0].get('entity_id')!=values['entity_ids']:
+                        raise ToolDenied('Historie HA-MCP nepotvrdila žádanou entitu.')
+                    states=entries[0].get('states')
+                    if not isinstance(states,list) or len(states)>32 or any(not isinstance(state,dict) for state in states):raise ToolDenied('Neplatné řádky historie HA-MCP.')
+                    value={'entity_id':values['entity_ids'],'states':[safe_report({k:r[k] for k in ('state','last_updated') if k in r}) for r in states],
+                           'truncated':entries[0].get('has_more') is True}
+                elif args['tool'] in {'ha_config_get_automation','ha_config_get_script'}:
                     if not isinstance(value.get('config'),dict) or not isinstance(value.get('config_hash'),str):raise ToolDenied('Chybí konfigurace nebo konfigurační hash.')
                     script=args['tool']=='ha_config_get_script'
                     config=value['config']
                     if script:config={'actions':config.get('sequence',[]),'alias':config.get('alias'),'mode':config.get('mode')}
                     value={'script' if script else 'automation':project_automation(config),'config_hash':value['config_hash'],'references':safe_report(value.get('references')),'validation':safe_report(value.get('validation'))}
                 else:
-                    if isinstance(value,list) and args['provider']=='hamster_mcp':
-                        targets=self._scope(case,{})
-                        value=[r for r in value if isinstance(r,dict) and (r.get('entity_id') in targets or r.get('id') in targets)][:32]
                     value=safe_report(value)
             elif route=='native_extra':
                 from .native_tool_reads import read

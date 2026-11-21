@@ -12,7 +12,9 @@ class CaseDialogue:
     def add(self, incident, text, principal):
         if not principal or principal != self.app.owner():
             raise ValueError('Konverzaci smí doplnit pouze vlastník.')
-        self.app.store.case(incident)
+        case=self.app.store.case(incident)
+        if case['incident']['status']!='open':
+            raise ValueError('Pro nové vyšetřování nejprve znovu otevři případ.')
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 2000:
             raise ValueError('Doplň zprávu dlouhou nejvýše 2000 znaků.')
         with self.app.store._connect() as db:
@@ -27,7 +29,7 @@ class CaseDialogue:
             'payload': {'text': text, 'authority': 'owner_statement_not_approval_or_independent_confirmation'}})
         self.app.store.record(incident, 'owner_message', {'message_id': event, 'text': text,
             'authority': 'owner_statement_not_approval'})
-        # Never starts a paid model call. Existing autonomous acquisition can consume new evidence.
+        self.app.request_source_check()
         return event
 
     def attention(self, incident, decision, principal):
@@ -48,11 +50,11 @@ def render(case, csrf):
     for record in case['records']:
         if record['kind'] == 'owner_message':
             rows.append('<p><strong>Ty:</strong> ' + escape(record['content']['text']) + '</p>')
-        elif record['kind'] == 'deterministic_investigation' and record['content'].get('summary_cs'):
+        elif record['kind'] in {'deterministic_investigation','owner_diagnostic_reply'} and record['content'].get('summary_cs'):
             rows.append('<p><strong>HADS:</strong> ' + escape(record['content']['summary_cs']) + '</p>')
     return ('<section><h2>Konverzace tohoto případu</h2>' + ''.join(rows[-40:])
         + '<form method="post" action="../case/message"><input type="hidden" name="csrf" value="'
         + escape(csrf, quote=True) + '"><input type="hidden" name="incident_id" value="'
         + escape(case['incident']['id'], quote=True) + '"><label>Doplnění nebo otázka<textarea name="message" maxlength="2000" required></textarea></label>'
-        + '<p>Zpráva neschvaluje opravu ani placené volání. HADS ji uloží mezi podklady pro další vyšetřování.</p><button>Uložit do konverzace</button></form>'
+        + '<p>HADS zopakuje dostupná čtení a odpoví ve spisu. Modelové vyšetřování má samostatné spuštění a rozpočet.</p><button>Poslat a prověřit bez AI</button></form>'
         + '<form method="post" action="../case/attention"><input type="hidden" name="csrf" value="'+escape(csrf,quote=True)+'"><input type="hidden" name="incident_id" value="'+escape(case['incident']['id'],quote=True)+'"><button name="decision" value="recheck">Znovu vyšetřit dostupnými čteními bez AI</button><button name="decision" value="ignore">Ignorovat v přehledu a zachovat historii</button></form><p>Ignorování není ověřená oprava a nemění zařízení ani diagnostické nástroje.</p></section>')

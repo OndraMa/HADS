@@ -24,8 +24,6 @@ def settings(app,csrf):
         if provider.get('diagnostic_read_at') is not None:
             body+='<p>Poslední konkrétní diagnostické čtení: '+escape(display_time(provider['diagnostic_read_at'],app.snapshot()['timezone']))+'. Obnovení katalogu tento čas neposouvá.</p>'
         if provider.get('last_error'):body+='<p>'+escape(provider['last_error'])+'</p>'
-        if provider['id']=='hamster_mcp' and provider.get('last_response_status')==401:
-            body+='<p>Pro Hamster vyber níže hamster_mcp. Použij adresu Home Assistantu s cestou /api/hamster_mcp a do soukromého pole Token vlož samotný dlouhodobý token Home Assistantu. Při stejné adrese prázdné pole ponechá dříve uložený token. Hamster je volitelný.</p>'
         if provider['id']=='music_assistant' and not provider.get('diagnostic_read_verified'):
             body+='<p><a href="music">Nastavit nebo ověřit čtení Music Assistant FastMCP</a></p>'
         if provider.get('last_used_at') is not None:

@@ -36,7 +36,7 @@ def render_providers(app, csrf):
         if row['matching_repairs_count'] is not None:body+='<p>Nálezy se shodnou doménou v Repairs: '+str(row['matching_repairs_count'])+'. Nula neprokazuje zdravý doplněk.</p>'
         verified=actual_read or bool(native and (native.get('read_verified') or native.get('read_succeeded')))
         body+='<p>'+('Konkrétní čtecí odpověď byla ověřena. Funkční výsledek zařízení tím není potvrzený. ' if verified else 'HADS zatím neověřil vlastní diagnostiku doplňku. ')
-        if row['provider_id'] in {'ha_mcp','hamster_mcp','music_assistant'}:
+        if row['provider_id'] in {'ha_mcp','music_assistant'}:
             body+='Katalog konektoru: '+('načtený' if current and tool.get('catalog_loaded') else 'neověřený')+'. Autentizace: '+('server přijal credential' if current and tool.get('authenticated') is True else 'nepotvrzená samostatná identita; podrobnosti připojení jsou v katalogu')+'. '
         body+='Tato kontrola nic nepovoluje k zápisu; konkrétní opravný plán vyžaduje samostatný souhlas.</p></article>'
     token='<input type="hidden" name="csrf" value="'+escape(csrf,quote=True)+'">'

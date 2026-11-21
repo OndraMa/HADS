@@ -76,7 +76,8 @@ class ApprovedRepairBroker:
             if not isinstance(value,dict) or value.get('success') is False or not isinstance(value.get('config'),dict) or not isinstance(value.get('config_hash'),str):raise RepairBlocked('Původní konfigurace nebyla ověřená.')
             self.tools.registry.provider(provider,diagnostic_read_verified=True,diagnostic_read_at=self.app.clock())
             return {'config':value['config'],'config_hash':value['config_hash']}
-        if provider=='spook' and tool in {'homeassistant.enable_entity','homeassistant.disable_entity'}:
+        if (provider=='spook' and tool in {'homeassistant.enable_entity','homeassistant.disable_entity'}
+                or provider=='ha_mcp' and tool=='ha_set_entity'):
             value=self.app.core_ws.transport({'type':'config/entity_registry/get','entity_id':parameters['entity_id']})
             if not isinstance(value,dict) or value.get('entity_id')!=parameters['entity_id'] or not value.get('unique_id') or not value.get('device_id') or value.get('disabled_by') not in {None,'user'}:raise RepairBlocked('Registr cíle není bezpečně ověřený.')
             return {k:value.get(k) for k in ('entity_id','unique_id','platform','device_id','config_entry_id','disabled_by')}
@@ -131,25 +132,34 @@ class ApprovedRepairBroker:
         if not evidence_ids or not set(evidence_ids)<={e['evidence_id'] for e in case['evidence']}:raise RepairBlocked('Chybí skutečné důkazy tohoto spisu.')
         if not isinstance(reason,str) or not 1<=len(reason)<=2000:raise RepairBlocked('Chybí kontrolovatelný důvod změny.')
         if not next(p for p in self.tools.registry.providers() if p['id']==provider).get('version'):raise RepairBlocked('Skutečná verze poskytovatele není ověřená; nelze připravit zápis.')
-        if provider=='spook' and tool=='homeassistant.disable_entity' and not rollback_of:
+        automation=provider=='ha_mcp' and tool=='ha_config_set_automation'
+        enable=parameters.get('enabled') if tool=='ha_set_entity' else tool=='homeassistant.enable_entity'
+        if not automation and not enable and not rollback_of:
             raise RepairBlocked('Zakázání entity se nepoužívá jako oprava závady. Je dostupné pouze jako samostatně schválený návrat předchozího povolení.')
+        if tool=='ha_set_entity' and not rollback_of and case['incident']['kind']!='manual_functional':
+            raise RepairBlocked('Povolení senzoru vyžaduje funkční problém nahlášený vlastníkem.')
         parent=None
         if rollback_of:
             parent=self.plan(rollback_of).document
             with closing(connect(self.app.store.db_path)) as db:previous=db.execute('SELECT status FROM repair_executions WHERE plan_id=?',(rollback_of,)).fetchone()
             if parent['incident_id']!=incident_id or parent['binding']['provider']!=provider or parent['parameters']['entity_id']!=parameters['entity_id'] or not previous or previous[0] not in {'applied_verification_pending','verified','failed','recurred'}:
                 raise RepairBlocked('Návrat nemá odpovídající skutečně provedený původní zásah.')
-            if provider=='ha_mcp' and parameters['config']!=parent['original']['config']:raise RepairBlocked('Návrat by změnil více než původní konfiguraci.')
-            if provider=='spook' and tool==parent['binding']['tool']:raise RepairBlocked('Návrat není inverzí původního povolení.')
-        guide=self._guide() if provider=='ha_mcp' else None
+            if provider=='ha_mcp' and parent['binding']['tool']!=tool:
+                raise RepairBlocked('Návrat musí použít původní operaci HA-MCP.')
+            if automation and parameters['config']!=parent['original'].get('config'):raise RepairBlocked('Návrat by změnil více než původní konfiguraci.')
+            if not automation:
+                original_enabled=parent['original'].get('disabled_by') is None
+                same_action=parent['binding']['tool']==tool if tool!='ha_set_entity' else parent['parameters'].get('enabled') is enable
+                if same_action or enable!=original_enabled:raise RepairBlocked('Návrat není inverzí původního povolení.')
+        guide=self._guide() if automation else None
         parameters=copy.deepcopy(parameters)
         if guide and guide['ack']:parameters['BestPracticeKey']=guide['ack']
         validate(row['schema'],parameters)
         original=self._original(provider,tool,parameters)
         if parent:
             expected=parent['proposed']
-            if provider=='ha_mcp' and original['config']!=expected['config'] or provider=='spook' and original!=expected:raise RepairBlocked('Cíl se od původního zásahu změnil; návrat by přepsal jinou změnu.')
-        if provider=='ha_mcp':
+            if (original['config']!=expected['config'] if automation else original!=expected):raise RepairBlocked('Cíl se od původního zásahu změnil; návrat by přepsal jinou změnu.')
+        if automation:
             if original['config_hash']!=parameters['config_hash']:raise RepairBlocked('Konfigurace se změnila; potřebuje nový návrh.')
             old,new=self.replacement(original['config'],parameters['config'])
             if not rollback_of:
@@ -169,7 +179,6 @@ class ApprovedRepairBroker:
             condition={'automation_id':config_id,'entity_id':new,'state':'on' if original['config'].get('actions',original['config'].get('action'))[0].get('action',original['config'].get('actions',original['config'].get('action'))[0].get('service'))=='light.turn_on' else 'off','watch_seconds':30,'physical_confirmation_required':True,'target_identity':target_identity,'missing_target_required':new if rollback_of else old}
             manual='V HA otevři uvedenou automatizaci. Změň pouze zobrazený původní target entity_id na doloženou novou identitu, ulož a ověř skutečný trigger a světlo. Při jiné konfiguraci změnu neprováděj.'
         else:
-            enable=tool=='homeassistant.enable_entity'
             if original['disabled_by']!=( 'user' if enable else None):raise RepairBlocked('Registr už není v očekávaném původním stavu.')
             proposed={**original,'disabled_by':None if enable else 'user'}
             condition={'entity_id':parameters['entity_id'],'expected_enabled':enable,'watch_seconds':30,'physical_confirmation_required':True}
@@ -206,7 +215,7 @@ class ApprovedRepairBroker:
         d=plan.document;b=d['binding'];row=self.tools.registry.get(b['provider'],b['tool'],effect='write')
         if self.binding(row)!=b:raise RepairBlocked('Poskytovatel, schéma nebo připojení se změnilo; schválení už nelze použít.')
         validate(row['schema'],d['parameters'])
-        if b['provider']=='ha_mcp' and self._guide()!=d.get('guide_receipt'):raise RepairBlocked('Pravidla nebo potvrzení HA-MCP se změnila; je potřeba nový plán.')
+        if b['tool']=='ha_config_set_automation' and self._guide()!=d.get('guide_receipt'):raise RepairBlocked('Pravidla nebo potvrzení HA-MCP se změnila; je potřeba nový plán.')
         if fingerprint(self._original(b['provider'],b['tool'],d['parameters']))!=d['original_sha256']:raise RepairBlocked('Cíl se změnil; je potřeba nové schválení.')
         if d['verification'].get('target_identity') is not None and self.target_identity(d['verification']['entity_id'])!=d['verification']['target_identity']:raise RepairBlocked('Identifikátor nyní patří jinému zařízení; je potřeba nový návrh.')
         if d['verification'].get('missing_target_required'):
@@ -255,7 +264,7 @@ class ApprovedRepairBroker:
                 if not isinstance(result,dict) or result.get('success') is not True:raise RepairBlocked('Zápis nebyl potvrzený.')
             else:self.app.core_ws.transport({'type':'call_service','domain':'homeassistant','service':b['tool'].split('.')[1],'service_data':{'entity_id':[d['parameters']['entity_id']]}})
             current=self._original(b['provider'],b['tool'],d['parameters'])
-            matches=current.get('config')==d['proposed'].get('config') if b['provider']=='ha_mcp' else current==d['proposed']
+            matches=current.get('config')==d['proposed'].get('config') if b['tool']=='ha_config_set_automation' else current==d['proposed']
             if not matches:raise RepairBlocked('Zpětné čtení neodpovídá schválené změně.')
             status='applied_verification_pending';completed=self.app.clock();error=None
         except Exception:
@@ -289,9 +298,12 @@ class ApprovedRepairBroker:
         with closing(connect(self.app.store.db_path)) as db:run=db.execute('SELECT status FROM repair_executions WHERE plan_id=?',(identity,)).fetchone()
         if not run or run[0] not in {'applied_verification_pending','verified','failed','recurred'}:raise RepairBlocked('Nejasný nebo neprovedený zásah nelze automaticky vracet.')
         current=self._original(b['provider'],b['tool'],d['parameters']);params=copy.deepcopy(d['parameters'])
-        if b['provider']=='ha_mcp':
+        if b['tool']=='ha_config_set_automation':
             if current['config']!=d['proposed']['config']:raise RepairBlocked('Po zásahu je jiná konfigurace. Rollback nesmí přepsat cizí změnu.')
             params.update(config=d['original']['config'],config_hash=current['config_hash']);tool=b['tool']
+        elif b['tool']=='ha_set_entity':
+            if current!=d['proposed']:raise RepairBlocked('Registr se změnil po zásahu.')
+            tool=b['tool'];params['enabled']=not params['enabled']
         else:
             if current!=d['proposed']:raise RepairBlocked('Registr se změnil po zásahu.')
             tool='homeassistant.disable_entity' if b['tool']=='homeassistant.enable_entity' else 'homeassistant.enable_entity'
@@ -314,7 +326,7 @@ class ApprovedRepairBroker:
         with closing(connect(self.app.store.db_path)) as db:row=db.execute('SELECT * FROM repair_executions WHERE plan_id=?',(identity,)).fetchone()
         if not row or row['status'] not in {'applied_verification_pending','verified','failed','recurred'}:raise RepairBlocked('Nejprve je potřeba bezpečně určit výsledek zápisu.')
         current=self._original(b['provider'],b['tool'],d['parameters'])
-        matches=current.get('config')==d['proposed'].get('config') if b['provider']=='ha_mcp' else current==d['proposed']
+        matches=current.get('config')==d['proposed'].get('config') if b['tool']=='ha_config_set_automation' else current==d['proposed']
         if d['verification'].get('target_identity') is not None and self.target_identity(d['verification']['entity_id'])!=d['verification']['target_identity']:matches=False
         if not matches:
             with closing(connect(self.app.store.db_path)) as db:db.execute("UPDATE repair_executions SET status='failed' WHERE id=?",(row['id'],))
@@ -324,7 +336,7 @@ class ApprovedRepairBroker:
             return self.report(plan,row['id'],'Návrat změny ověřen čtením; funkční problém zůstává')
         detector=self.app.detection.health
         if detector['state']!='listening' or now-(detector.get('heartbeat_at') or 0)>15:return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
-        if b['provider']=='ha_mcp':
+        if b['tool']=='ha_config_set_automation':
             service=self.app.repairs
             if service.trigger_coverage is None or now-(service.trigger_heartbeat or 0)>15:return self.report(plan,row['id'],'Oprava provedena, ověření čeká')
             state,_=self.core_state(d['verification']['entity_id'])
@@ -372,7 +384,7 @@ class ApprovedRepairBroker:
         """Read-only recovery. No replay or implicit rollback authorization."""
         plan=self.plan(identity);d=plan.document;b=d['binding']
         current=self._original(b['provider'],b['tool'],d['parameters'])
-        matches=current.get('config')==d['proposed'].get('config') if b['provider']=='ha_mcp' else current==d['proposed']
+        matches=current.get('config')==d['proposed'].get('config') if b['tool']=='ha_config_set_automation' else current==d['proposed']
         target=d['verification'].get('target_identity')
         identity_matches=self.target_identity(d['verification']['entity_id'])==target if target is not None else True
         result={'read_verified':True,'matches_proposed':matches,'matches_original':fingerprint(current)==d['original_sha256'],

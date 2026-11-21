@@ -59,12 +59,10 @@ class OrchestratedWire(unittest.TestCase):
                 msg=json.loads(self.rfile.read(int(self.headers['Content-Length'])));outer.calls.append(msg)
                 if msg['method']=='notifications/initialized':self.send_response(202);self.send_header('Content-Length','0');self.end_headers();return
                 if msg['method']=='initialize':
-                    hamster = outer.provider_mode == 'hamster_mcp'
-                    result={'protocolVersion':'2025-03-26' if hamster else '2025-06-18',
-                            'serverInfo':{'name':'hamster-mcp' if hamster else 'ha-mcp','version':'fixture-contract-1'}}
+                    result={'protocolVersion':'2025-06-18',
+                            'serverInfo':{'name':'ha-mcp','version':'fixture-contract-1'}}
                 elif msg['method']=='tools/list':
                     if outer.provider_mode=='native_mcp':result={'tools':[{'name':'GetLiveContext','inputSchema':object_schema()},{'name':'DangerousWrite','inputSchema':object_schema(),'annotations':{'readOnlyHint':True}}]}
-                    elif outer.provider_mode=='hamster_mcp':result={'tools':[{'name':'schema','inputSchema':object_schema({'path':{'type':'string'}})},{'name':'call','inputSchema':object_schema({'path':{'type':'string'},'arguments':{'type':'object'}})}]}
                     elif outer.meta:
                         result={'tools':[{'name':'ha_search_tools','inputSchema':object_schema({'tools':{'type':'array','items':{'type':'string'}}})},
                             *[{'name':n,'inputSchema':object_schema({'name':{'type':'string'},'arguments':{'type':'object'}})} for n in ('ha_call_read_tool','ha_call_write_tool')]]}
@@ -73,15 +71,6 @@ class OrchestratedWire(unittest.TestCase):
                 elif msg['method']=='tools/call':
                     name=msg['params']['name'];args=msg['params']['arguments']
                     if name=='GetLiveContext':value={'success':True,'entities':[{'entity_id':outer.old,'state':'unavailable'}]}
-                    elif name=='schema':
-                        if args['path'] in getattr(outer,'missing_hamster_commands',()):
-                            self.output({'jsonrpc':'2.0','id':msg['id'],'result':{
-                                'isError':True,'content':[{'type':'text','text':'Schema not found'}]}})
-                            return
-                        value=args['path'].split('/',1)[1]+'\n'+('**entity_id** (required)' if args['path'].endswith('/get') else 'No parameters required.')
-                    elif name=='call':
-                        outer.assertEqual(args['path'],'hass/config/entity_registry/get')
-                        value={'entity_id':args['arguments']['entity_id'],'platform':'zha','disabled_by':None,'private_token':'NEVER_EXPORT'}
                     elif name=='ha_search_tools':value=[r for r in outer.definitions() if r['name'] in args['tools']]
                     else:
                         if name in {'ha_call_read_tool','ha_call_write_tool'}:name=args['name'];args=args['arguments']
@@ -89,6 +78,15 @@ class OrchestratedWire(unittest.TestCase):
                         elif name=='ha_config_get_automation':value={'success':True,'config':copy.deepcopy(outer.config),'config_hash':fingerprint(outer.config),'references':{'entities':[outer.old]}}
                         elif name=='ha_get_state':
                             value={'data':{'entity_id':getattr(outer,'unexpected_mcp_target',args['entity_id']),'state':'unavailable','private_token':'NEVER_EXPORT'},'metadata':{'timestamp_format':'native'}}
+                        elif name=='ha_get_entity':
+                            value={'success':True,'entity_entry':{'entity_id':args['entity_id'],'platform':'zha','device_id':'fixture','disabled_by':'user','token':'NEVER_EXPORT'}}
+                        elif name=='ha_get_history':
+                            value={'success':True,'source':'history','entities':[{'entity_id':args['entity_ids'],'states':[{'state':'unavailable','last_updated':args['start_time']}]}]}
+                        elif name=='ha_set_entity':
+                            outer.assertEqual(set(args),{'entity_id','enabled'})
+                            outer.assertEqual(args['entity_id'],outer.entry['entity_id'])
+                            outer.entry['disabled_by']=None if args['enabled'] else 'user'
+                            outer.writes.append(copy.deepcopy(args));value={'success':True}
                         elif name=='ha_config_set_automation':
                             outer.assertEqual(args['config_hash'],fingerprint(outer.config));outer.assertIs(args['run_actions'],False);outer.assertEqual(args['BestPracticeKey'],outer.guide_ack)
                             outer.writes.append(copy.deepcopy(args));outer.config=copy.deepcopy(args['config'])
@@ -219,37 +217,56 @@ class OrchestratedWire(unittest.TestCase):
         self.assertFalse(provider['diagnostic_read_verified']);self.assertIsNone(provider['diagnostic_read_at'])
         self.assertEqual(self.writes,[])
 
-    def test_native_and_hamster_MCP_provide_real_read_results_without_a_generic_write_path(self):
-        for provider,tool,args in [('native_mcp','GetLiveContext',{}),('hamster_mcp','hass/config/entity_registry/get',{'entity_id':self.old})]:
-            with self.subTest(provider=provider):
-                self.provider_mode=provider
-                client=MCPConnection(self.url+'/mcp','fixture-only-token',allow_private_http=True)
-                self.app.tools._mcp(provider,client)
-                result=self.app.tools.diagnostic_read(self.case['id'],{'provider':provider,'tool':tool,'arguments':args})
-                self.assertEqual(result['status'],'available');self.assertTrue(result['evidence_ids'])
-                self.assertNotIn('NEVER_EXPORT',canonical(result))
-                for blocked in ('call','DangerousWrite'):
-                    with self.assertRaises(ToolDenied):self.app.tools.registry.get(provider,blocked,effect='read')
+    def test_native_mcp_reads_without_generic_write_path(self):
+        self.provider_mode='native_mcp'
+        client=MCPConnection(self.url+'/mcp','fixture-only-token',allow_private_http=True)
+        self.app.tools._mcp('native_mcp',client)
+        result=self.app.tools.diagnostic_read(self.case['id'],{'provider':'native_mcp','tool':'GetLiveContext','arguments':{}})
+        self.assertEqual(result['status'],'available')
+        self.assertTrue(result['evidence_ids'])
+        with self.assertRaises(ToolDenied):self.app.tools.registry.get('native_mcp','DangerousWrite',effect='read')
         self.assertEqual(self.writes,[])
 
-    def test_hamster_missing_optional_schema_keeps_connection_and_verifies_registry_read(self):
-        self.provider_mode = 'hamster_mcp'
-        self.missing_hamster_commands = {'hass/config/device_registry/list'}
-        self.app.tools.connections.configure('hamster_mcp', url=self.url+'/mcp', token='fixture-only-token',
-                                             private_http=True, enabled=True, principal='owner-fixture')
-        # Keep the HA-MCP fixture separate from Hamster's simulated server.
-        self.app.tools.connections.clients.pop('ha_mcp')
-        self.app.tools.refresh({'entity_registry': [{'entity_id': self.old}]}, [])
-        status = next(row for row in self.app.tools.registry.providers() if row['id']=='hamster_mcp')
-        self.assertTrue(status['connected'])
-        self.assertTrue(status['authenticated'])
-        self.assertTrue(status['catalog_loaded'])
-        self.assertTrue(status['diagnostic_read_verified'])
-        self.assertNotIn(self.old, canonical(status))
-        self.assertNotIn('fixture-only-token', canonical(status))
-        for blocked in ('call', 'hass/config/device_registry/list'):
-            with self.assertRaises(ToolDenied):
-                self.app.tools.registry.get('hamster_mcp', blocked, effect='read')
+    def test_dialogue_triggers_scoped_mcp_reads_and_persists_reply_without_paid_ai(self):
+        triggered=[]
+        self.app.request_source_check=lambda:triggered.append(True)
+        incident=self.app.store.open_incident('device_unavailable','Nedostupnost: '+self.old,[self.old],self.now)
+        message=self.app.dialogue.add(incident['id'],'Prověř kontakt a také sensor.cizi','owner-fixture')
+        self.assertEqual(triggered,[True])
+        self.app.orchestration.cycle(budget=12)
+        case=self.app.store.case(incident['id'])
+        reply=next(r['content'] for r in case['records'] if r['kind']=='owner_diagnostic_reply')
+        self.assertEqual(reply['message_id'],message)
+        self.assertIn('ha_get_history',reply['summary_cs'])
+        self.assertIn('ha_get_entity',reply['summary_cs'])
+        self.assertEqual(reply['paid_model_calls'],0)
+        self.assertNotIn('sensor.cizi',canonical(self.calls))
+        self.assertNotIn('NEVER_EXPORT',canonical(case))
+        history=next(row for row in case['evidence'] if row['kind']=='tool:ha_mcp:ha_get_history')
+        self.assertEqual(history['payload']['data']['entity_id'],self.old)
+        request={'entity_ids':'sensor.cizi','start_time':self.iso(self.now-300),'end_time':self.iso(self.now),'source':'history','minimal_response':True,'limit':32}
+        with self.assertRaises(ToolDenied):
+            self.app.tools.diagnostic_read(incident['id'],{'provider':'ha_mcp','tool':'ha_get_history','arguments':request})
+        self.assertEqual(self.writes,[])
+
+    def test_retired_hamster_settings_and_catalog_are_removed_without_breaking_other_connections(self):
+        from hads_next.tool_connections import ToolConnections
+        from hads_next.tool_registry import ToolRegistry
+        path=self.app.tools.connections.path
+        active={'endpoint':self.url+'/mcp','token':'fixture-active-token','private_http':True,'enabled':True}
+        path.write_text(json.dumps({'schema':1,'connections':{'ha_mcp':active,'hamster_mcp':{'token':'RETIRED_SECRET'}}}))
+        path.chmod(0o600)
+        with self.app.store._connect() as db:
+            db.execute("INSERT INTO tool_providers VALUES('hamster_mcp','{}',0)")
+            db.execute("INSERT INTO tool_catalog VALUES('hamster_mcp','call','{}',0)")
+        migrated=ToolConnections(self.app)
+        self.assertEqual(set(migrated.clients),{'ha_mcp'})
+        self.assertEqual(json.loads(path.read_text())['connections'],{'ha_mcp':active})
+        with self.assertRaises(ToolDenied):migrated.configure('hamster_mcp',url=self.url,token='',private_http=True,enabled=True,principal='owner-fixture')
+        registry=ToolRegistry(self.app.store,self.app.clock)
+        self.assertNotIn('hamster_mcp',[row['id'] for row in registry.providers()])
+        self.assertNotIn('hamster_mcp',[row['provider'] for row in registry.tools()])
+        self.assertNotIn('hamster_mcp',settings(self.app,'csrf'))
 
     def test_statistics_metadata_and_history_are_compared_without_import_or_causal_guess(self):
         from hads_next.native_tool_reads import install
@@ -392,6 +409,28 @@ class OrchestratedWire(unittest.TestCase):
         self.app.repairs.on_functional_failure(incident['id'],self.entry['entity_id'],self.now,'fixture-contact-failed-again')
         self.assertEqual(self.app.store.case(incident['id'])['incident']['status'],'open')
         self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Problém se opakoval')
+
+    def test_ha_mcp_contact_enable_requires_targeted_backup_and_approval_then_verifies(self):
+        incident=self.app.store.open_incident('manual_functional','Kontakt neaktualizuje stav',[self.entry['entity_id']],self.now)
+        self.app.store.add_evidence(incident['id'],{'source':'native_entity_context','kind':'entity_context',
+            'event_id':'mcp-enable-contact','observed_at':self.now,'payload':{'entity_id':self.entry['entity_id'],'disabled_by':'user'}})
+        ids=[e['evidence_id'] for e in self.app.store.case(incident['id'])['evidence']]
+        params={'entity_id':self.entry['entity_id'],'enabled':True}
+        broker=self.app.approved_tools
+        def prepare(parameters):
+            return broker.prepare(incident['id'],'ha_mcp','ha_set_entity',parameters,ids,'Doložený zakázaný kontakt',exclusive=True)
+        with self.assertRaises(ToolDenied):prepare(params)
+        self.receipt(self.entry)
+        for rejected in ({**params,'enabled':False},{**params,'name':'Zakázaná změna'}):
+            with self.assertRaises(ValueError):prepare(rejected)
+        plan=prepare(params)
+        self.assertEqual(self.writes,[])
+        with self.assertRaises(RepairBlocked):broker.decide(plan.plan_id,'approve','other',exclusive=True)
+        self.assertEqual(broker.decide(plan.plan_id,'approve','owner-fixture',exclusive=True).status,'applied_verification_pending')
+        self.assertEqual(self.writes,[params])
+        self.now+=31;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now-30)
+        self.assertNotEqual(broker.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        self.assertEqual(broker.confirm_physical(plan.plan_id,'owner-fixture')['classification'],'Vyřešeno a ověřeno')
     def test_disable_is_not_a_repair_and_forged_rollback_cannot_bypass_identity(self):
         self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
         with self.assertRaises(RepairBlocked):

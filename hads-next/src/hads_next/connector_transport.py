@@ -52,15 +52,18 @@ class MCPConnection(MusicMCP):
         if not isinstance(token,str) or len(token)>4096 or any(ord(c)<32 for c in token):raise ValueError('Neplatný token.')
         self._token=token;self._opener=build_opener(_NoRedirect)
         self._session=None;self._protocol=None;self._sequence=0;self._server=None
-        self.lock=threading.RLock();self.catalog=[];self.delegated={}
+        self.lock=threading.RLock();self.catalog=[];self.delegated={};self.discovery_phase='initialize'
     def discover(self):
         with self.lock:
             self._session=None;self._protocol=None;self.catalog=[];self.delegated={}
+            self.discovery_phase='initialize'
             info=self._rpc('initialize',{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'HADS-broker','version':'1'}})
             if not isinstance(info,dict) or info.get('protocolVersion') not in {'2025-03-26','2025-06-18'}:raise ReadFailure('mcp_protocol_unsupported')
             self._protocol=info['protocolVersion'];self._server=info.get('serverInfo')
             if not isinstance(self._server,dict) or not isinstance(self._server.get('name'),str) or not isinstance(self._server.get('version'),str):raise ReadFailure('mcp_server_identity_missing')
+            self.discovery_phase='session'
             self._rpc('notifications/initialized',{},notification=True)
+            self.discovery_phase='catalog'
             cursor=None;seen=set();names=set();rows=[]
             for _ in range(8):
                 result=self._rpc('tools/list',{} if cursor is None else {'cursor':cursor})

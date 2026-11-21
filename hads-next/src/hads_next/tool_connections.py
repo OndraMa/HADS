@@ -3,10 +3,10 @@ import json
 import os
 import secrets
 import stat
-from .connector_transport import endpoint,MCPConnection,ReportHTTP
+from .connector_transport import MCPConnection,ReportHTTP
 from .tool_registry import ToolDenied
 
-KINDS={'ha_mcp':'mcp','native_mcp':'mcp','hamster_mcp':'mcp','automation_inspector':'http','hadocs':'http'}
+KINDS={'ha_mcp':'mcp','native_mcp':'mcp','automation_inspector':'http','hadocs':'http'}
 
 class ToolConnections:
     def __init__(self,app):
@@ -17,7 +17,12 @@ class ToolConnections:
                 if self.path.is_symlink() or not stat.S_ISREG(self.path.stat().st_mode) or self.path.stat().st_mode&0o077 or self.path.stat().st_size>32768:raise ToolDenied('Neplatné soukromé nastavení konektorů.')
                 data=json.loads(self.path.read_text())
                 if not isinstance(data,dict) or data.get('schema')!=1 or not isinstance(data.get('connections'),dict):raise ToolDenied('Neznámé schéma konektorů.')
+                retired = 'hamster_mcp' in data['connections']
+                data['connections'].pop('hamster_mcp', None)
                 for provider,value in data['connections'].items():self._install(provider,value)
+                if retired:
+                    try:self._save()
+                    except OSError:self.load_error='Nepoužívané historické nastavení zůstalo na disku. Aktivní konektory jsou načtené.'
         except (OSError,ValueError,TypeError,KeyError):
             self.clients={};self.values={};self.load_error='Soukromé nastavení konektorů nelze bezpečně načíst. Nativní diagnostika pokračuje; žádný neověřený konektor se neaktivoval.'
     def _install(self,provider,value):
@@ -31,6 +36,8 @@ class ToolConnections:
         if not principal or principal!=self.app.owner():raise ToolDenied('Pouze vlastník smí nastavit připojení.')
         if not token and self.values.get(provider,{}).get('endpoint')==url:token=self.values[provider]['token']
         self._install(provider,{'endpoint':url,'token':token,'private_http':private_http,'enabled':enabled})
+        self._save()
+    def _save(self):
         if self.path.is_symlink():raise ToolDenied('Neplatná cesta konektorů.')
         temp=self.path.with_name('.tools-'+secrets.token_hex(8));fd=os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
         try:
@@ -39,6 +46,7 @@ class ToolConnections:
             self.load_error=None
         finally:temp.unlink(missing_ok=True)
     def activate_previous(self,provider,principal):
+        if provider not in KINDS:raise ToolDenied('Tento konektor se nepoužívá.')
         legacy=self.app.legacy_connectors;legacy._safe()
         if not legacy.path.exists():raise ToolDenied('Chybí soukromý návrh připojení.')
         value=json.loads(legacy.path.read_text()).get('connections',{}).get(provider)

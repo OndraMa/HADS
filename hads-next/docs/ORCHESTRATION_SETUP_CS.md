@@ -61,7 +61,7 @@ Kvůli této funkci není potřeba **Povolit úpravy YAML konfigurace (beta)**, 
 Pokud se katalog oproti tabulce liší, HADS používá jen skutečně nalezenou bezpečně ověřenou podmnožinu;
 nevyhledává náhradu pomocí obecného shellu. Pro nativní ZHA čtení není HA-MCP povinný.
 
-## Nativní MCP a Hamster
+## Nativní MCP
 
 **MCP Client** v HA předává nástroje připojených MCP serverů konverzačnímu agentovi Assist.
 Music Assistant je jedním z takových serverů. Další službu lze přidat, pokud nabízí
@@ -79,16 +79,8 @@ Nativní MCP se může připojit přes stávající Supervisor proxy, pokud dan�
 jinak se jednou nastaví skutečné URL z HA. Uplatňuje se skutečný katalog a pouze ověřená čtecí podmnožina.
 MCP Client v HA je opačný směr; není potřeba propojovat HA klienta zpět do jeho vlastního agregátoru.
 
-Hamster vyžaduje vlastní skutečný endpoint. HADS čte schema pro konkrétní nativní příkazy a používá
-jen nezávisle povolené parametry. Obecný Hamster call ani všechny jeho služby se neposkytují modelu.
-Pokud pro konkrétní případ stačí Core, HA-MCP nebo Toolkit, Hamster může zůstat nepřipojený.
-
-Pro Hamster 0.2.2 zadej lokální adresu Home Assistantu s cestou `/api/hamster_mcp`.
-Do maskovaného pole Token patří samotný dlouhodobý token Home Assistantu.
-Po uložení HADS ověří přihlášení a katalog. Pokud je dostupné schéma čtení registru,
-provede jeden test proti entitě známé z Core. Příkaz může v konkrétní instalaci chybět.
-V takovém případě karta ukazuje dostupné připojení a chybějící čtení zvlášť.
-[Dokumentace Hamster MCP 0.2.2](https://github.com/altendky/hamster-mcp/tree/v0.2.2).
+Hamster byl z aktuální vývojové větve odstraněn. Migrace zachová ostatní
+připojení. Registr a historii HADS čte z Core nebo přes ověřené schéma HA-MCP.
 
 ## ZHA Toolkit
 
