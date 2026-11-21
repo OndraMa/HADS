@@ -18,6 +18,7 @@ class EntityContextTests(unittest.TestCase):
         self.states[0]['state']='1';self.states[0]['attributes']={'entities':[{'id':self.target,'state':'unavail','occurrences':'📄 .storage/lovelace.fixture:120'}]}
         self.states.append({'entity_id':self.target,'state':'unavailable','last_updated':'2026-11-17T10:50:00+00:00','attributes':{'friendly_name':'Senzor skladu'}})
         self.device={'ieee':'00:11:22:33:44:55:66:77','device_reg_id':'device_fixture','available':False,'lqi':30,'rssi':-84,'last_seen':1794910000.,'network_key':'NEVER_COPY','private_token':'NEVER_COPY'}
+        self.device_registry=[]
         self.toolkit_ok=True
         self.app=Application(self.tmp.name,CoreReader(self.http),core_ws=CoreWSReader(self.ws),clock=lambda:self.now)
         self.addCleanup(self.app.detection.close)
@@ -32,7 +33,7 @@ class EntityContextTests(unittest.TestCase):
         self.calls.append(request)
         kind=request['type']
         if kind=='config/entity_registry/list':return self.registry
-        if kind=='config/device_registry/list':return []
+        if kind=='config/device_registry/list':return self.device_registry
         if kind=='repairs/list_issues':return {'issues':[]}
         if kind=='system_log/list':return []
         if kind=='system_health/info':return {'domains':{},'complete':True}
@@ -60,6 +61,25 @@ class EntityContextTests(unittest.TestCase):
         self.assertFalse(provider['diagnostic_read']['read_succeeded']);self.assertTrue(provider['last_error'])
         report=self.app.entity_context.reports()[0];self.assertIsNotNone(report['zha']);self.assertIsNone(report['toolkit'])
         self.assertNotIn('PRIVATE_EXCEPTION',json.dumps(provider))
+    def test_case_lists_only_registry_siblings_and_marks_the_reported_entity(self):
+        self.device_registry=[{'id':'device_fixture','name':'Výrobní název','name_by_user':'<Komora>','secret':'NEVER_COPY'}]
+        self.registry.extend([
+            {'entity_id':'sensor.fixture_battery','device_id':'device_fixture','disabled_by':'user'},
+            {'entity_id':'sensor.fixture_temperature','device_id':'device_fixture'},
+            {'entity_id':'sensor.same_name_other_device','device_id':'device_other'},
+        ])
+        self.app.check_sources()
+        case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        page=render_context(self.app,self.app.store.case(case['id']))
+        self.assertIn('&lt;Komora&gt;',page)
+        self.assertIn('href="/config/devices/device/device_fixture"',page)
+        self.assertIn(f'<code>{self.target}</code> <strong>(hlášená entita)</strong> · Nedostupná',page)
+        self.assertIn('<code>sensor.fixture_battery</code> · Zakázaná',page)
+        self.assertIn('<code>sensor.fixture_temperature</code> · Chybí v seznamu stavů Core',page)
+        self.assertNotIn('sensor.same_name_other_device',page)
+        self.assertNotIn('NEVER_COPY',page)
+        self.now+=601
+        self.assertNotIn('/config/devices/device/',render_context(self.app,self.app.store.case(case['id'])))
     def test_toolkit_request_cannot_accept_file_event_or_command_overrides(self):
         for args in ({'command':'leave'},{'json_out':'/config/file'},{'event_done':'alarm_arm'},{'command_data':['network_key']}):
             with self.assertRaises(TypeError):self.app.core_ws.toolkit_devices(**args)
