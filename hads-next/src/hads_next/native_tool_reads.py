@@ -4,14 +4,17 @@ from .connector_policy import descriptor
 from .tool_registry import object_schema,ENTITY,ToolDenied
 from .provider_reports import safe_report
 
+LOG_PATHS={'core_logs':'/core/logs','supervisor_logs':'/supervisor/logs','host_logs':'/host/logs'}
+
 
 def install(tools):
     rows=[descriptor('statistics',object_schema({'entity_id':ENTITY}),contract='Core_2026.11_recorder/list_statistic_ids_and_statistics_during_period'),
           descriptor('core_logs',object_schema(),contract='Supervisor_GET_/core/logs'),
           descriptor('supervisor_logs',object_schema(),contract='Supervisor_GET_/supervisor/logs'),
+          descriptor('host_logs',object_schema(),contract='Supervisor_GET_/host/logs'),
           descriptor('services',object_schema({'domain':{'type':'string','pattern':'^[a-z][a-z0-9_]{0,79}$'}}),contract='Core_2026.11_get_services_current_schemas')]
     # Install after native catalog replacement each pass.
-    for provider,names in [('core',{'statistics','core_logs','services'}),('supervisor',{'supervisor_logs'})]:
+    for provider,names in [('core',{'statistics','core_logs','services'}),('supervisor',{'supervisor_logs'}),('haos',{'host_logs'})]:
         old=[{k:v for k,v in t.items() if k not in {'available','diagnostic_read_verified'}} for t in tools.registry.tools() if t['provider']==provider]
         tools.registry.replace(provider,old+[r for r in rows if r['name'] in names])
         for name in names:tools.routes[(provider,name)]=('native_extra',None)
@@ -26,9 +29,9 @@ def read(app,name,args):
         if services is None:return {'domain':args['domain'],'registered':False,'services':{},'replacement_proven':False}
         if not isinstance(services,dict) or len(services)>128:raise ToolDenied('Neplatný nebo příliš velký katalog integrace.')
         return {'domain':args['domain'],'registered':True,'services':safe_report(services),'replacement_proven':False,'authority':'current_schema_not_permission_to_execute'}
-    if name in {'core_logs','supervisor_logs'}:
+    if name in LOG_PATHS:
         if app.supervisor is None:raise ToolDenied('Supervisor není připojený.')
-        value=app.supervisor._read('/core/logs' if name=='core_logs' else '/supervisor/logs')
+        value=app.supervisor._read(LOG_PATHS[name])
         if not isinstance(value,str):raise ToolDenied('Log nebyl přečtený.')
         # Logs are untrusted data; bounded and redacted before model/persistence.
         from .music_assistant import safe_music

@@ -27,7 +27,7 @@ class SupervisorTransport:
     def __call__(self, path):
         import re
         app_read = re.fullmatch(r'/addons/([^/]+)/(info|stats|logs)', path)
-        if path not in {'/supervisor/info','/supervisor/stats','/core/stats','/os/info','/host/info','/addons'} and not (app_read and is_app_slug(app_read[1])):
+        if path not in {'/supervisor/info','/supervisor/stats','/supervisor/logs','/core/stats','/core/logs','/os/info','/host/info','/host/logs','/addons'} and not (app_read and is_app_slug(app_read[1])):
             raise ValueError('Unsupported Supervisor read')
         return self._http(path, raw=path.endswith('/logs'))
 
@@ -275,6 +275,14 @@ class Handler(BaseHTTPRequestHandler):
             suggestion_html+=repair_cards(self.server.app,case['incident']['id'],self.server.csrf)
             from .entity_context_ui import render_context
             suggestion_html+=render_context(self.server.app,case)
+            device_followup=self.server.app.orchestration.device_followup(case)
+            if device_followup:
+                status_labels={'available':'přečteno','no_relevant_data':'přečteno, bez odpovídajících údajů'}
+                source_labels={('core','hads_get_entity_history'):'Historie entity',('core','core_logs'):'Protokol Core',
+                               ('supervisor','supervisor_logs'):'Protokol Supervisora',('haos','host_logs'):'Protokol hostitele HAOS',('ha_mcp','ha_get_state'):'Stav přes HA-MCP',
+                               ('ha_mcp','ha_get_device'):'Zařízení přes HA-MCP'}
+                checks=''.join('<li>'+label+' · '+status_labels.get(device_followup['statuses'].get(key),'ověření zatím chybí')+'</li>' for key,label in source_labels.items())
+                suggestion_html='<h2>Automatické prověření výpadku</h2><p>'+escape(device_followup['summary_cs'])+'</p><ul>'+checks+'</ul>'+suggestion_html
             automation_case=any(component.startswith('automation.') for component in case['incident']['components'])
             reference_case=bool({'input_boolean.hads_next_test_target','automation.hads_next_reference_test'} & set(case['incident']['components']))
             if self.server.app.repairs.status()['enabled'] and reference_case:

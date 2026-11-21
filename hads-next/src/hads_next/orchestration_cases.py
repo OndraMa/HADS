@@ -5,6 +5,7 @@ results are available to the original Hermes loop, including dependency reads.
 """
 import json
 import re
+from datetime import datetime,timezone
 from .evidence import canonical
 from .tool_registry import fingerprint,ToolDenied
 from .provider_reports import stamp
@@ -35,6 +36,9 @@ class OrchestrationCases:
             if budget<=0:break
             case=self.app.store.case(incident['id']);targets=tools._scope(case,{})
             requests=[]
+            device_outage=incident['kind']=='device_unavailable'
+            if device_outage:
+                requests.extend(self._device_requests(case,available))
             registry = tools.snapshot_values.get('entity_registry')
             if isinstance(registry, list) and any(
                 isinstance(row, dict) and row.get('platform') == 'zha' and row.get('entity_id') in targets
@@ -65,6 +69,7 @@ class OrchestrationCases:
                         iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
                         requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity,'start':iso(incident['first_seen']-300),'end':iso(min(self.app.clock(),incident['last_seen']+300))}})
                 elif provider=='ha_mcp':
+                    if device_outage:continue
                     for entity in sorted(t for t in targets if isinstance(t,str) and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+',t))[:4]:
                         if name in {'ha_get_state','ha_get_device'} or name=='ha_config_get_automation' and entity.startswith('automation.'):
                             requests.append({'provider':provider,'tool':name,'arguments':{'entity_id':entity}})
@@ -77,19 +82,23 @@ class OrchestrationCases:
                 if request['provider'] == 'zha_toolkit' and report_data:
                     # The refresh timestamp changes even when the cache contents do not.
                     report_data = {key: value for key, value in report_data.items() if key != 'checked_at'}
-                request_id=fingerprint([request,fingerprint(report_data) if report else int(self.app.clock()//600)])
+                per_occurrence=device_outage and request['tool'] in {
+                    'hads_get_entity_history','core_logs','supervisor_logs','host_logs','ha_get_state','ha_get_device'}
+                freshness=incident['last_seen'] if per_occurrence else int(self.app.clock()//600)
+                request_id=fingerprint([request,fingerprint(report_data) if report else freshness])
                 with self.app.store._connect() as db:
                     previous=db.execute('SELECT * FROM orchestration_reads WHERE incident_id=? AND request_hash=?',(incident['id'],request_id)).fetchone()
-                    if previous and (previous['state']=='available' or previous['attempts']>=2 or self.app.clock()-previous['checked_at']<300):continue
+                    if previous and (previous['state'] in {'available','no_relevant_data'} or previous['attempts']>=2 or self.app.clock()-previous['checked_at']<300):continue
                 budget-=1
                 try:result=tools.diagnostic_read(incident['id'],request)
                 except (ValueError,KeyError,TypeError):result={'status':'not_read','evidence_ids':[]}
                 with self.app.store._connect() as db:
                     db.execute('INSERT OR REPLACE INTO orchestration_reads VALUES(?,?,?,?,?,?,?,?)',(incident['id'],request_id,request['provider'],request['tool'],result['status'],1 if previous is None else previous['attempts']+1,self.app.clock(),canonical({k:v for k,v in result.items() if k!='data'})))
-                if result['status']=='available' and request['tool'] in {'core_logs','supervisor_logs'}:
+                if result['status']=='available' and request['tool'] in {'core_logs','supervisor_logs','host_logs'}:
                     self._log_lines(incident['id'],request['provider'],request['tool'],result.get('data',{}))
                 if result['status']=='available' and request['provider']=='automation_inspector':self._dependencies(incident['id'],targets,result.get('data',{}))
-            self.prepare_candidates(incident['id'])
+            if not device_outage or not self._restored(case,self._outage_entity(case)):
+                self.prepare_candidates(incident['id'])
             self.app.store.record(incident['id'],'orchestration_checkpoint',self.summary(incident['id']))
             with self.app.store._connect() as db:
                 for kind in ('orchestration_checkpoint','orchestration_repair_blocked','orchestration_repair_ready'):
@@ -97,6 +106,76 @@ class OrchestrationCases:
                 db.execute('DELETE FROM orchestration_reads WHERE incident_id=? AND request_hash NOT IN (SELECT request_hash FROM orchestration_reads WHERE incident_id=? ORDER BY checked_at DESC LIMIT 512)',(incident['id'],incident['id']))
         with self.app.store._connect() as db:
             db.execute('DELETE FROM orchestration_reads WHERE rowid IN (SELECT rowid FROM orchestration_reads ORDER BY checked_at DESC LIMIT -1 OFFSET 10000)')
+
+    def _device_requests(self,case,available):
+        incident=case['incident']
+        entity=self._outage_entity(case)
+        if entity is None:return []
+        when=incident['last_seen']
+        # Keep the first look stable while an event is recent so retries deduplicate.
+        end=when+300 if self.app.clock()>=when+300 else when
+        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        reads=[('core','hads_get_entity_history',{'entity_id':entity,'start':iso(when-300),'end':iso(end)}),
+               ('core','core_logs',{}),('supervisor','supervisor_logs',{}),('haos','host_logs',{}),
+               ('ha_mcp','ha_get_state',{'entity_id':entity}),('ha_mcp','ha_get_device',{'entity_id':entity})]
+        supported={(row['provider'],row['name']) for row in available if row['effect']=='read'}
+        return [{'provider':provider,'tool':tool,'arguments':args}
+                for provider,tool,args in reads if (provider,tool) in supported]
+
+    @staticmethod
+    def _outage_entity(case):
+        # Legacy device cases store the observed entity in this fixed symptom.
+        incident=case['incident']
+        for evidence in reversed(case['evidence']):
+            entity=evidence['payload'].get('entity_id')
+            if (evidence['source']=='native_entity_context' and evidence['payload'].get('classification')=='unavailable'
+                    and isinstance(entity,str) and entity in incident['components']
+                    and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+',entity)):
+                return entity
+        entity=incident['symptom'].rpartition(': ')[2]
+        if entity in incident['components'] and re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z0-9_]+',entity):
+            return entity
+        return None
+
+    def _restored(self,case,entity):
+        reports=self.app.entity_context.reports(case)
+        now=self.app.clock()
+        return any(row['entity_id']==entity for row in reports) and all(
+            row['classification']=='state_available' and row['checked_at']>=case['incident']['last_seen']
+            and 0<=now-row['checked_at']<=600 for row in reports)
+
+    def device_followup(self,case):
+        incident=case['incident']
+        if incident['kind']!='device_unavailable':return None
+        entity=self._outage_entity(case)
+        when=incident['last_seen']
+        restored=self._restored(case,entity)
+        with self.app.store._connect() as db:
+            rows=db.execute('SELECT provider,tool,state FROM orchestration_reads WHERE incident_id=? AND checked_at>=? ORDER BY checked_at',
+                            (incident['id'],when)).fetchall()
+            events=[json.loads(row[0]) for row in db.execute(
+                'SELECT document FROM orchestration_log_events WHERE observed_at BETWEEN ? AND ? ORDER BY observed_at LIMIT 100',
+                (when-300,when+300))]
+        statuses={(row['provider'],row['tool']):row['state'] for row in rows}
+        related=sum(1 for other in self.app.snapshot()['cases'] if other['kind']=='device_unavailable'
+                    and other['id']!=incident['id'] and abs(other['last_seen']-when)<=120)
+        corroborated=any(
+            r.get('entity_id')==entity and r.get('state')=='unavailable'
+            and (t:=stamp(r.get('last_updated') or r.get('last_changed'))) is not None and abs(t-when)<=300
+            for ev in case['evidence'] if ev['kind']=='hads_get_entity_history'
+            for group in (ev['payload'].get('data') or []) if isinstance(group,list)
+            for r in group if isinstance(r,dict))
+        nearby_signals=sum(e['kind'] in {'dns','network','restart'} for e in events)
+        if restored:
+            summary='Poslední čtení potvrdilo návrat stavu entity. HADS nyní nenavrhuje změnu zařízení.'
+        else:
+            summary='HADS ověřuje dostupnost entity a dohledává průběh výpadku.'
+        if related:summary+=f' Ve stejném časovém okně HADS zaznamenal další případy nedostupnosti ({related}). Společná příčina zatím není doložená.'
+        if corroborated:summary+=' Historie Home Assistantu potvrzuje nedostupnost v době nálezu.'
+        if nearby_signals:summary+=f' V protokolech z tohoto okna jsou síťové nebo startovací události ({nearby_signals}). Jejich souvislost s výpadkem není doložená.'
+        elif any(statuses.get(key)=='available' for key in [('core','core_logs'),('supervisor','supervisor_logs'),('haos','host_logs')]):
+            summary+=' Dostupné výřezy protokolů neobsahují časově přiřaditelný síťový výpadek ani start v tomto okně.'
+        return {'summary_cs':summary,'state_restored':restored,'statuses':statuses}
     def _dependencies(self,identity,targets,data):
         found=[]
         for row in data.get('items',[]):
@@ -220,8 +299,11 @@ class OrchestrationCases:
             when=stamp(match[1])
             if when is None:continue
             component=re.search(r'\[(homeassistant\.[A-Za-z0-9_.]+)\]',line)
-            events.append({'source':'core' if name=='core_logs' else 'supervisor','observed_at':when,'component':component[1] if component else provider,'message':line})
+            events.append({'source':provider,'observed_at':when,'component':component[1] if component else provider,'message':line})
         groups=self.correlate(events)
+        incident=self.app.store.case(incident_id)['incident']
+        if incident['kind']=='device_unavailable':
+            groups=[g for g in groups if abs(g['first_seen']-incident['last_seen'])<=300]
         if groups:
             self.app.store.record(incident_id,'cross_source_correlation',{'groups':groups[:4],'root_cause_proven':False})
 

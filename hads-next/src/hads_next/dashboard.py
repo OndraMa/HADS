@@ -86,7 +86,7 @@ def render_dashboard(app,csrf):
     recurring=[c for c in cases if c['occurrence_count']>1 and c['id'] not in observation_ids|diagnostic_ids|grouped]
     def plan_action(c,p):
         return p['status'] in {'applied_verification_pending','unknown_requires_reconciliation','blocked_requires_review'} or p['status'] is None and p.get('decision') not in {'reject','manual'} and (c['status']=='open' or bool(p['document'].get('rollback',{}).get('rollback_of')))
-    waiting=[c for c in cases if any(plan_action(c,p) for p in plans[c['id']]) or c['status']=='open' and c['id'] not in observation_ids and jobs[c['id']] and jobs[c['id']][0]['state']=='waiting_for_user' and jobs[c['id']][0]['conclusion'] and provider['enabled'] and runtime['runtime_installed']]
+    waiting=[c for c in cases if any(plan_action(c,p) for p in plans[c['id']]) or c['status']=='open' and c['id'] not in observation_ids|restored_ids and jobs[c['id']] and jobs[c['id']][0]['state']=='waiting_for_user' and jobs[c['id']][0]['conclusion'] and provider['enabled'] and runtime['runtime_installed']]
     active=sum(bool(jobs[c['id']] and jobs[c['id']][0]['state']=='investigating') for c in cases)
     esc=lambda x:escape(str(x),quote=True)
     def card(c):

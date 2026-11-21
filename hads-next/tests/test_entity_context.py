@@ -1,7 +1,9 @@
 """Reported Watchman→registry→ZHA gap, isolated contracts, never live HAOS."""
 import json,tempfile,unittest
+from datetime import datetime,timezone
+from hads_next.addon_server import SupervisorTransport
 from hads_next.haos_application import Application
-from hads_next.observability import CoreReader,CoreWSReader,ReadFailure
+from hads_next.observability import CoreReader,CoreWSReader,ReadFailure,SupervisorReader
 from hads_next.dashboard import render_dashboard
 from hads_next.entity_context_ui import render_context
 from hads_next.evidence_broker import BrokerDenied
@@ -122,6 +124,44 @@ class EntityContextTests(unittest.TestCase):
         with self.assertRaises(BrokerDenied):self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':'sensor.other'})
         self.now+=601
         self.assertEqual(self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':self.target})['status'],'not_read')
+    def test_recovered_case_automatically_reads_history_and_logs_without_repair(self):
+        self.app.check_sources()
+        incident=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        when=incident['last_seen']
+        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        self.app.store.open_incident('device_unavailable','Nedostupnost jiného snímače',['binary_sensor.other'],when)
+        self.now+=400
+        self.states[-1]['state']='off'
+        def history(path):
+            if path.startswith('/api/history/period/'):
+                self.calls.append(path)
+                return [[{'entity_id':self.target,'state':'unavailable','last_updated':iso(when-20)}]]
+            return self.http(path)
+        def supervisor(path,*,raw=False):
+            self.calls.append(path)
+            self.assertEqual(raw,path.endswith('/logs'))
+            if path=='/core/logs':return iso(when-10)+' INFO [homeassistant.setup] Starting Home Assistant'
+            if path=='/supervisor/logs':return iso(when+10000)+' ERROR unrelated DNS error'
+            if path=='/host/logs':return iso(when-12)+' ERROR host connection reset'
+            return {'result':'ok','data':{'version':'2026.11.1','addons':[]}}
+        self.app.core.transport=history
+        transport=SupervisorTransport('fixture-token')
+        transport._http=supervisor
+        self.app.supervisor=SupervisorReader(transport)
+        self.app.check_sources()
+        self.app.orchestration.cycle(budget=40)
+        case=self.app.store.case(incident['id'])
+        followup=self.app.orchestration.device_followup(case)
+        self.assertTrue(followup['state_restored'])
+        self.assertIn('Historie Home Assistantu potvrzuje',followup['summary_cs'])
+        self.assertIn('další případy nedostupnosti (1)',followup['summary_cs'])
+        self.assertIn('síťové nebo startovací události (2)',followup['summary_cs'])
+        self.assertEqual(followup['statuses'][('supervisor','supervisor_logs')],'available')
+        self.assertIn('/core/logs',self.calls)
+        self.assertIn('/supervisor/logs',self.calls)
+        self.assertIn('/host/logs',self.calls)
+        self.assertEqual(case['incident']['status'],'open')
+        self.assertEqual(self.app.repairs.plans(incident['id']),[])
     def test_collection_failures_are_diagnostics_and_disabled_ai_is_not_a_repair_approval(self):
         for key,kind in [('zha-subscription','diagnostic_capture_gap'),('native-api-access','source_unavailable')]:
             self.app.system._finding(key,kind,'Fixture collector gap',['zha'],{'gap':True})
