@@ -217,9 +217,17 @@ class EvidenceBroker:
         elif name=='hads_get_supported_repairs':
             from .repair_suggestions import supported_catalog
             value=supported_catalog()
+            runtime=getattr(self,'runtime_system',None)
+            tools=getattr(getattr(runtime,'app',None),'tools',None)
+            if tools:
+                value['orchestrated_operations']=[{k:r[k] for k in ('provider','name','schema_hash','risk','repair_operation_implemented','available')} for r in tools.registry.tools() if r['effect']=='write']
+                value['production_limitation_cs']='Použij aktuální nástrojový katalog a nezávislé schválení konkrétního plánu. Změny registru a konfigurace potřebují ověřenou obnovitelnou zálohu. Obecné zápisy a neověřené operace jsou zakázané.'
         elif name=='hads_get_incident':
             value={'incident':case['incident'],'occurrences':case['occurrences'][-20:],
                    'evidence_index':[{'id':x['evidence_id'],'source':x['source'],'kind':x['kind'],'observed_at':x['observed_at']} for x in case['evidence'][-40:]]}
+            value['owner_statements']=[{'text':e['payload']['text'][:1000],'evidence_id':e['evidence_id'],
+                'authority':'owner_statement_not_approval_or_independent_confirmation'} for e in case['evidence']
+                if e['source']=='authenticated_owner' and e['kind']=='owner_statement' and isinstance(e['payload'].get('text'),str)][-8:]
             automatic=[r['content'] for r in case['records'] if r['kind']=='automatic_read_report']
             system=getattr(self,'runtime_system',None)
             followup=system.followup.report(incident_id) if system is not None else None
@@ -287,6 +295,16 @@ class EvidenceBroker:
                 projection=lambda rows:[{k:x[k] for k in ('entity_id','unique_id','platform','device_id','config_entry_id','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('entity_id')==args['entity_id']]
             elif name=='hads_get_device_registry':
                 projection=lambda rows:[{k:x[k] for k in ('id','manufacturer','model','config_entries','disabled_by') if k in x} for x in rows if isinstance(x,dict) and x.get('id')==args['device_id']]
+            elif name=='hads_get_action_history':
+                targets=set(case['incident']['components'])
+                def projection(rows):
+                    projected=[]
+                    for action in rows:
+                        entities=sorted(targets.intersection(action.get('targets',{}).get('entity_id',[])))
+                        if not entities:continue
+                        projected.append({**{k:action[k] for k in ('when','domain','service','context_id','context_user_id') if k in action},
+                                          'targets':{'entity_id':entities}})
+                    return projected[-64:]
             elif name in {'hads_get_supervisor_status','hads_get_haos_status','hads_get_addon_info','hads_get_addon_stats'}:
                 projection=lambda value:project_supervisor_read(method,value)
             elif name=='hads_get_applications':

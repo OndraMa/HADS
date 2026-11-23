@@ -1,4 +1,4 @@
-"""Read-only HAOS development application. No AI or repair executor imports."""
+"""HAOS controller wiring: autonomous reads, confined AI and separate approved writers."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -13,7 +13,7 @@ from .diagnostics import investigate_radio
 from .evidence import IncidentStore
 from .observability import redact,project_supervisor_read,is_app_slug
 
-VERSION = "1.0.0-rc7"
+from .build_identity import VERSION, current_build
 ENTITY = re.compile(r"[a-z][a-z0-9_]*\.[a-z0-9_]+")
 
 
@@ -59,6 +59,8 @@ class Application:
         self.detection=DetectionEngine(self)
         from .system_diagnostics import SystemDiagnostics
         self.system=SystemDiagnostics(self)
+        from .resource_study import ResourceStudy
+        self.resource_study=ResourceStudy(self)
         from .provider_verification import ProviderVerification
         self.providers=ProviderVerification(self)
         from .entity_context import EntityContext
@@ -66,10 +68,24 @@ class Application:
         from .legacy_connectors import LegacyConnectors
         self.legacy_connectors=LegacyConnectors(self)
         self.investigations.broker.runtime_system=self.system
+        from .tool_orchestration import ToolOrchestration
+        from .approved_tools import ApprovedRepairBroker
+        from .orchestration_cases import OrchestrationCases
+        self.tools=ToolOrchestration(self)
+        self.approved_tools=ApprovedRepairBroker(self)
+        from .build_identity import invalidate_previous_approvals
+        invalidate_previous_approvals(self)
+        from .case_dialogue import CaseDialogue
+        self.dialogue=CaseDialogue(self)
+        from .repair_recovery import RepairRecovery
+        self.repair_recovery=RepairRecovery(self)
+        self.orchestration=OrchestrationCases(self)
         from .live_acceptance import LiveAcceptance
         self.acceptance=LiveAcceptance(self)
 
     def request_source_check(self):
+        if self.core is None and self.core_ws is None and self.supervisor is None and not self.tools.connections.clients:
+            return False  # no source to read; do not spawn an orphan task
         with self._lock:
             if self._source_job['state']=='running':return False
             self._source_job['state']='running'
@@ -88,6 +104,7 @@ class Application:
     def request_initial_diagnostics(self):
         """HAOS entrypoint only: owner already enrolled; no paid work starts."""
         if not self.owner():return
+        self.resource_study.start()
         self.request_source_check()
         if self.investigations.launcher is not None and not self.investigations.status()['worker_active']:
             self.investigations.request_probe(self.owner())
@@ -107,7 +124,8 @@ class Application:
             db.execute("INSERT OR IGNORE INTO application_settings VALUES('owner',?)", (user_id,))
         self.investigations.zha_observer.start()
         self.detection.start()
-        if self.repairs.status()["enabled"] or self.repairs.status()['native_state_targets']:self.repairs.start()
+        status=self.repairs.status()
+        if status['enabled'] or status['native_state_targets'] or status['provider_pending_verifications']:self.repairs.start()
 
     def check_sources(self):
         """Execute actual supported reads, preserving per-read success/errors."""
@@ -148,6 +166,19 @@ class Application:
             self.providers.update(values,states)
             self.entity_context.update(values,states)
             self.providers.record_toolkit(self.entity_context.toolkit)
+            self.tools.refresh(values,states)
+            self.approved_tools.identities(values.get("entity_registry"))
+            logs=values.get('system_log')
+            if isinstance(logs,list):
+                normalized=[]
+                for row in logs[:256]:
+                    if not isinstance(row,dict):continue
+                    message=row.get('message')
+                    if isinstance(message,list):message=' '.join(x for x in message[:4] if isinstance(x,str))
+                    normalized.append({'source':'system_log','observed_at':row.get('timestamp'),'component':row.get('name',row.get('logger','unknown')),'message':message})
+                self.orchestration.correlate(normalized)
+            self.orchestration.cycle()
+            self.repair_recovery.cycle()
         with self._lock:
             self._sources = sources
         return sources
@@ -234,7 +265,7 @@ class Application:
             item["components"] = json.loads(item["components"])
             cases.append(item)
         with self._lock:
-            return {"version": VERSION, "mode": "read_only_development", "core": dict(self._summary),
+            return {"version": VERSION, "build": current_build(), "mode": "read_only_development", "core": dict(self._summary),
                     "entities": list(self._entity_catalog or self._entities), "cases": cases,
                     "hermes_enabled": bool(self.investigations.launcher and self.investigations.provider.public_status()['enabled']), "live_repairs_enabled": (self.repairs.status()["enabled"] or self.repairs.status()["native_state_targets"]>0),
                     'investigation_service':self.investigations.status(),

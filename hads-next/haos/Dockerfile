@@ -6,13 +6,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app HADS_DATA_DIR=/
 WORKDIR /app
 RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.txt,readonly \
     --mount=type=bind,source=lab/core-constraints.txt,target=/core-constraints.txt,readonly \
+    --mount=type=bind,source=lab/service-requirements.txt,target=/core-service-requirements.txt,readonly \
     --mount=type=secret,id=proxy_ca,required=false \
     set -eu; \
     if [ -f /run/secrets/proxy_ca ]; then \
       export PIP_CERT=/run/secrets/proxy_ca SSL_CERT_FILE=/run/secrets/proxy_ca GIT_SSL_CAINFO=/run/secrets/proxy_ca; \
     fi; \
     apt-get update; apt-get install -y --no-install-recommends git build-essential ca-certificates libseccomp2; \
-    python -m pip install --no-cache-dir uv==0.13.6 websockets==16.0; \
+    python -m pip install --no-cache-dir uv==0.13.6 websockets==16.0 jsonschema==4.26.0 cryptography==46.0.3; \
     mkdir -p /opt/hermes-root/opt/hermes /opt/hermes-root/usr/local/lib /opt/hermes-root/app/hads_next /opt/hermes-root/tmp /opt/hermes-root/etc; \
     git init /opt/hermes-root/opt/hermes; \
     git -C /opt/hermes-root/opt/hermes remote add origin https://github.com/NousResearch/hermes-agent.git; \
@@ -24,6 +25,13 @@ RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.t
     uv pip install --python /opt/hermes-root/opt/hermes/.venv/bin/python --no-cache \
       --constraint /hermes-constraints.txt --editable /opt/hermes-root/opt/hermes; \
     rm -rf /opt/hermes-root/opt/hermes/.git /opt/hermes-root/opt/hermes/tests /root/.cache; \
+    if [ "$CORE_LAB" = 1 ]; then \
+      apt-get install -y --no-install-recommends libturbojpeg0; \
+      uv pip install --system --no-cache --constraint /core-constraints.txt --requirement /core-service-requirements.txt homeassistant==2026.11.0; \
+      # Compile lab-only selector dependencies before removing the toolchain. \
+      # Keep actual Core APIs while discarding unused UI translations. \
+      find /usr/local/lib/python3.14/site-packages/homeassistant -path '*/translations/*.json' -type f ! -name en.json ! -name cs.json -delete; \
+    fi; \
     apt-get purge -y --auto-remove git build-essential; rm -rf /var/lib/apt/lists/*; \
     cp -a /usr/local/bin /opt/hermes-root/usr/local/bin; \
     cp -al /usr/local/lib/python3.14 /opt/hermes-root/usr/local/lib/python3.14; \
@@ -32,13 +40,7 @@ RUN --mount=type=bind,source=hermes-constraints.txt,target=/hermes-constraints.t
     cp -a /usr/lib /opt/hermes-root/usr/lib; ln -s usr/lib /opt/hermes-root/lib; \
     if [ -d /usr/lib64 ]; then cp -a /usr/lib64 /opt/hermes-root/usr/lib64; ln -s usr/lib64 /opt/hermes-root/lib64; fi; \
     cp -a /etc/ssl /opt/hermes-root/etc/ssl; \
-    chmod 1777 /opt/hermes-root/tmp; \
-    if [ "$CORE_LAB" = 1 ]; then \
-      uv pip install --system --no-cache --constraint /core-constraints.txt homeassistant==2026.11.0; \
-      # Lab keeps original Core code and APIs; discard unused UI languages to \
-      # fit VFS inode quotas. Production does not contain Core at all. \
-      find /usr/local/lib/python3.14/site-packages/homeassistant -path '*/translations/*.json' -type f ! -name en.json ! -name cs.json -delete; \
-    fi
+    chmod 1777 /opt/hermes-root/tmp
 RUN --mount=type=bind,source=.,target=/source,readonly \
     --mount=type=secret,id=proxy_ca,required=false \
     set -eu; \

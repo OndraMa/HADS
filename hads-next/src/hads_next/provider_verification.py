@@ -16,7 +16,6 @@ SPECS = {
     'automation_inspector': ('Automation Inspector', ('automation_inspector',), ('automation_inspector',)),
     'hadocs': ('HADocs', ('hadocs',), ('hadocs',)),
     'entity_availability': ('Entity Availability', ('entity_availability',), ('entity_availability',)),
-    'hamster_mcp': ('Hamster MCP', ('hamster_mcp',), ('hamster_mcp',)),
     'haghs': ('Home Assistant Global Health Score', ('haghs',), ('haghs', 'home_assistant_global_health_score')),
     'watchman': ('Watchman', ('watchman',), ('watchman',)),
     'music_assistant': ('Music Assistant', ('music_assistant',), ('music_assistant', 'music_assistant_beta')),
@@ -53,6 +52,7 @@ class ProviderVerification:
         self.app = app
         with app.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS provider_verifications(provider_id TEXT PRIMARY KEY,checked_at REAL NOT NULL,document TEXT NOT NULL)')
+            db.execute("DELETE FROM provider_verifications WHERE provider_id='hamster_mcp'")
 
     def update(self, values, states):
         config = values.get('core_config')

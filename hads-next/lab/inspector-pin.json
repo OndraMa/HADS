@@ -1,0 +1,42 @@
+{
+  "repository": "ITSpecialist111/Automation-Inspector",
+  "commit": "aa24bd4485b5f74fd4547d84dc5fb1045bc766fa",
+  "files": [
+    {
+      "path": "automation_inspector/app/__init__.py",
+      "git_blob_sha1": "0e6367e8bf4cd9178221283c78264142e95e16d8"
+    },
+    {
+      "path": "automation_inspector/app/automation_file.py",
+      "git_blob_sha1": "719d8664191dbd455e446735ec6b7f24c050b490"
+    },
+    {
+      "path": "automation_inspector/app/compatibility.py",
+      "git_blob_sha1": "7ed3177d42db7aa9a31171f80be0cfdc94d428af"
+    },
+    {
+      "path": "automation_inspector/app/dependency_map.py",
+      "git_blob_sha1": "bdbeb7554ef867d173a162f4254995d5bf02e8a1"
+    },
+    {
+      "path": "automation_inspector/app/ha_client.py",
+      "git_blob_sha1": "c375a7dc594045cdab4d0330ba6f827a2b0035f7"
+    },
+    {
+      "path": "automation_inspector/app/main.py",
+      "git_blob_sha1": "71c3521db1eb521d85e1f52fb301617e321599e0"
+    },
+    {
+      "path": "automation_inspector/app/references.py",
+      "git_blob_sha1": "468d359991b5ad705ac694149ca02d265c41d375"
+    },
+    {
+      "path": "automation_inspector/app/service.py",
+      "git_blob_sha1": "9ab7e4a4427be92834982b5c012442faa0a5a6b6"
+    },
+    {
+      "path": "automation_inspector/app/settings.py",
+      "git_blob_sha1": "1ebd8803f2ff77fb1920b84ae9266609fadeaf81"
+    }
+  ]
+}

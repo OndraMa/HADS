@@ -50,7 +50,7 @@ def main():
                 app._entities=[{'entity_id':'automation.entry','name':'Světlo na chodbě – ukázka prohlížeče','state':'off'}]
                 for width in [1280,390]:
                     page.set_viewport_size({'width':width,'height':900})
-                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case,'/case/'+entity_case['id']]:
+                    for path in ['/','/setup/lighting','/setup/monitors','/acceptance','/setup/ai','/setup/providers','/setup/tools','/setup/resources','/setup/backup-verifier','/case/'+case['incident']['id'],'/case/'+health_case,'/case/'+memory_case,'/case/'+entity_case['id']]:
                         response=page.goto(origin+path);assert response.status==200
                         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),(width,path)
                         assert all(link.bounding_box()['height']<100 for link in page.locator('nav a').all()),'Navigation must remain readable on mobile'
@@ -88,6 +88,11 @@ def main():
                             assert page.locator('select[name=mode]').input_value()=='trial'
                             assert not page.locator('input[name=consent]').is_checked()
                             assert '512' in page.inner_text('body')
+                        if path=='/setup/tools':
+                            assert page.get_by_role('heading',name='Nástroje servisního týmu').count()==1
+                            assert page.locator('input[name=token][type=password]').count()==1
+                            assert page.locator('select[name=provider] option').count()==5
+                            assert 'Připojení není schválení opravy' in page.inner_text('body')
                         assert page.evaluate('window.bad===undefined');views.append({'width':width,'path':path.split(case['incident']['id'])[0].split(health_case)[0].split(memory_case)[0].split(entity_case['id'])[0],'passed':True})
                     page.goto(origin+'/acceptance');page.locator('input[name=isolated]').check();page.get_by_role('button',name='Založit přejímkový protokol').click();page.wait_for_url('**/acceptance?session=*')
                     assert page.get_by_role('button',name='Provést tento test').count()==12
@@ -98,10 +103,25 @@ def main():
                     report=context.request.get(origin+'/'+download).json();assert len(report['steps'])==12
                     assert report['all_steps_passed'] is False and 'offline-ui-owner' not in json.dumps(report)
                     if width==390:page.screenshot(path=str(ROOT/'.test-tmp/practical-acceptance-mobile.png'),full_page=True)
+                # Ingress may be short, and the deployed build identity wraps.
+                page.set_viewport_size({'width':1000,'height':450})
+                page.goto(origin+'/')
+                page.locator('.app-header small').last.evaluate(
+                    "(el) => el.textContent = 'Verze 1.0.0-rc9 · zdroj 476587fb9f75 · sestavení ed84b262c3b8'")
+                home = page.get_by_role('navigation').get_by_role('link',name='Domácnost',exact=True)
+                header = page.locator('.app-header')
+                assert home.bounding_box()['y'] >= header.bounding_box()['height']
+                home.click(trial=True)
+                backup = page.get_by_role('navigation').get_by_role('link',name='Ověřovatel záloh')
+                backup.focus()
+                backup.click(trial=True)
+                home.focus()
+                home.click(trial=True)
+                views.append({'width':1000,'height':450,'path':'/','sidebar_wrap_and_keyboard_scroll':True,'passed':True})
                 assert context.request.get(origin+'/acceptance?session=invalid').status==404
                 assert not errors;browser.close()
             files=list((ROOT/'src/hads_next').glob('*.py'))+[Path(__file__)]
-            report={'scope':'offline_browser_fake_ingress_no_HAOS','browser':'system Chromium with Playwright','live_haos':False,'views':views,'acceptance_steps':12,'cost_consent_default':False,'anonymous_export':True,'script_injection_escaped':True,'historical_application_names_distinguished':True,'single_navigation':True,'AI_disabled_visible':True,'status_only_apps_not_functional_failures':True,'application_observations_expanded_for_preview':True,'data_origin':'anonymous_fixture_based_on_owner_reported_UI_shape_not_live_HAOS','keyboard_focus':True,'real_model_called':False,'passed':True,'input_sha256':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}
+            report={'scope':'offline_browser_fake_ingress_no_HAOS','browser':'system Chromium with Playwright','live_haos':False,'views':views,'acceptance_steps':12,'cost_consent_default':False,'anonymous_export':True,'script_injection_escaped':True,'historical_application_names_distinguished':True,'single_navigation':True,'AI_disabled_visible':True,'status_only_apps_not_functional_failures':True,'application_observations_expanded_for_preview':True,'private_connector_fields_masked':True,'data_origin':'anonymous_fixture_based_on_owner_reported_UI_shape_not_live_HAOS','keyboard_focus':True,'real_model_called':False,'passed':True,'input_sha256':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}
             output=ROOT/'docs/evidence/practical-browser.json';output.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps({'passed':True,'views':len(views),'report':str(output)}))
         finally:server.shutdown();server.server_close();app.detection.close();app.repairs.close()
 

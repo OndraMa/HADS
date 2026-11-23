@@ -21,7 +21,9 @@ class SystemDiagnostics:
         with self.app.store._connect() as db:
             active=db.execute('SELECT count(*) FROM health_episodes WHERE active=1').fetchone()[0]
             sample=db.execute('SELECT document FROM resource_samples ORDER BY at DESC LIMIT 1').fetchone()
-        return {'last_check_at':self.last,'last_error':self.last_error,'capabilities':dict(self.capabilities),'core_read_latency_ms':getattr(self,'core_latency_ms',None),'active_findings':active,'resources':json.loads(sample[0]) if sample else None,'host_metrics':getattr(self,'host_metrics',None),'ai_required':False,'restart_proof':'Only explicit supported source evidence; a disconnected socket is not a restart.'}
+        study=getattr(self.app,'resource_study',None)
+        study={k:v for k,v in study.status().items() if k!='samples_detail'} if study else None
+        return {'last_check_at':self.last,'last_error':self.last_error,'capabilities':dict(self.capabilities),'core_read_latency_ms':getattr(self,'core_latency_ms',None),'active_findings':active,'resources':json.loads(sample[0]) if sample else None,'resource_study':study,'host_metrics':getattr(self,'host_metrics',None),'ai_required':False,'restart_proof':'Only explicit supported source evidence; a disconnected socket is not a restart.'}
     def _finding(self,key,kind,symptom,components,data,*,active=True,observations=None):
         now=self.app.clock();serialized=canonical(data);fingerprint=hashlib.sha256(serialized.encode()).hexdigest()
         with self.app.store._connect() as db:

@@ -60,7 +60,8 @@ class MusicMCP:
         self._sequence+=1
         payload={'jsonrpc':'2.0','method':method,'params':params}
         if not notification:payload['id']=self._sequence
-        headers={'Authorization':'Bearer '+self._token,'Content-Type':'application/json','Accept':'application/json, text/event-stream'}
+        headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}
+        if self._token:headers['Authorization']='Bearer '+self._token
         if self._session:headers['Mcp-Session-Id']=self._session
         if self._protocol:headers['MCP-Protocol-Version']=self._protocol
         request=Request(self.endpoint,data=json.dumps(payload).encode(),headers=headers,method='POST')
@@ -75,11 +76,11 @@ class MusicMCP:
                     return None
                 content=response.headers.get_content_type()
                 if content=='application/json':
-                    raw=bounded_body(response,128000)
+                    raw=bounded_body(response,getattr(self,"max_rpc_bytes",128000))
                     message=json.loads(raw)
                 elif content=='text/event-stream':
                     data=[];message=None;buffer=b''
-                    for chunk in bounded_chunks(response,128000,15):
+                    for chunk in bounded_chunks(response,getattr(self,"max_rpc_bytes",128000),15):
                         buffer=(buffer+chunk).replace(b'\r\n',b'\n')
                         while b'\n' in buffer:
                             raw,buffer=buffer.split(b'\n',1);line=raw.decode('utf-8')

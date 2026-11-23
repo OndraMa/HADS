@@ -7,7 +7,6 @@ class LegacySettingsError(ValueError):
 
 FIELDS = {
     'ha_mcp': ('ha_mcp_url','ha_mcp_token'),
-    'hamster_mcp': ('hamster_mcp_url','hamster_mcp_token'),
     'music_assistant': ('music_assistant_mcp_url','music_assistant_mcp_token'),
     'hadocs': ('hadocs_api_url','hadocs_token'),
     'automation_inspector': ('automation_inspector_api_url','automation_inspector_token'),

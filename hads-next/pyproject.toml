@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hads-next"
-version = "1.0.0rc7"
+version = "1.0.0rc10"
 description = "HADS Next autonomous native diagnostics and approved repairs"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["jsonschema==4.26.0", "cryptography==46.0.3"]
 
 [project.optional-dependencies]
 native-ws = ["websockets>=16,<17"]

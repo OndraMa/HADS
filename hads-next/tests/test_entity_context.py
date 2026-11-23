@@ -1,7 +1,9 @@
 """Reported Watchman→registry→ZHA gap, isolated contracts, never live HAOS."""
 import json,tempfile,unittest
+from datetime import datetime,timezone
+from hads_next.addon_server import SupervisorTransport
 from hads_next.haos_application import Application
-from hads_next.observability import CoreReader,CoreWSReader,ReadFailure
+from hads_next.observability import CoreReader,CoreWSReader,ReadFailure,SupervisorReader
 from hads_next.dashboard import render_dashboard
 from hads_next.entity_context_ui import render_context
 from hads_next.evidence_broker import BrokerDenied
@@ -18,6 +20,7 @@ class EntityContextTests(unittest.TestCase):
         self.states[0]['state']='1';self.states[0]['attributes']={'entities':[{'id':self.target,'state':'unavail','occurrences':'📄 .storage/lovelace.fixture:120'}]}
         self.states.append({'entity_id':self.target,'state':'unavailable','last_updated':'2026-11-17T10:50:00+00:00','attributes':{'friendly_name':'Senzor skladu'}})
         self.device={'ieee':'00:11:22:33:44:55:66:77','device_reg_id':'device_fixture','available':False,'lqi':30,'rssi':-84,'last_seen':1794910000.,'network_key':'NEVER_COPY','private_token':'NEVER_COPY'}
+        self.device_registry=[]
         self.toolkit_ok=True
         self.app=Application(self.tmp.name,CoreReader(self.http),core_ws=CoreWSReader(self.ws),clock=lambda:self.now)
         self.addCleanup(self.app.detection.close)
@@ -32,7 +35,7 @@ class EntityContextTests(unittest.TestCase):
         self.calls.append(request)
         kind=request['type']
         if kind=='config/entity_registry/list':return self.registry
-        if kind=='config/device_registry/list':return []
+        if kind=='config/device_registry/list':return self.device_registry
         if kind=='repairs/list_issues':return {'issues':[]}
         if kind=='system_log/list':return []
         if kind=='system_health/info':return {'domains':{},'complete':True}
@@ -60,6 +63,77 @@ class EntityContextTests(unittest.TestCase):
         self.assertFalse(provider['diagnostic_read']['read_succeeded']);self.assertTrue(provider['last_error'])
         report=self.app.entity_context.reports()[0];self.assertIsNotNone(report['zha']);self.assertIsNone(report['toolkit'])
         self.assertNotIn('PRIVATE_EXCEPTION',json.dumps(provider))
+    def test_native_zha_broker_returns_only_registry_bound_devices(self):
+        original=self.app.core_ws.transport
+        unrelated={**self.device,'device_reg_id':'different_device','ieee':'10:11:22:33:44:55:66:77'}
+        self.app.core_ws.transport=lambda request: [self.device,unrelated] if request['type']=='zha/devices' else original(request)
+        self.app.check_sources()
+        case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        data=self.app.tools.diagnostic_read(case['id'],{'provider':'zha','tool':'diagnostics','arguments':{}})['data']
+        self.assertEqual(data['matched_devices'],1)
+        self.assertEqual(data['devices'][0]['device_id'],'device_fixture')
+        self.assertNotIn('different_device',json.dumps(data))
+
+    def test_radio_case_correlates_native_history_actions_and_app_logs_without_fastmcp(self):
+        player='media_player.fixture_radio'
+        when=self.now-120
+        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        self.registry.append({'entity_id':player,'platform':'music_assistant','device_id':'radio_fixture'})
+        case=self.app.store.open_incident('functional_monitor','Přehrávání se zastavilo',[player],when)
+        original_http=self.app.core.transport
+        original_ws=self.app.core_ws.transport
+        def http(path):
+            if path.startswith('/api/history/period/') and player in path:
+                return [[{'entity_id':player,'state':'playing','last_updated':iso(when-30)},
+                         {'entity_id':player,'state':'idle','last_updated':iso(when),'context':{'id':'fixture-stop'}}]]
+            return original_http(path)
+        def ws(request):
+            if request['type']=='logbook/get_action_calls':
+                return [{'when':when-2,'domain':'media_player','service':'media_stop','context_id':'fixture-stop',
+                         'service_data':{'entity_id':player,'pin':'NEVER_COPY'}},
+                        {'when':when-1,'domain':'media_player','service':'media_stop','context_id':'other',
+                         'service_data':{'entity_id':'media_player.unrelated'}}]
+            return original_ws(request)
+        def supervisor(path,*,raw=False):
+            if path=='/addons/abc_music_assistant_beta/logs':
+                self.calls.append(path);self.assertTrue(raw)
+                return iso(when)+' INFO music fixture'
+            return {'result':'ok','data':{'version':'2026.11.1','addons':[
+                {'slug':'abc_music_assistant_beta','name':'Music Assistant (Beta)','state':'started'},
+                {'slug':'abc_other','name':'Other','state':'started'}]}}
+        self.app.core.transport=http
+        self.app.core_ws.transport=ws
+        transport=SupervisorTransport('fixture-token');transport._http=supervisor
+        self.app.supervisor=SupervisorReader(transport)
+        self.app.investigations.broker.supervisor=self.app.supervisor
+        self.app.check_sources()
+        self.app.orchestration.cycle(budget=20)
+        saved=self.app.store.case(case['id'])
+        self.assertIn('/addons/abc_music_assistant_beta/logs',self.calls)
+        self.assertNotIn('media_player.unrelated',json.dumps(saved))
+        self.assertNotIn('NEVER_COPY',json.dumps(saved))
+        self.assertEqual(self.app.orchestration.playback_followup(saved)['category'],'commanded_stop')
+        self.assertIsNone(self.app.investigations.broker.music)
+        self.assertEqual(self.app.repairs.plans(case['id']),[])
+    def test_case_lists_only_registry_siblings_and_marks_the_reported_entity(self):
+        self.device_registry=[{'id':'device_fixture','name':'Výrobní název','name_by_user':'<Komora>','secret':'NEVER_COPY'}]
+        self.registry.extend([
+            {'entity_id':'sensor.fixture_battery','device_id':'device_fixture','disabled_by':'user'},
+            {'entity_id':'sensor.fixture_temperature','device_id':'device_fixture'},
+            {'entity_id':'sensor.same_name_other_device','device_id':'device_other'},
+        ])
+        self.app.check_sources()
+        case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        page=render_context(self.app,self.app.store.case(case['id']))
+        self.assertIn('&lt;Komora&gt;',page)
+        self.assertIn('href="/config/devices/device/device_fixture"',page)
+        self.assertIn(f'<code>{self.target}</code> <strong>(hlášená entita)</strong> · Nedostupná',page)
+        self.assertIn('<code>sensor.fixture_battery</code> · Zakázaná',page)
+        self.assertIn('<code>sensor.fixture_temperature</code> · Chybí v seznamu stavů Core',page)
+        self.assertNotIn('sensor.same_name_other_device',page)
+        self.assertNotIn('NEVER_COPY',page)
+        self.now+=601
+        self.assertNotIn('/config/devices/device/',render_context(self.app,self.app.store.case(case['id'])))
     def test_toolkit_request_cannot_accept_file_event_or_command_overrides(self):
         for args in ({'command':'leave'},{'json_out':'/config/file'},{'event_done':'alarm_arm'},{'command_data':['network_key']}):
             with self.assertRaises(TypeError):self.app.core_ws.toolkit_devices(**args)
@@ -77,16 +151,27 @@ class EntityContextTests(unittest.TestCase):
         self.assertFalse(report['repair']['approval_available'])
     def test_repeat_reads_deduplicate_and_recovery_does_not_fake_functional_repair(self):
         self.app.check_sources();case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        self.assertIn('Otevřené funkční případy</span><strong>1',render_dashboard(self.app,'fixture'))
         first=self.app.store.case(case['id']);self.now+=300;self.app.check_sources()
         again=self.app.store.case(case['id'])
-        self.assertEqual(first['evidence'],again['evidence']);self.assertEqual(len(again['occurrences']),1)
+        current=[ev for ev in again['evidence'] if ev['source']=='native_entity_context']
+        self.assertEqual([ev for ev in first['evidence'] if ev['source']=='native_entity_context'],current)
+        self.assertEqual(len({ev['evidence_id'] for ev in again['evidence']}),len(again['evidence']))
+        self.assertEqual(len(again['occurrences']),1)
         self.states[-1]['state']='off';self.app.check_sources()
         self.states[0]['state']='0';self.states[0]['attributes']={'entities':[]}
         self.now+=300;self.app.check_sources()
         self.assertEqual(self.app.entity_context.reports()[0]['classification'],'state_available')
         self.assertEqual(self.app.store.case(case['id'])['incident']['status'],'open')
+        html=render_dashboard(self.app,'fixture')
+        self.assertIn('Otevřené funkční případy</span><strong>0',html)
+        self.assertIn('Ověřené výsledky</span><strong>0',html)
+        self.assertIn('Nedostupnost se při posledním čtení nepotvrdila (1)',html)
+        self.now+=601
+        self.assertNotIn('id="restored-entity-states"',render_dashboard(self.app,'fixture'))
         self.states[-1]['state']='unavailable';self.now+=300;self.app.check_sources()
         self.assertEqual(len(self.app.store.case(case['id'])['occurrences']),2)
+        self.assertIn('Otevřené funkční případy</span><strong>1',render_dashboard(self.app,'fixture'))
     def test_scoped_hermes_read_uses_collected_evidence_and_rejects_other_entities(self):
         self.app.check_sources();case=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
         result=self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':self.target})
@@ -94,6 +179,44 @@ class EntityContextTests(unittest.TestCase):
         with self.assertRaises(BrokerDenied):self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':'sensor.other'})
         self.now+=601
         self.assertEqual(self.app.investigations.broker.read(case['id'],'hads_get_entity_diagnosis',{'entity_id':self.target})['status'],'not_read')
+    def test_recovered_case_automatically_reads_history_and_logs_without_repair(self):
+        self.app.check_sources()
+        incident=next(c for c in self.app.snapshot()['cases'] if c['kind']=='device_unavailable')
+        when=incident['last_seen']
+        iso=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat()
+        self.app.store.open_incident('device_unavailable','Nedostupnost jiného snímače',['binary_sensor.other'],when)
+        self.now+=400
+        self.states[-1]['state']='off'
+        def history(path):
+            if path.startswith('/api/history/period/'):
+                self.calls.append(path)
+                return [[{'entity_id':self.target,'state':'unavailable','last_updated':iso(when-20)}]]
+            return self.http(path)
+        def supervisor(path,*,raw=False):
+            self.calls.append(path)
+            self.assertEqual(raw,path.endswith('/logs'))
+            if path=='/core/logs':return iso(when-10)+' INFO [homeassistant.setup] Starting Home Assistant'
+            if path=='/supervisor/logs':return iso(when+10000)+' ERROR unrelated DNS error'
+            if path=='/host/logs':return iso(when-12)+' ERROR host connection reset'
+            return {'result':'ok','data':{'version':'2026.11.1','addons':[]}}
+        self.app.core.transport=history
+        transport=SupervisorTransport('fixture-token')
+        transport._http=supervisor
+        self.app.supervisor=SupervisorReader(transport)
+        self.app.check_sources()
+        self.app.orchestration.cycle(budget=40)
+        case=self.app.store.case(incident['id'])
+        followup=self.app.orchestration.device_followup(case)
+        self.assertTrue(followup['state_restored'])
+        self.assertIn('Historie Home Assistantu potvrzuje',followup['summary_cs'])
+        self.assertIn('další případy nedostupnosti (1)',followup['summary_cs'])
+        self.assertIn('síťové nebo startovací události (2)',followup['summary_cs'])
+        self.assertEqual(followup['statuses'][('supervisor','supervisor_logs')],'available')
+        self.assertIn('/core/logs',self.calls)
+        self.assertIn('/supervisor/logs',self.calls)
+        self.assertIn('/host/logs',self.calls)
+        self.assertEqual(case['incident']['status'],'open')
+        self.assertEqual(self.app.repairs.plans(incident['id']),[])
     def test_collection_failures_are_diagnostics_and_disabled_ai_is_not_a_repair_approval(self):
         for key,kind in [('zha-subscription','diagnostic_capture_gap'),('native-api-access','source_unavailable')]:
             self.app.system._finding(key,kind,'Fixture collector gap',['zha'],{'gap':True})

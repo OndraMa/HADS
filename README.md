@@ -1,4 +1,57 @@
-# HADS Next 1.0.0-rc7 — konkrétní entity a ZHA Toolkit
+# HADS Next 1.0.0-rc10 — instalační kandidát
+
+RC10 automaticky prověřuje výpadky přehrávání přes historii, akce a dostupný protokol Music Assistantu. Ke spisům Zigbee připojuje čtení nativního ZHA a Toolkitu pro konkrétní zařízení. Zahrnuje dřívější odstranění Hamsteru a schvalované povolení jednoho senzoru přes HA-MCP. Aktualizace z ověřeného RC9 používá stejnou identitu aplikace.
+
+- [Kompletní balíček, instalátor a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc10-kandidat/)
+- [Český návod k připojení doplňků](hads-next/docs/RC10_CONNECTORS_CS.md)
+- [Přejímací protokol RC10](KE_STAZENI/HADS_Next_1.0.0-rc10-kandidat/AKCEPTACE.json)
+- [PR #19](https://github.com/OndraMa/HADS/pull/19) · [CI AMD64 a ARM64](https://github.com/OndraMa/HADS/actions/runs/44941057507)
+
+Zdroj `78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e`. Místně prošlo 334 izolovaných testů. Na obou architekturách prošel také start instalačního obrazu a kontejnerová přejímka s Core a izolovaným Hermesem se skriptovaným modelem. Přejímka na živém HAOS stále čeká.
+
+---
+
+# HADS Next 1.0.0-rc9 — instalační kandidát
+
+RC9 opravuje překrytí záložky Domácnost, doplňuje ověření čtení přes HA-MCP a Hamster a vybírá Zigbee důkazy ze ZHA Toolkitu podle cíle spisu. Aktualizace z vydaných RC6 až RC8 používá stejnou identitu aplikace a zachovává její data.
+
+- [Balíček, instalátor, český návod a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc9-kandidat/)
+- [Rozsah kandidáta](hads-next/docs/CANDIDATE_20261120_CS.md)
+- [Přesné výsledky testů](hads-next/docs/evidence/candidate-20261120/RESULTS.json)
+- [PR #19](https://github.com/OndraMa/HADS/pull/19)
+
+Zdroj `885b288a295e8277ea6bca7751e50a5a62d87a67`. Prošlo 326 testů na AMD64 i ARM64, start a čisté ukončení instalačního obrazu, kontejnerová kontrola Core a izolovaného Hermesu se skriptovaným modelem a 27 lokálních kontrol prohlížeče. Živá přejímka RC9 zůstává otevřená.
+
+---
+
+# HADS Next 1.0.0-rc8 — instalační kandidát
+
+Navazuje na [PR #19](https://github.com/OndraMa/HADS/pull/19), větev **codex/hads-next-orchestration**.
+Kandidát je určený k přejímce. Úplné původní zadání a živý HAOS zatím nejsou potvrzené.
+
+- **[Instalátor, kompletní ZIP, návody a SHA-256](KE_STAZENI/HADS_Next_1.0.0-rc8-kandidat/)**
+- [Přesné kroky aktualizace z RC6/RC7 a hotovo / chybí / blokováno](hads-next/docs/CANDIDATE_DELIVERY_CS.md)
+- [Skutečné výsledky a zdrojové otisky](hads-next/docs/evidence/candidate-20261119/RESULTS.json)
+- [Jednorázové nastavení HA-MCP a původního Hermesu](hads-next/docs/ORCHESTRATION_SETUP_CS.md)
+- [Přijímací integrace nezávislého důkazu obnovy](hads-next/docs/RESTORE_VERIFIER_CONTRACT.md)
+- [Čekající živá přejímka](hads-next/docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md)
+
+**323 testů na každé architektuře ARM64/AMD64**, produkční image spuštěný bez domácí sítě,
+ověřený commit a sestavení, čistý SIGTERM (0), skutečný Core a původní izolovaný Hermes se
+skriptovaným modelem, 26 mobilních/desktopových pohledů. Instalační soubory obou architektur jsou totožné.
+
+Zdroj kandidáta: `476587fb9f7593ff951143b2f4c7c3bac011c51b`.
+Aktualizace používá stejnou identitu a zachovává data; starou aplikaci předem neodinstalovávej.
+Podle zadání nevytváří novou předinstalační HA/OneDrive zálohu; povinné zálohy před opravami zůstávají.
+
+Z cloudu poskytnuté adresy HA-MCP vrátily HTTP503 před initialize. Živá autentizace, katalog a fyzická
+funkce nejsou potvrzené. Příjem podepsaného důkazu obnovy je implementovaný; skutečný nezávislý ověřovatel
+zatím není připojený. Obecné statistické/registry/skriptové/Zigbee opravy zůstávají neimplementované automatické operace.
+HABS není povinnou závislostí instalace ani diagnostiky HADS.
+
+---
+
+# Poslední vydaná HADS Next 1.0.0-rc7 — konkrétní entity a ZHA Toolkit
 
 Vývojová větev: **codex/hads-next-zha-followup** · [PR 18](https://github.com/OndraMa/HADS/pull/18).
 

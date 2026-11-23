@@ -45,6 +45,7 @@ def health_domain(incident):
 def diagnostic_observation(incident):
     key = str(incident.get('correlation_key') or '')
     return (incident.get('kind') == 'provider_diagnostic' and key.startswith('provider:watchman:')
+            or incident.get('kind') == 'network_correlation'
             or incident.get('kind') == 'diagnostic_capture_gap' and key == 'health:zha-subscription'
             or incident.get('kind') == 'source_unavailable' and key == 'health:native-api-access'
             or incident.get('kind') == 'system_health_failure' and key.startswith('health:health:')

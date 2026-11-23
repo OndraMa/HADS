@@ -5,18 +5,28 @@ from html import escape
 from .command_center_style import STYLE
 
 def page(content,path):
+    from .build_identity import current_build
+    build=current_build()
+    identity='Verze '+build['version']+' · '+('zdroj '+build['source_commit'][:12]+' · sestavení '+build['build_id'][:12] if build['source_verified'] else 'původ sestavení není ověřený')
     prefix='../'*max(0,path.count('/')-1)
     content=re.sub(r'<!doctype[^>]*>|</?(?:html|head|body)[^>]*>|<title>.*?</title>|<style>.*?</style>','',content,flags=re.I|re.S)
     links=[('./','Domácnost'),('setup','Zdroje a připravenost'),('setup/monitors','Sledované funkce'),('setup/repair','Opravy'),('setup/history','Historie a migrace'),('setup/lighting','Světelné opravy'),('acceptance','Živá přejímka')]
+    links.insert(2,('setup/tools','Nástroje servisního týmu'))
+    links.extend([('setup/resources','Měření prostředků'),('setup/backup-verifier','Ověřovatel záloh')])
     links.insert(2,('setup/providers','Doplňky a ověření'))
     nav=''.join('<a href="'+prefix+href+'"'+(' aria-current="page"' if path in {'/','/index.html'} and href=='./' or path=='/'+href else '')+'>'+label+'</a>' for href,label in links)
-    return '<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HADS Next</title><style>'+STYLE+'</style></head><body><header class="app-header"><a class="brand" href="'+prefix+'./"><span class="brand-mark" aria-hidden="true">H</span><strong>HADS Next</strong></a><small>Domácnost pod dohledem</small></header><nav class="main-nav" aria-label="Hlavní navigace">'+nav+'</nav><main>'+content+'</main></body></html>'
+    return '<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HADS Next</title><style>'+STYLE+'</style></head><body><div class="app-sidebar"><header class="app-header"><a class="brand" href="'+prefix+'./"><span class="brand-mark" aria-hidden="true">H</span><strong>HADS Next</strong></a><small>Domácnost pod dohledem</small><small>'+escape(identity)+'</small></header><nav class="main-nav" aria-label="Hlavní navigace">'+nav+'</nav></div><main>'+content+'</main></body></html>'
 
 
 def repair_cards(app,identity,csrf):
     result=''
     for plan in app.repairs.plans(identity):
-        d=plan['document'];native=d['operation']=='core.enable_lighting_automation'
+        d=plan['document']
+        if d['operation']=='tool.approved':
+            from .tool_ui import repair_card
+            result+=repair_card(plan,csrf,app)
+            continue
+        native=d['operation']=='core.enable_lighting_automation'
         if native:original='Zapnutá' if d['original']['enabled'] else 'Vypnutá';proposed='Zapnutá' if d['proposed']['enabled'] else 'Vypnutá'
         else:original=d['original']['action']['target']['entity_id'];proposed=d['proposed']['action']['target']['entity_id']
         result+='<article><h3>Konkrétní opravný plán</h3><p>'+escape(original)+' → '+escape(proposed)+'</p><p>'+escape(d['reason'])+'</p><p>'+('Aktivace vybrané světelné automatizace nativní službou; konfigurace se nepřepisuje.' if native else 'Změna jediné vlastní virtuální testovací reference.')+'</p><p>'+escape(d['expected_result'])+'</p><p>Ověření vyžaduje skutečný spouštěč automatizace a '+str(d['verification']['watch_seconds'])+' sekund souvislého sledování. Snapshot není záloha HAOS.</p><details><summary>Přesný plán, rizika a záloha</summary><pre>'+escape(__import__('json').dumps(d,ensure_ascii=False,indent=2))+'</pre></details>'

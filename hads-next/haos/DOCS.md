@@ -1,63 +1,54 @@
-# HADS Next 1.0.0-rc7 — vyšetřování konkrétních entit a ZHA Toolkit
+# HADS Next 1.0.0-rc10 — instalační kandidát
 
-Tento kandidát navazuje nálezy Watchmanu na aktuální stav, registr a dostupnou pasivní ZHA diagnostiku.
-Není to plně dokončený autonomní opravář HAOS. Obecné Zigbee/registry opravy stále nejsou podporované.
+Kandidát PR #19 doplňuje automatické prověření přehrávání bez FastMCP, cílená čtení Zigbee, migraci bez Hamsteru a další opravy po RC9.
+Živá HAOS přejímka a úplné splnění původního zadání nejsou potvrzené.
 
-## Bezpečné stažení a aktualizace z RC6
+## Aktualizace ověřeného RC6–RC9
 
-Na přihlášeném GitHubu otevři vydání `hads-next-1.0.0-rc7` a adresář `KE_STAZENI/HADS_Next_1.0.0-rc7`.
-Použij **Download raw file** nebo stáhni kompletní ZIP a rozbal ho ve Windows. **Uložit stránku jako**
-stáhne HTML/JavaScript GitHubu, nikoli instalátor. Správný `.sh` začíná `#!/usr/bin/env bash`.
-Srovnej SHA-256 s manifestem vydání ještě před spuštěním skriptu; při neshodě ho nespouštěj.
+Stáhni kandidát z GitHubu a přenes `HADS_Next_install_1.0.0-rc10.sh` do `/config` v HAOS.
+Neodinstalovávej stávající aplikaci. Ve Windows instalátor nespouštěj a nic dalšího neinstaluj.
+V terminálové aplikaci HAOS spusť:
 
-Instalátor zkopíruj do `/config` v HAOS a spusť pouze tuto úvodní aktualizaci:
-
-```sh
-bash /config/HADS_Next_install_1.0.0-rc7.sh --verify
-bash /config/HADS_Next_install_1.0.0-rc7.sh --upgrade-rc6
+```bash
+bash /config/HADS_Next_install_1.0.0-rc10.sh --verify
+bash /config/HADS_Next_install_1.0.0-rc10.sh --upgrade
 ```
 
-RC6 předem nezastavuj ani neodinstalovávej. Kontroluje se přesný manifest vydaných RC6 zdrojů
-`4c8a8559b750013dc86588cac75ef81055d9b0ccd0334bbeeadaefacb8306dab` i jejich obsah.
-Nativní Supervisor update požaduje částečnou zálohu a zachová data/stav aplikace. Záloha zdrojů není
-obnovitelná záloha celé domácnosti. Nejasný zásah, vlastní změny nebo stav error se neobcházejí.
-Čistá nová instalace používá `--install-dev`; starší RC musí projít svými vydanými přechody.
-Při chybě nic nemaž a neodinstalovávej. Další diagnostické příkazy HADS od uživatele nevyžaduje.
+Instalátor nezaměňuje `error` za potvrzené zastavení. Ověří původní manifest a všechny zdroje;
+upravený strom nebo nejasný předchozí update nepřepíše a nic automaticky neodinstaluje.
+Použije native Supervisor update stejné identity `local_hads_next_practical` a zachová `/data`.
+Historie, incidenty, důkazy a konverzace se nemažou. Nepoužité staré souhlasy při změně ověřeného sestavení expirují.
+Nejistý update se neopakuje. Zachované staré zdroje nejsou záloha dat ani úplná obnova HAOS.
 
-## Co po instalaci udělá HADS sám
+Podle výslovného zadání **nevytváří novou předinstalační HA/OneDrive zálohu**.
+To neruší bezpečnostní požadavky před opravami domácnosti.
 
-Po ověření vlastníka při pravidelné kontrole:
+## Nová oddělená instalace
 
-1. Přečte nativní zdroje a aktuální hlášení Watchmanu; rozpozná jeho `unavail` jako nedostupnost.
-2. Konkrétní použitelné odkazy a otevřené ruční případy propojí s registry a stavy Core.
-3. Pokud je ZHA Toolkit načtený, zavolá pouze pevné `zha_toolkit.zha_devices` s odpovědí a omezenými poli.
-   Nevyvolává soubory, vlastní eventy, RF sken, reconfigure, binding ani změnu sítě.
-4. Pro dotčená ZHA zařízení přečte nativní existující seznam ZHA. Selhání Toolkitu nevydá za funkční integraci
-   a pokusí se pokračovat podporovanou nativní cestou. Oba zdroje vycházejí z dat ZHA; nejde o dvě nezávislá měření rádia.
-5. Rozliší zakázanou entitu, chybějící stav s potvrzeným 404, nedostupnost, unknown a neúspěšné čtení.
-   Přečte dostupnou krátkou historii; nic se automaticky nepřejmenovává ani nepovoluje.
-6. Ověřená nedostupnost dostane funkční spis navázaný na zařízení; stejný problém se nesmí zdvojit s ručním případem.
-   Opakované čtení není další výskyt. Nový výpadek po pozorované dostupnosti se eviduje, ale spis se bez funkční přejímky neuzavírá.
+Pouze pokud HADS Next není instalovaný a jeho zdrojový adresář neexistuje:
 
-Na hlavní stránce tak nejsou výpadek čtecího API a mezera odběru `zha_event` vydávané za poruchu zařízení.
-Dřívější již nepotvrzené diagnostické nálezy jsou ve sbalené historii. Vypnutá AI ani čekání na zdroj není žádost o schválení opravy.
-Nabídka hlášení problému zahrnuje i registry a odkazy Watchmanu, včetně entit chybějících v aktuálních stavech.
+```bash
+bash /config/HADS_Next_install_1.0.0-rc10.sh --install-dev
+```
 
-Ve spisu je konkrétní závěr, poslední čtení, dostupná ZHA data a důvod, proč zatím není oprava ke schválení.
-Při nedoložené příčině **není potřeba povolit obecné opravy**. Chybějící vykonavatel není problém, který vyřeší přepínač oprávnění.
-ZHA Toolkit má mnohem širší možnosti, ale RC7 je nezpřístupňuje analytikovi jako obecné služby.
+Je potřeba HA CLI (`ha`), `bash`, `python3`, `base64` a připojený místní adresář aplikací
+`/addons` nebo `/local_apps` v terminálové aplikaci HAOS. Chybějící adresář instalátor nevytváří naslepo.
+Pro inspekci bez HA CLI použij `--extract-only /absolutni/novy-adresar`; existující cíl se nepřepisuje.
+Původní Hermes 2.0.0-rc3 se nespouští ani nemění.
 
-## Hermes, AI a staré konektory
+## První spuštění
 
-Hermes má nový čtecí nástroj pro konkrétní již vyšetřený cíl spisu. Nedostane libovolný service call.
-Paměťová rezerva 576 MiB a limity placených volání zůstávají zachované. AI se instalací sama nezapíná.
-Převzaté staré adresy/tokeny zůstávají neaktivními soukromými návrhy; nepřenášejí autoritu ani souhlasy.
-Další nastavení popisuje [HAMCP_HERMES_CS.md](HAMCP_HERMES_CS.md).
+Otevři HADS v HAOS. Přihlášeného vlastníka ověří Home Assistant; ID ani tokeny nepatří do chatu.
+Záhlaví a `/health` ukazují verzi, zdrojový commit a ID sestavení. Neověřený původ je výslovně označený.
+HADS sám čte dostupné nativní zdroje a reporty; nemusíš kopírovat logy ani spouštět diagnostické příkazy.
 
-## Neověřené části
+- `docs/RC10_CONNECTORS_CS.md`: jednorázové kroky a známé meze.
+- `docs/ORCHESTRATION_SETUP_CS.md`: HA-MCP, původní Hermes a privátní připojení.
+- `docs/RESTORE_VERIFIER_CONTRACT.md`: příjem skutečného nezávislého důkazu obnovy.
+- `docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md`: čekající živá přejímka.
 
-Izolované testy nejsou živá přejímka ZHA Toolkitu. Ověřený upstream kontrakt je zdokumentovaný v auditu RC7;
-konkrétní instalace může vrátit nekompatibilní odpověď. Tu HADS označí a nepovažuje ji za nulu zařízení nebo úspěch.
-Živé připojení dříve poskytnutého MCP při auditu vrátilo HTTP 503; neproběhla diagnostika senzoru v produkci.
-Nativní cache ZHA, LQI a RSSI samy nedokazují příčinu. Síťové klíče, zálohy koordinátoru ani libovolné surové odpovědi se neexportují.
-Živé fyzické rádio/Zigbee, skutečný placený model, HAOS/OneDrive obnovitelnost a obecné opravy čekají.
+V **Nástroje servisního týmu** stačí přesná HA-MCP URL do maskovaného pole; token jen pokud jej server vyžaduje.
+Inspector/HADocs se hledají automaticky podle skutečného inventáře. Katalog není potvrzení diagnostiky.
+Konverzace spisu uchová otázky i doplnění; její zprávy nic neschvalují.
+AI vyžaduje původní izolovaný runtime, volných 576 MiB a odpovídající souhlas s náklady.
+Změny domácnosti vyžadují konkrétní podporovaný plán, nezávislý důkaz obnovy a vlastnický souhlas.

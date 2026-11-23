@@ -15,7 +15,11 @@ from .observability import ReadFailure,_NoRedirect,bounded_body,redact
 
 
 PROJECTS={'core':'home-assistant/core','supervisor':'home-assistant/supervisor',
-          'music_assistant':'music-assistant/server','zha':'home-assistant/core','community':None}
+          'music_assistant':'music-assistant/server','zha':'home-assistant/core','community':None,
+          'ha_mcp':'homeassistant-ai/ha-mcp','spook':'frenck/spook',
+          'watchman':'dummylabs/thewatchman','zha_toolkit':'mdeweerd/zha-toolkit',
+          'automation_inspector':'ITSpecialist111/Automation-Inspector','hadocs':'SirBlondieDK/HADocs',
+          'haghs':'HA-Pulse/home-assistant-global-health-score','entity_availability':'italo-lombardi/Home-Assistant-EntityAvailability'}
 DOCUMENTS={'ha_automation':'https://www.home-assistant.io/docs/automation/troubleshooting/',
     'ha_202611_release':'https://www.home-assistant.io/blog/2026/11/04/release-202611',
     'ha_mcp':'https://www.home-assistant.io/integrations/mcp_server/',
@@ -90,6 +94,7 @@ class ResearchReader:
             for row in case['evidence']:
                 data=row['payload'].get('data',{})
                 if not isinstance(data,dict):continue
+                if row.get('source')==args['project'] and row.get('kind','').startswith('tool:'+args['project']+':') and isinstance(data.get('provider_version'),str):observed.add(data['provider_version'])
                 if not isinstance(data.get('version'),str):continue
                 kind=row['kind'];project=args['project']
                 if kind=='hads_get_core_status' and project in {'core','zha','community'}:observed.add(data.get('version'))

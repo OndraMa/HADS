@@ -37,6 +37,7 @@ class EntityContext:
     SCHEMA=1
     def __init__(self,app):
         self.app=app;self.toolkit=None;self.cursor=0
+        self._device_inventory=None
         with app.store._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS entity_context_schema(version INTEGER PRIMARY KEY)')
             versions=[r[0] for r in db.execute('SELECT version FROM entity_context_schema')]
@@ -54,6 +55,18 @@ class EntityContext:
         registry=registry_rows(values.get('entity_registry'))
         states_ok=isinstance(states,list) and len(states)<=10000 and all(isinstance(r,dict) for r in states)
         current={r['entity_id']:r for r in states if isinstance(r.get('entity_id'),str) and ENTITY.fullmatch(r['entity_id'])} if states_ok else {}
+        devices=values.get('device_registry')
+        device_names={}
+        if isinstance(devices,list) and len(devices)<=10000:
+            for device in devices:
+                if not isinstance(device,dict) or not safe_id(device.get('id')):continue
+                device_names[device['id']]=next((name.strip()[:120] for name in (device.get('name_by_user'),device.get('name'))
+                                                 if isinstance(name,str) and name.strip()),None)
+        state_flags={}
+        for entity,raw in current.items():
+            state=raw.get('state')
+            state_flags[entity]=(state if state in ('unavailable','unknown') else 'available') if isinstance(state,str) else 'unverified'
+        self._device_inventory=(now,registry or {},device_names,state_flags,states_ok)
         watchman=next((r.get('diagnostic_read') for r in app.providers.snapshot() if r['provider_id']=='watchman'),None)
         findings=watchman.get('findings',[]) if isinstance(watchman,dict) else []
         watchman_targets={r['id'] for r in findings if r['kind']=='missing_entities' and r['id'].split('.')[0] not in {'lovelace','logger'} and r['id'] not in {'light.is_on','script.execute'}}
@@ -186,6 +199,22 @@ class EntityContext:
             snapshots=[e['payload'] for e in case['evidence'] if e['source']=='watchman_native']
             if snapshots:targets.update(x['id'] for x in snapshots[-1].get('findings',[]))
         return [{**json.loads(r['document']),'checked_at':r['checked_at']} for r in rows if targets is None or r['entity_id'] in targets]
+
+    def device_context(self,entity):
+        inventory=self._device_inventory
+        if inventory is None:return None
+        checked_at,registry,device_names,states,states_ok=inventory
+        if not 0<=self.app.clock()-checked_at<=600:return None
+        device_id=registry.get(entity,{}).get('device_id')
+        if not device_id:return None
+        entities=[]
+        for entity_id,row in registry.items():
+            if row['device_id']!=device_id:continue
+            status='disabled' if row['disabled_by'] else states.get(entity_id,'missing' if states_ok else 'unverified')
+            entities.append({'entity_id':entity_id,'name':row['name'],'status':status})
+        entities.sort(key=lambda row:(row['entity_id']!=entity,row['status']=='available',row['entity_id']))
+        return {'device_id':device_id,'device_confirmed':device_id in device_names,'name':device_names.get(device_id),
+                'entities':entities[:24],'total':len(entities),'checked_at':checked_at}
 
     def broker_read(self,incident_id,args):
         from .evidence_broker import BrokerDenied

@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-11-17T19:20:52.261929+00:00",
+  "baseline": "c1372a392f213ab995c9848ae9721b3732967268",
+  "source_commit": "b34f68bcef944e48f71fd0858ace17deb4ce8952",
+  "source_branch": "codex/hads-next-orchestration",
+  "pull_request": "https://github.com/OndraMa/HADS/pull/19",
+  "run_url": "https://github.com/OndraMa/HADS/actions/runs/44156311112",
+  "scope": [
+    "offline_provider_wire",
+    "offline_browser",
+    "native_arm64_container",
+    "native_amd64_container"
+  ],
+  "full_original_assignment_complete": false,
+  "new_RC_published": false,
+  "new_installer_published": false,
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "actual_installed_specialist_provider_processes_tested": false,
+  "independent_production_backup_verifier_connected": false,
+  "external_person_security_audit": false,
+  "paid_model_calls": 0,
+  "production_household_writes": 0,
+  "local": {
+    "tests_run": 304,
+    "tests_passed": true,
+    "python": "3.12.14",
+    "architecture": "x86_64",
+    "browser_views_passed": 22
+  },
+  "native": [
+    {
+      "architecture": "amd64",
+      "job_id": 134297869968,
+      "job_url": "https://github.com/OndraMa/HADS/actions/runs/44156311112/job/134297869968",
+      "conclusion": "success",
+      "tests_run": 304,
+      "tests_passed": true,
+      "tests_skipped": 0,
+      "container_passed": true,
+      "core_version": "2026.11.0",
+      "original_Hermes_revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "artifact_id": 14361736699,
+      "artifact_archive_sha256": "f5b5b9610fb760bc7e90f8e71f3ddd12141ea1c1ffcc2c499a021c3714f16480",
+      "retained_receipts": {
+        "amd64/offline-tests.json": "a7768414635e7be24ceb10e13e37eeffed8ed6f6be59409265c8fb2e3d847a56",
+        "amd64/ORCHESTRATION_PROOF.json": "fcca6c2b3528de7f80782c01a7305c58b46f353a1ba4b912950d8ac3074dbcd1",
+        "amd64/core-hermes-proof.json": "0215e8e31d8373582c8cf4168f4d38f8a09a4b596413d2f7074c070c5f225b42"
+      }
+    },
+    {
+      "architecture": "arm64",
+      "job_id": 134297870784,
+      "job_url": "https://github.com/OndraMa/HADS/actions/runs/44156311112/job/134297870784",
+      "conclusion": "success",
+      "tests_run": 304,
+      "tests_passed": true,
+      "tests_skipped": 0,
+      "container_passed": true,
+      "core_version": "2026.11.0",
+      "original_Hermes_revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "artifact_id": 14362370482,
+      "artifact_archive_sha256": "40e187f832b8b3a804f525aca422c98f98467b5db9ddf8de54192b4c5bf30887",
+      "retained_receipts": {
+        "arm64/offline-tests.json": "07d27388c86ee8864de74705f5ba1eac39060d3679b25122432646ff4cd0e724",
+        "arm64/ORCHESTRATION_PROOF.json": "a464ea17f24cce4e83a2bd0cfba6e390fd180a7b1cc70a4799eb9b2767e36231",
+        "arm64/core-hermes-proof.json": "4a852d0bc914931e56faf2f91fd71658ad013f24da25dce1803c20b96320ce87"
+      }
+    }
+  ],
+  "local_receipt_sha256": {
+    "local-offline-tests.json": "6c32cde253b45990dda20110388f832c0b02d8de5e29680a964a826cd55b4351",
+    "local-practical-browser.json": "effc26e30617105f562a408922e5ccd9be1ef6d6759fb802b15d9ca93d7672bf",
+    "source-inputs.json": "c2d3b924a9736ae167aa74fa52c43bc312bc02e3660465b3f2584c07699049fd"
+  },
+  "source_input_files_verified": 158,
+  "scope_notes": [
+    "Native container uses actual Core 2026.11.0; provider contracts were reviewed against upstream Core 2026.11.1. This is not a live HAOS acceptance.",
+    "The pinned original NousResearch Hermes and controller are real. The free local model is scripted and proves protocol execution, not real-model diagnostic reasoning.",
+    "Actual pinned Inspector builder runs against actual Core WebSocket; Inspector application HTTP listener is not started. Its HTTP contract is tested separately.",
+    "The additional approved_wire_e2e probe runs actual original Hermes and controller through the owner HTTP/CSRF boundary with one approved HA-MCP wire-contract write. Provider processes, physical observations, watch clock and backup verifier in that probe are explicit fixtures.",
+    "Exact JSON artifact contents are retained here. ZIP archive SHA-256 was independently compared with GitHub artifact metadata; internal receipt hashes and all available source input hashes were also checked.",
+    "Historical RC7 receipts, published archives, application identity and baseline branch are preserved. This docs-only delivery does not change tested runtime inputs."
+  ],
+  "remaining": [
+    {
+      "kind": "live_acceptance",
+      "description": "Authenticate and exercise actual installed providers, HAOS and their private API origins; record true provider versions and report times."
+    },
+    {
+      "kind": "live_acceptance",
+      "description": "Physical Zigbee sensor, radio and functional/inverse outcomes have not been tested."
+    },
+    {
+      "kind": "live_acceptance",
+      "description": "Real-model reasoning requires a separately opted-in small trial; no paid endpoint was invoked."
+    },
+    {
+      "kind": "live_acceptance",
+      "description": "Measure RPi 4/2 GB resource behaviour; the 576 MiB admission reserve remains enforced."
+    },
+    {
+      "kind": "integration",
+      "description": "A genuine independent OneDrive restoration verifier is not connected. Fixture keys are not production trust; risky operations remain blocked."
+    },
+    {
+      "kind": "implementation",
+      "description": "General statistics import, registry rename/delete, dashboard/script/general configuration and Zigbee binding/reporting/channel/attribute writes are not implemented automatic repairs; blocked with manual/diagnostic alternatives."
+    },
+    {
+      "kind": "review",
+      "description": "The recorded review is a second author pass and independent test contracts, not an external reviewer or production security audit."
+    }
+  ]
+}

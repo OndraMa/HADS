@@ -12,7 +12,7 @@ import tarfile
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.0.0-rc7"
+VERSION = "1.0.0-rc10"
 SLUG = "hads_next_practical"
 
 EXTRACTOR = r'''
@@ -74,15 +74,15 @@ Použití:
   bash HADS_Next_install_@@VERSION@@.sh --verify
   bash HADS_Next_install_@@VERSION@@.sh --extract-only /absolutni/novy-adresar
   bash HADS_Next_install_@@VERSION@@.sh --install-dev
-  bash HADS_Next_install_@@VERSION@@.sh --upgrade-rc6
-Nová instalace přidá local_@@SLUG@@. Výslovný --upgrade-rc6 aktualizuje jen ověřený Next RC6 přes nativní Supervisor update; zachová /data a vyžádá nativní částečnou zálohu. Starý Hermes 2.0.0-rc3 se nemění.
+  bash HADS_Next_install_@@VERSION@@.sh --upgrade
+Nová instalace přidá local_@@SLUG@@. Výslovný --upgrade aktualizuje ověřený Next RC6 až RC9 přes nativní Supervisor update a zachová /data. Podle zadání nevytváří novou předinstalační HA/OneDrive zálohu. Povinné zálohy před opravami zůstávají. Starý Hermes 2.0.0-rc3 se nemění.
 Původní Hermes je součástí balíčku. AI i vlastní testovací opravný katalog vyžadují výslovný souhlas. Obecné produkční zápisy jsou zakázané. Živá HAOS přejímka čeká.
 HADS_NEXT_USAGE
 }
 MODE="${1:-}"
 case "$MODE" in
   --help) [ "$#" = 1 ] || exit 2; usage; exit 0 ;;
-  --verify|--install-dev|--upgrade-rc6) [ "$#" = 1 ] || { usage; exit 2; } ;;
+  --verify|--install-dev|--upgrade|--upgrade-rc6|--upgrade-rc7) [ "$#" = 1 ] || { usage; exit 2; } ;;
   --extract-only) [ "$#" = 2 ] || { usage; exit 2; } ;;
   *) usage; exit 2 ;;
 esac
@@ -112,21 +112,21 @@ else echo 'Chybí připojený adresář /local_apps nebo /addons. Nic neměním.
 fi
 TARGET="$APP_ROOT/@@SLUG@@"
 if [ "$MODE" = '--install-dev' ] && { [ -e "$TARGET" ] || [ -L "$TARGET" ]; }; then
-  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6 použij --upgrade-rc6.' >&2
+  echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6–RC9 použij --upgrade. Neodinstalovávej aplikaci ani nemaž data.' >&2
   exit 1
 fi
 if ha apps --help >/dev/null 2>&1; then APP_COMMAND=apps
 elif ha addons --help >/dev/null 2>&1; then APP_COMMAND=addons
 else echo 'HA CLI neposkytuje podporovanou správu aplikací.' >&2; exit 1
 fi
-if [ "$MODE" = '--upgrade-rc6' ]; then
-  extract_payload "$STAGING/rc7-source"
-  python3 - "$APP_ROOT" "$APP_COMMAND" "$STAGING/rc7-source" <<'HADS_NEXT_UPGRADE'
+if [ "$MODE" = '--upgrade' ] || [ "$MODE" = '--upgrade-rc6' ] || [ "$MODE" = '--upgrade-rc7' ]; then
+  extract_payload "$STAGING/candidate-source"
+  python3 - "$APP_ROOT" "$APP_COMMAND" "$STAGING/candidate-source" <<'HADS_NEXT_UPGRADE'
 @@UPGRADER@@
 HADS_NEXT_UPGRADE
   exit 0
 fi
-[ ! -e "$TARGET" ] && [ ! -L "$TARGET" ] || { echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6 použij --upgrade-rc6.' >&2; exit 1; }
+[ ! -e "$TARGET" ] && [ ! -L "$TARGET" ] || { echo 'HADS Next již má zdrojový adresář. Pro ověřený RC6 až RC9 použij --upgrade.' >&2; exit 1; }
 # The list must succeed. A failed authorization is never treated as absence.
 ha "$APP_COMMAND" --raw-json > "$STAGING/apps.json"
 python3 - "$STAGING/apps.json" <<'HADS_NEXT_APPS'
@@ -170,18 +170,31 @@ def build_installer(output_dir: Path) -> dict:
     sources = {p.name: p for p in (ROOT / "haos").iterdir() if p.is_file()}
     sources["hermes-constraints.txt"]=ROOT/"docs/evidence/hermes-dependencies.txt"
     sources["lab/core-constraints.txt"]=ROOT/"lab/core-constraints.txt"
+    sources["lab/service-requirements.txt"]=ROOT/"lab/service-requirements.txt"
     sources.update({"companion/"+str(p.relative_to(ROOT/"companion")):p for p in (ROOT/"companion").rglob("*") if p.is_file() and "__pycache__" not in p.parts and p.suffix!=".pyc"})
     sources.update({"hads_next/" + p.name: p for p in (ROOT / "src/hads_next").glob("*.py")})
     if any(path.is_symlink() for path in sources.values()):
         raise ValueError("Source symlinks are forbidden")
+    for name in ('ORCHESTRATION_SETUP_CS.md','ORCHESTRATION_REVIEW_CS.md','ORCHESTRATION_LIVE_ACCEPTANCE_CS.md','ORCHESTRATION_ACCEPTANCE_CS.md','RC10_CONNECTORS_CS.md','PR19_ACCEPTANCE_MATRIX_CS.md','RESTORE_VERIFIER_CONTRACT.md'):
+        source=ROOT/'docs'/name
+        if source.is_file():sources['docs/'+name]=source
     contents = {name: path.read_bytes() for name, path in sources.items()}
     try:
         revision=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()
-        dirty=bool(subprocess.check_output(["git","status","--porcelain"],cwd=ROOT,text=True).strip())
+        dependencies=set(sources.values())|{Path(__file__).resolve(),ROOT/'scripts/upgrade_next.py'}
+        dirty=False
+        for path in sorted(dependencies):
+            try:previous=subprocess.check_output(['git','show',revision+':hads-next/'+str(path.relative_to(ROOT))],cwd=ROOT,stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:dirty=True;break
+            if previous!=path.read_bytes():dirty=True;break
     except (OSError,subprocess.CalledProcessError):revision=None;dirty=None
-    manifest = {"version": VERSION, "slug": SLUG, "scope": "haos_practical_repair_acceptance_candidate",
+    build_id=hashlib.sha256(json.dumps({'version':VERSION,'source':revision,'files':{name:hashlib.sha256(data).hexdigest() for name,data in sorted(contents.items())}},sort_keys=True).encode()).hexdigest()
+    manifest = {"version": VERSION, "slug": SLUG, "build_id":build_id,"scope": "haos_practical_repair_acceptance_candidate",
                 "development_base_commit": "5fb2ba17cf0b50d483128bc0ccb834cc126dee47",
                 "source_revision_at_build":revision,"worktree_modified_at_build":dirty,
+                "installer_backup_policy":"no_preinstall_HA_or_cloud_backup_user_requested",
+                "approved_provider_operations":["ha_mcp.ha_config_set_automation:single_proven_lighting_reference","spook.homeassistant.enable_entity:owner_intent"],
+                "independent_restore_proof_required":True,
                 "hermes_upstream_revision":"d923a5eb487a17c0a68801bba9ef0f56c81040a8",
                 "live_haos_verified":False,"production_writes_enabled":False,"owned_virtual_reference_CAS_available":True,"selected_native_lighting_enable_available":True,"native_config_writes_enabled":False,
                 "files": {name: {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
@@ -200,7 +213,7 @@ def build_installer(output_dir: Path) -> dict:
     archive = output_dir / f"HADS_Next_{VERSION}-source.tar.gz"
     archive.write_bytes(payload)
     encoded = base64.encodebytes(payload).decode().rstrip("\n")
-    script = TEMPLATE.replace("@@UPGRADER@@",(ROOT/"scripts/upgrade_rc6.py").read_text()).replace("@@EXTRACTOR@@", EXTRACTOR.strip()).replace("@@VERSION@@", VERSION).replace("@@SLUG@@",SLUG).replace("@@SHA@@", hashlib.sha256(payload).hexdigest()).replace("@@PAYLOAD@@", encoded)
+    script = TEMPLATE.replace("@@UPGRADER@@",(ROOT/"scripts/upgrade_next.py").read_text()).replace("@@EXTRACTOR@@", EXTRACTOR.strip()).replace("@@VERSION@@", VERSION).replace("@@SLUG@@",SLUG).replace("@@SHA@@", hashlib.sha256(payload).hexdigest()).replace("@@PAYLOAD@@", encoded)
     installer = output_dir / f"HADS_Next_install_{VERSION}.sh"
     installer.write_text(script)
     installer.chmod(0o755)

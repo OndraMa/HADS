@@ -10,7 +10,7 @@ from .evidence_broker import BrokerDenied
 from .observability import redact
 
 
-COMMON={'hads_get_incident','hads_get_related_incidents','hads_get_core_status'}
+COMMON={'hads_list_tools','hads_diagnostic_tool','hads_get_tool_schema','hads_propose_tool_repair','hads_get_incident','hads_get_related_incidents','hads_get_core_status'}
 ROLE_LABELS={'event':'Události a původ akcí','system':'Stav systému','supervisor':'Supervisor a aplikace',
     'device':'Ovladače a zařízení','automation':'Automatizace','research':'Výzkum známých problémů',
     'root_cause':'Porovnání příčin','repair_planner':'Návrh opravy','verification':'Ověření výsledku'}
@@ -73,7 +73,11 @@ class RoleBroker:
             'authority':'read_only','unsupported_tools':'Sources absent from the catalog cannot be claimed as available.'}
 
     def schemas(self):
-        return self.broker.schemas()+[
+        # Two redundant direct aliases remain in the controller catalog and
+        # are callable through hads_diagnostic_tool. Keep the unchanged 32-tool
+        # launcher boundary instead of weakening it when adding orchestration.
+        schemas=[r for r in self.broker.schemas() if r['name'] not in {'hads_get_core_status','hads_get_applications'}]
+        return schemas+[
             {'name':'hads_select_investigator','description':'Zvol další logickou specializaci stejného Hermes workeru; předání musí citovat skutečné důkazy.',
              'parameters':{'type':'object','properties':{'role':{'type':'string','enum':list(ROLES)},
                 'task':{'type':'string','maxLength':500},'handoff':FINDING},'required':['role','task'],'additionalProperties':False}},

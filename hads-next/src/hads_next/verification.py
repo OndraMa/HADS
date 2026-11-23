@@ -100,7 +100,7 @@ class FunctionalVerifier:
             actual_core_lab = plan.document['operation'] == 'core_lab.replace_entity_reference' and not supplied_clock
             managed_core = plan.document['operation'] in {'core_managed.replace_entity_reference','core.enable_lighting_automation'} and not supplied_clock
             report = {
-                "language": "cs", "scope": "actual_core_native_lighting" if managed_core and plan.document['operation']=='core.enable_lighting_automation' else "actual_core_managed_reference" if managed_core else "actual_core_container" if actual_core_lab else "offline_isolated_fixture", "plan_id": plan.plan_id,
+                "language": "cs", "scope": "provider_tool_functional_observations" if plan.document["operation"]=="tool.approved" else "actual_core_native_lighting" if managed_core and plan.document['operation']=='core.enable_lighting_automation' else "actual_core_managed_reference" if managed_core else "actual_core_container" if actual_core_lab else "offline_isolated_fixture", "plan_id": plan.plan_id,
                 "clock_mode": "caller_supplied_offline_clock" if supplied_clock else "system_utc",
                 "incident_id": plan.document["incident_id"], "execution_id": execution.execution_id,
                 "classification": classification, "created_at": now,
@@ -108,7 +108,7 @@ class FunctionalVerifier:
                 'operation':plan.document['operation'],
                 "functional_successes": len(successes), "coverage_checkpoints": len(covered),
                 "recurrences": len(recurrences), "evidence": fresh,
-                "limitation": ("Ověřena je virtuální automatizace ve skutečném odpojeném HA Core. Živý HAOS ani fyzické zařízení nebyly testovány."
+                "limitation": ("Ověřena je konkrétní funkční podmínka z přijatých pozorování; tento report sám nepotvrzuje úplnou živou HAOS přejímku." if plan.document["operation"]=="tool.approved" else "Ověřena je virtuální automatizace ve skutečném odpojeném HA Core. Živý HAOS ani fyzické zařízení nebyly testovány."
                     if actual_core_lab else "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován.")
                     + (" Sledovací interval používá testovací hodiny; nedokládá skutečnou dobu sledování domácnosti." if supplied_clock else ""),
             }

@@ -37,10 +37,11 @@ class ScriptedModel:
         self.requests.append(body)
         results=[json.loads(m['content']) for m in body['messages'] if m.get('role')=='tool']
         turn=len(self.requests)
-        if turn==1:name,args='hads_get_incident',{}
+        if turn==1:name,args=('hads_list_tools' if getattr(self,'catalog_mode',False) else 'hads_get_incident'),{}
         elif turn==2:
             self.automation_id=next(x.split('.',1)[1] for x in results[-1]['data']['incident']['components'] if x.startswith('automation.'))
-            name,args='hads_get_automation_config',{'automation_id':self.automation_id}
+            if getattr(self,'catalog_mode',False):name,args='hads_diagnostic_tool',{'provider':'core','tool':'hads_get_automation_config','arguments':{'automation_id':self.automation_id}}
+            else:name,args='hads_get_automation_config',{'automation_id':self.automation_id}
         elif turn==3:
             assert results[-1]['data']['actions'][0]['target']['entity_id']==['input_boolean.hads_lab_missing']
             name,args='hads_get_automation_traces',{'automation_id':self.automation_id}
@@ -220,7 +221,7 @@ input_button:
                             if investigations and investigations[0]['state'] in {'hypothesis_ready','blocked','failed','waiting_for_user','waiting_for_source'}:break
                             await asyncio.sleep(.1)
                         job=investigations[0]
-                        assert job['state']=='hypothesis_ready',{'state':job['state'],'calls':job['model_calls'],'requests':len(model.requests),'reads':job['reads']}
+                        assert job['state']=='hypothesis_ready',{'state':job['state'],'calls':job['model_calls'],'requests':len(model.requests),'reads':job['reads'],'steps':job['steps'],'worker':[r['content'] for r in app.store.case(incident['id'])['records'] if r['kind'] in {'hermes_worker_attempt','hermes_worker_runtime'}]}
                         suggestion=job['conclusion']['repair_suggestion']
                         assert suggestion['status']=='supported_lab_candidate' and suggestion['production_executable'] is False,suggestion
                         assert suggestion['change']=={'from':'input_boolean.hads_lab_missing','to':'input_boolean.hads_lab_target'}
@@ -252,6 +253,14 @@ input_button:
                     from trial_budget_probe import exercise_trial
                     result['trial_budget']=await exercise_trial(path,core,ws,launcher,user,models,'https://127.0.0.1:'+str(model_server.server_port)+'/v1/chat/completions')
                     assert result['trial_budget']['passed']
+                    if (Path(__file__).parent/'vendor/inspector/app').is_dir():
+                        sys.path.insert(0,str(Path(__file__).parent/'vendor/inspector'))
+                        from orchestrated_catalog_probe import exercise as exercise_orchestration
+                        result['tool_orchestration']=await exercise_orchestration(app,token,launcher,ScriptedModel)
+                        assert result['tool_orchestration']['passed']
+                        from approved_orchestration_probe import exercise as exercise_approved_orchestration
+                        result['tool_orchestration']['approved_wire_e2e']=await exercise_approved_orchestration(launcher,ScriptedModel)
+                        assert result['tool_orchestration']['approved_wire_e2e']['passed']
                 finally:
                     await asyncio.to_thread(controller.shutdown);controller.server_close()
                     await asyncio.to_thread(model_server.shutdown);model_server.server_close()

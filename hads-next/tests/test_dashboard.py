@@ -31,6 +31,19 @@ class DashboardTests(unittest.TestCase):
         with self.app.store._connect() as db:
             self.assertEqual(db.execute('SELECT count(*) FROM investigation_jobs').fetchone()[0],0)
             self.assertEqual(db.execute('SELECT count(*) FROM investigation_model_calls').fetchone()[0],0)
+    def test_basic_reads_are_distinct_from_running_or_incomplete_system_check(self):
+        self.app.system.last=None
+        self.app._sources={'system_health':{'read_succeeded':True}}
+        for state,message in (
+            ('idle','Systémová kontrola v tomto běhu zatím nemá výsledek.'),
+            ('running','Probíhá systémová kontrola.'),
+            ('failed','Systémová kontrola je neúplná.'),
+        ):
+            with self.subTest(state=state):
+                self.app._source_job['state']=state
+                html=render_dashboard(self.app,'fixture')
+                self.assertIn(message,html)
+                self.assertIn('1 z 1 základních zdrojů přečteno',html)
     def test_untrusted_application_names_and_symptoms_are_escaped(self):
         self.app._apps[0]['name']='<img src=x onerror=alert(1)>'
         html=render_dashboard(self.app,'csrf')

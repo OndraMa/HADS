@@ -1,5 +1,8 @@
 # M0 – rozhodnutí, bezpečnost a pořadí přejímky
 
+ADR-001 až ADR-005 zachycují počáteční M0. Pro stávající HAOS aplikaci po RC7
+je doplňuje ADR-006 níže; původní popis lokální fixture se nevydává za současný katalog celé aplikace.
+
 ## ADR-001: Nový strom a ověřený původ
 
 Rozhodnutí: samostatný Python balík `hads-next`, výchozí revize a SHA jsou
@@ -70,3 +73,45 @@ M3/M4 lze nezávisle testovat offline bez aktivace AI či produkčního zápisu,
 celou vertikálu označit hotovou až po skutečném spojení s ověřeným M2.
 M5 zůstává blokováno do ARM64 a autentizované testovací HAOS přejímky. Žádný
 instalátor tohoto vývojového stromu nesmí přepsat RC3.
+
+## ADR-006: Orchestrace skutečných providerů ve stávající aplikaci
+
+Datum: 17. 11. 2026. Stav: implementováno ve zdrojovém PR #19, přejímka živého HAOS čeká.
+Navazuje na `c1372a392f213ab995c9848ae9721b3732967268`, zachovává instalační identitu,
+databázi, původní Hermes a dosavadní samostatné testovací katalogy.
+
+Rozhodnutí:
+
+- `ToolRegistry` eviduje skutečné providery, dostupnost, autentizaci, katalog a jeho schémata,
+  původ/verzi, poslední ověřené čtení, rizika a implementovaného vykonavatele.
+  Obnovení katalogu neposouvá čas diagnostického čtení. Změna původu/verze/schématu vyžaduje nové ověření.
+- `ToolOrchestration` používá upstream reporty a skutečné MCP/native kontrakty. Čtyři společné
+  vstupy zachovají limit launcheru 32 nástrojů. Hermes obdrží katalog a výsledky, nikoli transporty a credentials.
+- `OrchestrationCases` získává omezené dávky důkazů i bez AI, rozšiřuje doložené závislosti,
+  ukládá korelace jako hypotézy a předává návrhy nezávislému plánovači.
+- `ApprovedRepairBroker` rekonstruuje jen konkrétně implementované operace: jednu doloženou světelnou
+  referenci HA-MCP a opětovné povolení jedné entity přes Spook. Neomezený service caller nevzniká.
+  Každý skutečný zápis má samostatný neměnný plán, ověřeného vlastníka, CSRF, expiraci,
+  vazbu na poskytovatele/schéma/cíl/původní stav a nezávislý důkaz obnovitelnosti OneDrive.
+- `RepairRecovery` po nejasném výsledku pouze čte. Původní příkaz se neopakuje a
+  další zápisy brokeru jsou blokované. Přijetí pozorovaného stavu vlastníkem spustí nové funkční ověření,
+  žádný další příkaz. Rollback má vlastní nový plán a souhlas.
+- Funkční report vyžaduje skutečný novější trigger/context/stav, čerstvé souhlasící čtení,
+  požadované potvrzení a souvislé sledování. Rozpor přeruší interval; výsledek HTTP nestačí.
+
+Zvažované alternativy:
+
+- Automaticky zpřístupnit celý MCP katalog: odmítnuto. `readOnlyHint` není bezpečnostní politika,
+  obecné proxy/Python/filesystem mohou obejít omezení a některé služby mají vedlejší účinky.
+- Znovu implementovat Inspector/HADocs/Watchman: odmítnuto. Použijí se skutečné existující výsledky
+  a jejich zdrojový čas, s viditelným fallbackem tam, kde rozhraní není dostupné.
+- Přidat druhý plný AI orchestrátor: není podmínkou provozu. Zůstává původní Hermes a jedno
+  měření rozpočtu; posouzení HASS-AI-Orchestrator je v samostatném zdrojovém auditu.
+- Vydat obecné statistické/Zigbee/registry zápisy jako hotové adaptéry: odmítnuto, dokud nemají
+  konkrétní bezpečnou transformaci, odpovídající obnovitelnost, funkční test a inverzní kontrakt.
+
+Důsledky: diagnostické konektory se zapojují do stejného spisu a běží úsporně; bezpečnost nevyžaduje
+zakázat všechny opravy. Katalog je však úzký a jednotlivá oprava není plné splnění zadání.
+Podpisový kontrakt zálohy není sám propojením skutečného HABS/OneDrive ověřovatele.
+Živé HAOS, nainstalované provider procesy, reálný úsudek modelu a RPi prostředky mají oddělenou přejímku.
+Do jejího ověření nevzniká další RC ani nový distribuční instalátor.
