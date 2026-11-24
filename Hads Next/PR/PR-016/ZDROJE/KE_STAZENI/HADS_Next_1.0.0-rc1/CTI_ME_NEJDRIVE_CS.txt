@@ -1,0 +1,20 @@
+﻿HADS Next 1.0.0-rc1 — kandidát pro oddělený testovací HAOS
+
+Instalátor: HADS_Next_install_1.0.0-rc1.sh (nespouštět ve Windows).
+Český návod: HADS_Next_1.0.0-rc1-navod-CS.md
+Nejprve porovnej SHA-256, potom v odpovídajícím testovacím terminálu:
+  bash HADS_Next_install_1.0.0-rc1.sh --verify
+  bash HADS_Next_install_1.0.0-rc1.sh --install-dev
+
+Původní Hermes je součástí aplikace. Kontrola runtime nepotřebuje model.
+AI i veřejný výzkum vyžadují zvláštní souhlas. Obecné produkční zápisy jsou zakázané.
+AMD64 a ARM64: nativní kontejnerové testy prošly, model byl skriptovaný.
+Živý HAOS, skutečný LLM a fyzická zařízení NEJSOU ověřené.
+Nová aplikace zachovává RC3 i starý Next. Nejde o produkční RC.
+
+Přesný testovaný zdrojový commit: 0457f9c0887f309bcfe197cc9aa2764b85e9e012
+Commit dokumentace a verzovaného repozitáře v tomto ZIPu: b4a9ac48efdde8f77fb5abb1f575680b445ab213
+Historické archivy uvnitř zdrojovy-repozitar/ nejsou aktuální instalátor.
+Návody a stav přejímky čti nejprve v kořeni tohoto balíčku.
+
+Jediná podporovaná zapisovací oprava mění vlastní virtuální referenci přes companion CAS. Potřebuje instalaci přiložené integrace a zvláštní schválení každého plánu. Nativní automatizace se obecně nepřepisují.

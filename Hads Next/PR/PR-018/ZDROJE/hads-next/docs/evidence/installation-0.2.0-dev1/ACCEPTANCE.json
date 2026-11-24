@@ -1,0 +1,72 @@
+{
+  "scope": "native_github_actions_container_acceptance",
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "source_commit": "7b3df242cd3aa056d76d64a478f122dca4fed6e9",
+  "run_id": 42678100603,
+  "run_url": "https://github.com/OndraMa/HADS/actions/runs/42678100603",
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "both_passed": true,
+  "installer_sha256": "ea0c569b03f669d54f2ba5f709821601aad3b45236122c392c86bfe0a09fcb9c",
+  "installer_identical_between_architectures": true,
+  "source_worktree_modified_at_build": true,
+  "source_worktree_note": "CI check.py regenerated only its receipt before package build; payload files compared to the exact committed source in this manifest. Dirty flag remains explicit.",
+  "files_sha256": {
+    "amd64/package.json": "00b2916ce80995a6b7bd62d3045bf120addd2e124607520d376b1d6c73694c37",
+    "amd64/offline-tests.json": "e15310aa71f0df21507d1547a1812bc66a4cfabfbb37ea4ad3f19a51b92f4363",
+    "amd64/core-hermes.json": "93a72ae70039d27f3ccef3d6203a23d8836165036063854935175932c1862be8",
+    "arm64/package.json": "4b7ec0095081b3496bb023aa59b3aaba03591a6e1c31d83b547e61379c6708c3",
+    "arm64/offline-tests.json": "f2a440282c50c55c13bba5ea71d1e0f87356e0072b7281b89227b60c6e128c29",
+    "arm64/core-hermes.json": "51a0a054bf8ff7705875f9f7cda960aa764b19a00f2871c3e778f52b9783537c"
+  },
+  "archive_sha256": {
+    "amd64": "2b77f49b01a48630af906d839a7ecb099d2c96b2e15f5ef9762720d1af7a29e0",
+    "arm64": "d2bb780012f636676a6b8a1c231040d74c2a4525ee8387b8ef4434dc12d576eb"
+  },
+  "limitations": [
+    "No physical HAOS, Supervisor or Music Assistant server",
+    "Scripted HTTPS model only; actual upstream Hermes and Core are real",
+    "No Raspberry Pi hardware or production writes",
+    "Host package versions are constrained, external apt repository snapshots are not pinned"
+  ],
+  "payload_files_verified_against_commit": {
+    "DOCS.md": "48d54b2d25cabfde2e0fe4b267be9f2ca565e158a34a31fc3a430b99fd651c25",
+    "Dockerfile": "dec8e6faecbd06f654bc994b58ff49b70e9511d2283cd10bff3892071a570e1d",
+    "README.md": "5b55fc557c2c08de243ddcf1abdca5852ff3c6156bbce96a1850518941fb711f",
+    "config.yaml": "67938f917afd609c98fc08e2b5e8a622a951b3ddbba68997f71743e421eca834",
+    "hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "hads_next/addon_server.py": "a5625876ee703937044a7f04ecb105a60eba0f8d15d99176f1483b48a6e2cab0",
+    "hads_next/ai_provider.py": "00ca8c6542c9e062fb52ea76236490bad2e9cdd8856584b26ee3da251b538540",
+    "hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+    "hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+    "hads_next/evidence.py": "f74a6cb13a2cedaefb329c04095d89ca597e67c87e8653d9cda9d642ed71ad6e",
+    "hads_next/evidence_broker.py": "d5e81a4df70dba869fad074333a3425418c775f7f91df3dd399dc19d81b6af02",
+    "hads_next/haos_application.py": "e9727cb62f5e5923d8c11ad831094eedd9484aded1ffaabf19834954d9b43280",
+    "hads_next/hermes_runtime.py": "c41ae1410e7a89402de621f2e7ff35327a93eeb702bd51729abbd0d6549fea3a",
+    "hads_next/hermes_sandbox.py": "cc235b984711febe1423d0131216175bdb208cae2f16fd531a8b25dfa47652e9",
+    "hads_next/hermes_worker.py": "b78257450cb2620f87f716fd7843bd8fa325a0ed0cf598b05094901d79566cfe",
+    "hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "hads_next/investigation_jobs.py": "697c2924f0b3b0de1776fd00990d49985b7163e9bd2a899b1cd8b31605aeacc0",
+    "hads_next/investigation_service.py": "7f37b23dc337c0182675898b74e357d24be228daa4631d7bc4f5be1a298af9f3",
+    "hads_next/investigator_roles.py": "65081ad1053bfcbd4229dbaa677c4258bdd8fbc9d12914b74733a5b471e4c40c",
+    "hads_next/music_assistant.py": "cb201cc61fd10266775aa661c5c6383f16bb373adc260ca93c9db9b35ce9a98a",
+    "hads_next/music_configuration.py": "185dfda40c1b2ec51aa085dcabb8772218557169e322180fb6e528dc7ffc74b4",
+    "hads_next/observability.py": "316419024253844d85388291e84449ecff013c5b415bb2dbc37dc7bc9d2ee7fb",
+    "hads_next/repair.py": "6ea5c087c78a5b055ec7fa36216d46dbf9ca2c894ab3eb051e4474717afbb7f0",
+    "hads_next/repair_suggestions.py": "6fc1b782245fe377c390e9011acf06e26ba90d1cee798d2cff9433d3541d4e02",
+    "hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+    "hads_next/research.py": "a9abf2d889af700d53a283ea50d7dece66b51fa6acf675f161e47c6efe9ed8ae",
+    "hads_next/runtime_check.py": "7d8de972ca897b50c2a445bd26c06fc18a07edec30ffb6731e390e3389486bb4",
+    "hads_next/runtime_launcher.py": "0419dbf4b57542296ba26bef734c3cacf9a7741e7af61bff16aca4aee55d6027",
+    "hads_next/verification.py": "c0e918695817ec94f7c3c0120ed0c947fd75ab2582bb52759221139edaf8dfb4",
+    "hads_next/worker_protocol.py": "f7a8bdf0cfaba528e7c167067cdd67b04e26b84f574e6c51abd544a383f715c6",
+    "hads_next/zha_observer.py": "16d50044c3e608802ae84a540cdbfb3de431b2ce1931a9a20265b3961a28bc1e",
+    "hermes-constraints.txt": "440353ed7e083937e9c0eb830a7988eda0d136c1884f35f02c794a28608e325a",
+    "lab/core-constraints.txt": "5b318ee1a5bcaf234f48bdb14426ffe5b436d2af01d3bda2c9533a1f4242b5f7",
+    "run.sh": "5a74693dddfeaa91cdaf6c5ebd386018e3e0ee0bf2fec325aa1d7b55cc617530"
+  },
+  "source_archive_sha256": "30e39ed148c774ba010f72e5396b46e3dfbe7ab69ced4f94eac9a04dc84eb48c"
+}

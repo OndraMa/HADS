@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.test-tmp/
+.venv/
+work/test-deps/
+*.log
+*.db
+*.db-wal
+*.db-shm

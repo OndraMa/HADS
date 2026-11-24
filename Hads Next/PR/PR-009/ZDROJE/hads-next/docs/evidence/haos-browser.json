@@ -1,0 +1,8 @@
+{
+  "scope": "offline_browser_with_fake_ingress",
+  "live_haos": false,
+  "browser": "system Chromium through Playwright",
+  "manual_incident_form": true,
+  "persisted_after_reload": true,
+  "passed": true
+}

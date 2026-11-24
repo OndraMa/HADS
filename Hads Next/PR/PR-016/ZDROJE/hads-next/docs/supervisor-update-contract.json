@@ -1,0 +1,22 @@
+{
+  "repository": "home-assistant/supervisor",
+  "version": "2026.11.0",
+  "revision": "c1c6f0a754c0656eb1af189f11009f1cfc4b3e28",
+  "scope": "upstream_source_not_live_Supervisor",
+  "native_update_with_backup": true,
+  "backup_homeassistant": false,
+  "backup_apps": "only_requested_slug",
+  "restores_prior_started_state": true,
+  "files": [
+    {
+      "path": "supervisor/apps/app.py",
+      "git_blob_sha": "0967a899230fb203134eddb39177a60c92cced22",
+      "url": "https://github.com/home-assistant/supervisor/blob/c1c6f0a754c0656eb1af189f11009f1cfc4b3e28/supervisor/apps/app.py"
+    },
+    {
+      "path": "supervisor/apps/manager.py",
+      "git_blob_sha": "402a8bd8e44162774dfbb6a15f56bb577c2b1d9e",
+      "url": "https://github.com/home-assistant/supervisor/blob/c1c6f0a754c0656eb1af189f11009f1cfc4b3e28/supervisor/apps/manager.py"
+    }
+  ]
+}

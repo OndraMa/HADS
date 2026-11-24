@@ -1,27 +1,25 @@
-# Všechny pull requesty HADS
+# Pull requesty — Hads Next
 
-Stav načtený 24. 11. 2026. Skutečné PR, jejich diskuse, review a změny jsou dostupné na GitHubu; zde je čitelný katalog a zachované popisy. Uspořádání žádný PR neslučuje ani neuzavírá. PR #1–3 patří do starší řady HADS 4.x, PR #4–19 do Next.
+Každá složka PR obsahuje skutečné soubory, ne pouze odkazy. Ve složce ZDROJE je úplná kopie zdrojového stromu v uvedeném commitu včetně dokumentace a dostupných balíků. Jde o historický snímek, nikoli automatické sloučení nebo ověření funkčnosti v HAOS.
 
-| PR | Název | Stav | Zachovaný popis |
-|---|---|---|---|
-| [#19](https://github.com/OndraMa/HADS/pull/19) | HADS Next RC9 candidate: sidebar, MCP and Zigbee diagnostics | Otevřený návrh | [Popis](PR-019.md) |
-| [#18](https://github.com/OndraMa/HADS/pull/18) | HADS Next RC7: Watchman follow-up, confined ZHA Toolkit reads and reproducible HAOS installer | Otevřený | [Popis](PR-018.md) |
-| [#17](https://github.com/OndraMa/HADS/pull/17) | HADS Next RC6: oprava sběru, Watchman a ověřený návod HA-MCP/Hermes | Otevřený | [Popis](PR-017.md) |
-| [#16](https://github.com/OndraMa/HADS/pull/16) | HADS Next RC5: ověření doplňků, soukromý přenos nastavení a ověřený instalátor | Otevřený | [Popis](PR-016.md) |
-| [#15](https://github.com/OndraMa/HADS/pull/15) | Audit Spook a HA-MCP: kontrakty schválených zápisů a skutečné blokery | Otevřený | [Popis](PR-015.md) |
-| [#14](https://github.com/OndraMa/HADS/pull/14) | Zobrazit výsledky opakovaných nativních čtení System Health a Repairs | Otevřený | [Popis](PR-014.md) |
-| [#13](https://github.com/OndraMa/HADS/pull/13) | HADS Next RC4: automatická čtení, omezený AI test a instalátor pro RC3 | Otevřený | [Popis](PR-013.md) |
-| [#12](https://github.com/OndraMa/HADS/pull/12) | HADS Next: konkrétní Marketplace důkazy a oddělení diagnostiky od poruch | Otevřený | [Popis](PR-012.md) |
-| [#11](https://github.com/OndraMa/HADS/pull/11) | HADS Next RC3: bezpečná obnova instalace po odinstalování | Otevřený | [Popis](PR-011.md) |
-| [#10](https://github.com/OndraMa/HADS/pull/10) | HADS Next 1.0.0-rc3: opravné vydání a bezpečná aktualizace RC2 | Otevřený | [Popis](PR-010.md) |
-| [#9](https://github.com/OndraMa/HADS/pull/9) | HADS Next: srozumitelný přehled a správné rozlišení zastavených aplikací | Otevřený | [Popis](PR-009.md) |
-| [#8](https://github.com/OndraMa/HADS/pull/8) | HADS Next: praktická světelná oprava, systémová diagnostika a živá přejímka | Otevřený | [Popis](PR-008.md) |
-| [#7](https://github.com/OndraMa/HADS/pull/7) | HADS Next: souhrnné dodání detekce, schválené CAS opravy a HAOS kandidátu | Otevřený | [Popis](PR-007.md) |
-| [#6](https://github.com/OndraMa/HADS/pull/6) | HADS Next: skutečný izolovaný Hermes, nativní zdroje a testovaný HAOS instalační kandidát | Otevřený návrh | [Popis](PR-006.md) |
-| [#5](https://github.com/OndraMa/HADS/pull/5) | HADS Next: ověřené připojení a první schválená oprava ve skutečném Core | Otevřený návrh | [Popis](PR-005.md) |
-| [#4](https://github.com/OndraMa/HADS/pull/4) | HADS Next: instalační balíček HAOS a izolovaný průchod opravou | Otevřený návrh | [Popis](PR-004.md) |
-| [#3](https://github.com/OndraMa/HADS/pull/3) | HADS 4.7.0-rc3: evidence-driven investigation and scoped repair launch | Otevřený návrh | [Popis](PR-003.md) |
-| [#2](https://github.com/OndraMa/HADS/pull/2) | 4.7.0-rc2: bezpečnostní stabilizace po auditu Work | Otevřený návrh | [Popis](PR-002.md) |
-| [#1](https://github.com/OndraMa/HADS/pull/1) | HADS 4.7.0-rc1 — diagnostické nálezy a strukturované opravné plány | Otevřený návrh | [Popis](PR-001.md) |
+- PR-001/ZDROJE — HADS 4.7.0-rc1 — diagnostické nálezy a strukturované opravné plány
+- PR-002/ZDROJE — 4.7.0-rc2: bezpečnostní stabilizace po auditu Work
+- PR-003/ZDROJE — HADS 4.7.0-rc3: evidence-driven investigation and scoped repair launch
+- PR-004/ZDROJE — HADS Next: instalační balíček HAOS a izolovaný průchod opravou
+- PR-005/ZDROJE — HADS Next: ověřené připojení a první schválená oprava ve skutečném Core
+- PR-006/ZDROJE — HADS Next: skutečný izolovaný Hermes, nativní zdroje a testovaný HAOS instalační kandidát
+- PR-007/ZDROJE — HADS Next: souhrnné dodání detekce, schválené CAS opravy a HAOS kandidátu
+- PR-008/ZDROJE — HADS Next: praktická světelná oprava, systémová diagnostika a živá přejímka
+- PR-009/ZDROJE — HADS Next: srozumitelný přehled a správné rozlišení zastavených aplikací
+- PR-010/ZDROJE — HADS Next 1.0.0-rc3: opravné vydání a bezpečná aktualizace RC2
+- PR-011/ZDROJE — HADS Next RC3: bezpečná obnova instalace po odinstalování
+- PR-012/ZDROJE — HADS Next: konkrétní Marketplace důkazy a oddělení diagnostiky od poruch
+- PR-013/ZDROJE — HADS Next RC4: automatická čtení, omezený AI test a instalátor pro RC3
+- PR-014/ZDROJE — Zobrazit výsledky opakovaných nativních čtení System Health a Repairs
+- PR-015/ZDROJE — Audit Spook a HA-MCP: kontrakty schválených zápisů a skutečné blokery
+- PR-016/ZDROJE — HADS Next RC5: ověření doplňků, soukromý přenos nastavení a ověřený instalátor
+- PR-017/ZDROJE — HADS Next RC6: oprava sběru, Watchman a ověřený návod HA-MCP/Hermes
+- PR-018/ZDROJE — HADS Next RC7: Watchman follow-up, confined ZHA Toolkit reads and reproducible HAOS installer
+- PR-019/ZDROJE — HADS Next RC9 candidate: sidebar, MCP and Zigbee diagnostics
 
-[HADS Next](../README.md) · [Hads 2 — starší PR](../../Hads%202/PR/README.md) · [Hermess](../../Hads%20Hermess/PR/README.md)
+ARCHIV_PUVODNICH_PREHLEDU obsahuje nezměněné původní Markdown přehledy. Nic nebylo odstraněno.

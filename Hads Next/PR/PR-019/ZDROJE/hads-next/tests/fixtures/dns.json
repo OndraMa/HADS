@@ -1,0 +1,10 @@
+{
+  "description":"One independently observed DNS outage, three explicitly correlated integration failures, one unrelated error.",
+  "events":[
+    {"source":"network/monitor","kind":"network_dns_failure","observed_at":1794139400,"event_id":"dns-outage-1","payload":{"outage_id":"dns-20261108-001","resolver":"192.0.2.53","query":"example.invalid","result":"timeout","affected_entities":["media_player.kitchen_radio"]}},
+    {"source":"ha/system_log","kind":"integration_error","observed_at":1794139401,"event_id":"weather-dns-1","payload":{"integration":"weather","outage_id":"dns-20261108-001","message":"Name resolution timed out"}},
+    {"source":"ha/system_log","kind":"integration_error","observed_at":1794139402,"event_id":"radio-dns-1","payload":{"integration":"music_assistant","outage_id":"dns-20261108-001","message":"Unable to resolve stream host"}},
+    {"source":"ha/system_log","kind":"integration_error","observed_at":1794139403,"event_id":"update-dns-1","payload":{"integration":"update","outage_id":"dns-20261108-001","message":"Could not resolve update endpoint"}},
+    {"source":"ha/system_log","kind":"integration_error","observed_at":1794139402,"event_id":"unrelated-1","payload":{"integration":"camera","message":"Name resolution timed out"}}
+  ]
+}

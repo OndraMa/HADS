@@ -1,0 +1,17 @@
+{
+  "number": 1,
+  "title": "HADS 4.7.0-rc1 — diagnostické nálezy a strukturované opravné plány",
+  "state": "open",
+  "body": "## Co se mění\n- Import závislostí Automation Inspector schema v2, přesnější Watchman/Entity Availability a root-case deduplikace HADocs.\n- Převod strukturované AI analýzy na přesné změny automatizací/skriptů; kontrola vlastníka, původní hodnoty a náhled před schválením.\n- Syntéza závěru v rámci rozpočtu AI, uchování poslední analýzy a zobrazení blokujících důvodů.\n- Omezené čtecí Hamster MCP rozhraní; žádné libovolné shell/SQL akce z provider payloadů.\n- Zdroje, sestavovací skripty, výzkumný audit a instalační kandidát. Původní 4.6.3 zachována.\n\n## Ověření\n138 unit/regresních testů, bez chyb a přeskočení. Python compile, JavaScript syntax, WebMCP contract, YAML a byte-shoda payloadu se zdroji prošly. Podrobnosti v outputs/HADS4_4.7.0-rc1-verification.json.\n\n## Co NENÍ ověřeno/hotovo\nŽivý HAOS/Ingress, Docker build cílové architektury, placené OpenAI volání a skutečná obnova zálohy nebyly testovány. Univerzální autonomní opravy registrů/DB, využití všech MCP nástrojů a bezpečné opakované plánování po každém selhání nejsou dokončené. Nejde o deklaraci plně funkčního autonomního opraváře.\n\nPřed sloučením/stabilním vydáním provést akceptaci z work/v470/src/RELEASE_4.7.0-rc1.md. Surové domácí logy a databáze nejsou součástí změny.",
+  "created_at": "2026-09-11T10:15:13Z",
+  "updated_at": "2026-09-11T10:15:13Z",
+  "head": {
+    "ref": "codex/hads-4.7.0-rc1",
+    "sha": "507f66399cb074bb42e70ae184b33ac2de110122",
+    "tree": "1e6efea079719dc96d31ba25bc558ecc9ec9251e"
+  },
+  "base": {
+    "ref": "main",
+    "sha": "3d6f70a863cc3649ed2c69a19b759798700cf8e1"
+  }
+}

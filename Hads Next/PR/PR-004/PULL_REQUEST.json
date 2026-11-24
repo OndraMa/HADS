@@ -1,0 +1,17 @@
+{
+  "number": 4,
+  "title": "HADS Next: instalační balíček HAOS a izolovaný průchod opravou",
+  "state": "open",
+  "body": "Přidává samostatný HADS Next vývojový strom vedle Hermes RC3, pět testovatelných vrstev, audit původu a izolovaný průchod incident → důkazy → originální Hermes → neměnný plán → místní schválení → fixture oprava → funkční ověření → český report.\n\nNově obsahuje skutečný self-contained instalační soubor pro testovací HAOS:\n- hads-next/releases/0.1.0-dev1/HADS_Next_install_0.1.0-dev1.sh\n- zdrojový tar.gz, SHA256SUMS a návod hads-next/haos/DOCS.md\n- režimy --verify, --extract-only a explicitní --install-dev; existující cílová aplikace se nepřepisuje\n- samostatný slug local_hads_next_dev, český ingress, omezená Core GET čtení a cílené ruční incidenty s historií a vlastní SQLite databází\n- ingress vyžaduje Supervisor peer a explicitně nastavený owner_user_id; POST lokálních spisů chrání CSRF. Po startu proces odloží UID na 65532.\n\nOvěření: 89 offline/unit/integration testů bez selhání a přeskočení; AMD64 Docker build ze skutečného instalačního payloadu; spuštění pod UID 65532 bez capabilities, odmítnutí přímého přístupu 403 a zachování spisu po restartu kontejneru. Instalační sekvence a odmítnutí opakované instalace prošly s falešným Supervisorem. Chromium test formuláře a persistence po obnovení stránky prošel s umělou ingress identitou. Účtenky jsou v hads-next/docs/evidence/haos-package.json, haos-browser.json a offline-tests.json. Publikovaný Git tree přesně odpovídá lokálním otestovaným souborům.\n\nOriginální Hermes native loop je samostatně ověřený v izolovaném AMD64 kontejneru proti skriptovanému místnímu modelu: 3 modelové požadavky, dvě čtení; nepovolené terminal/execute_code/tool_call byly odmítnuty bez canary zápisu. Tím není ověřena kvalita skutečného LLM úsudku. V HAOS instalační aplikaci se Hermes, placené modely ani živý opravný vykonavatel neaktivují.\n\nRozsah: jde o instalovatelnou vývojovou přejímku, nikoli dokončenou autonomní platformu nebo produkční RC. Skutečný HAOS/Supervisor/Core ingress a oprávnění, ARM64/RPi, bezpečný produkční Hermes broker, Music Assistant FastMCP, živé opravy a obnovitelnost OneDrive čekají. Core proxy token má administrátorská oprávnění; aplikace jej omezuje pevným čtecím katalogem a nepředává AI. Produkční RC3, main, vydané archivy a OneDrive guard se nemění. Přesný postup další přejímky je v hads-next/docs/haos-acceptance.md.",
+  "created_at": "2026-11-08T15:48:26Z",
+  "updated_at": "2026-11-09T08:45:54Z",
+  "head": {
+    "ref": "codex/hads-next",
+    "sha": "ae13af8f0dc1a7556a7fa807f00cfb50a8640420",
+    "tree": "acc0929ca21859da75f98c546ece356fd88badfd"
+  },
+  "base": {
+    "ref": "hermes-2-rc2-cloud-verification",
+    "sha": "c491893bd433fa0e17dcd852a3eaa610eb3148ad"
+  }
+}

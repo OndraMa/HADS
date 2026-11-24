@@ -1,0 +1,13 @@
+﻿HADS Next 1.0.0-rc5 — ověřování doplňků a soukromý návrh připojení
+
+Pro běžící RC4 ulož instalátor do /config a spusť pouze úvodní aktualizaci:
+  bash /config/HADS_Next_install_1.0.0-rc5.sh --upgrade-rc4
+
+RC4 předem nezastavuj ani neodinstalovávej. Supervisor aktualizuje pouze HADS Next s částečnou zálohou.
+Po aktualizaci otevři Doplňky a ověření. Nativní kontrola běží automaticky bez AI.
+Volitelný přenos z Hermes 2.0.0-rc3 uloží pouze neaktivní soukromý návrh spojení. Konektory tím nejsou aktivované ani ověřené.
+MCP funkční čtení a zapisovací adaptéry Spook/HA-MCP ještě nejsou hotové; přehled je neoznačí jako funkční. HASK je vynechaný.
+AI zůstává vypnutá, paměťová rezerva 576 MiB platí. Klíče nepatří do chatu nebo GitHubu.
+Zdrojový commit: 84bb795b522c60d26b2b67e7e07fb9b0fc12bcce
+Nativní kontejnery a skriptovaný model nejsou živá HAOS přejímka ani ověření funkce doplňků.
+Podrobný návod: HADS_Next_1.0.0-rc5-navod-CS.md. Při chybě nic nemaž, neodinstalovávej a zachovej hlášku.

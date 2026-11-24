@@ -1,0 +1,20 @@
+{
+  "description": "Synthetic anonymized HADS evidence; not an upstream Music Assistant response schema.",
+  "entity_id": "media_player.kitchen_radio",
+  "incident_at": 1794139200,
+  "stop_command": [
+    {"source":"ha/core","kind":"ha_action","observed_at":1794139199,"event_id":"action-stop-1","payload":{"action":"media_player.media_stop","target_entity_id":"media_player.kitchen_radio","origin":"automation.quiet_hours","context":{"id":"ctx-quiet-1","parent_id":"ctx-time-trigger"}}},
+    {"source":"ha/core","kind":"player_state","observed_at":1794139200,"event_id":"radio-state-1","payload":{"entity_id":"media_player.kitchen_radio","from":"playing","to":"idle","context":{"id":"ctx-state-1","parent_id":"ctx-quiet-1"}}}
+  ],
+  "stream_failure": [
+    {"source":"ma/diagnostics","kind":"ma_playback","observed_at":1794139198,"event_id":"ma-stream-1","payload":{"entity_id":"media_player.kitchen_radio","event":"stream_error","reason":"stream_timeout","provider_id":"radio_provider","message":"No audio data received within timeout"}},
+    {"source":"ha/core","kind":"player_state","observed_at":1794139200,"event_id":"radio-state-2","payload":{"entity_id":"media_player.kitchen_radio","from":"playing","to":"idle","context":{"id":"ctx-stream-end"}}}
+  ],
+  "player_disconnected": [
+    {"source":"ma/diagnostics","kind":"ma_player","observed_at":1794139199,"event_id":"ma-player-1","payload":{"entity_id":"media_player.kitchen_radio","event":"disconnected","player_id":"anonymous_player"}},
+    {"source":"ha/core","kind":"player_state","observed_at":1794139200,"event_id":"radio-state-3","payload":{"entity_id":"media_player.kitchen_radio","from":"playing","to":"unavailable","context":{"id":"ctx-disconnect"}}}
+  ],
+  "unknown": [
+    {"source":"ha/core","kind":"player_state","observed_at":1794139200,"event_id":"radio-state-4","payload":{"entity_id":"media_player.kitchen_radio","from":"playing","to":"idle","context":{"id":"ctx-unknown"}}}
+  ]
+}

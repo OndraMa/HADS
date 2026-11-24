@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0-rc3",
+  "installer_backup_policy": "no_preinstall_ha_or_cloud_backup_user_requested",
+  "source_files": 133,
+  "python_unittest": {
+    "tests": 416,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0,
+    "status": "passed",
+    "environment": "GitHub Actions native ARM64 Python 3.14"
+  },
+  "python_compileall": "passed",
+  "javascript_syntax": "passed_cloud_arm64",
+  "javascript_ui_suites": {
+    "count": 9,
+    "status": "passed_cloud_arm64"
+  },
+  "docker_build": "passed_cloud_arm64_with_real_Hermes_mandatory_smoke",
+  "local_full_suite": "not_completed_Windows_socketpair_accept_blocked_in_environment",
+  "local_focused_tests": {
+    "tests": 21,
+    "failures": 0,
+    "errors": 0,
+    "status": "passed"
+  },
+  "cloud_arm64_verification": {
+    "result": "passed",
+    "url": "https://github.com/OndraMa/HADS/actions/runs/41439798311",
+    "job_id": 125258501454,
+    "source_commit": "e1f3f880c98bfa5fafc28261b7859483e11a7e1d",
+    "source_sha256": "fc57575471294dc968d78c4474db2ae1717b6c37b5aba1aab6246799febcf848",
+    "scope": "real_pinned_Hermes_v0.22.2_fake_model_three_sequential_steps_ENOSYS_Landlock_512MiB_no_swap_no_network_readonly_root",
+    "memory_peak_bytes": 186634240,
+    "worker_peak_VmHWM_bytes": 166727680,
+    "oom_kill": 0,
+    "container_exit_code": 0,
+    "paid_api_calls": 0,
+    "live_haos_acceptance": false
+  },
+  "installer_payload_sha256": "f325d73174a58d5ceaa1b3c9029ad5c7e38569a2054dadb912f82190bb75b9ca",
+  "embedded_payload_matches": true,
+  "extracted_payload_matches_source": true,
+  "excluded_from_package": [
+    "__pycache__",
+    "*.pyc",
+    ".test-tmp"
+  ],
+  "live_haos_test": "not_run_requires_post_install_browser_acceptance",
+  "hermes_upstream": {
+    "version": "v0.22.2",
+    "commit": "d923a5eb487a17c0a68801bba9ef0f56c81040a8"
+  },
+  "bash_tree_sitter_parse": "passed",
+  "embedded_python_blocks": 1,
+  "embedded_python": "passed",
+  "yaml_and_unique_keys": "passed",
+  "python_modules": 25,
+  "payload_sha256": "f325d73174a58d5ceaa1b3c9029ad5c7e38569a2054dadb912f82190bb75b9ca",
+  "payload_files": 133,
+  "source_payload_match": "passed",
+  "manual_release_source_match": "passed",
+  "real_haos_install": "not_tested",
+  "real_browser_ingress": "not_tested",
+  "restore_test": "not_tested",
+  "companion_package_source_match": "passed",
+  "companion_core_setup_and_cloud_readback": "not_tested"
+}

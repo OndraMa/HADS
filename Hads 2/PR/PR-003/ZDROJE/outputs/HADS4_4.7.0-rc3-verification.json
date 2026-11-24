@@ -1,0 +1,36 @@
+{
+  "version": "4.7.0-rc3",
+  "source_files": 64,
+  "python_unittest": {
+    "tests": 181,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "status": "passed"
+  },
+  "python_compileall": "passed",
+  "javascript_syntax": "passed",
+  "webmcp_contract": "passed",
+  "installer_payload_sha256": "5be1097104988eb5649e7b44ad28df6cf9fb8f8e39ca6f5c5668ba51dc9fed54",
+  "embedded_payload_matches": true,
+  "extracted_payload_matches_source": true,
+  "excluded_from_package": [
+    "__pycache__",
+    "*.pyc",
+    ".test-tmp"
+  ],
+  "live_haos_test": "not_run_requires_post_install_browser_acceptance",
+  "bash_tree_sitter_parse": "not_available_on_python_3.14",
+  "embedded_python_blocks": 3,
+  "embedded_python": "passed",
+  "yaml_and_unique_keys": "passed",
+  "python_modules": 9,
+  "payload_sha256": "5be1097104988eb5649e7b44ad28df6cf9fb8f8e39ca6f5c5668ba51dc9fed54",
+  "payload_files": 64,
+  "source_payload_match": "passed",
+  "real_haos_install": "not_tested",
+  "real_browser_ingress": "not_tested",
+  "restore_test": "not_tested",
+  "companion_package_source_match": "passed",
+  "companion_core_setup_and_cloud_readback": "not_tested"
+}

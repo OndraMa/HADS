@@ -1,0 +1,53 @@
+<!doctype html><html lang="cs"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>HADS Next — přehled případů</title><style>
+body{font:17px/1.55 system-ui,sans-serif;background:#f3f5f7;color:#182638;margin:0 auto;padding:2rem;max-width:1100px}
+header{border-bottom:3px solid #157a6e;margin-bottom:2rem}h1{line-height:1.2}h2{margin-top:2rem}
+article{background:white;border:1px solid #cbd5df;border-left:4px solid #157a6e;padding:1rem 1.3rem;margin:.8rem 0;border-radius:5px}
+article h3{margin-top:0}details{font-size:.9rem;color:#36465a}summary{cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.scope,.instruction{background:#fff6db;padding:1rem;border-radius:5px}.empty{color:#58677a}
+</style></head><body><header><h1>HADS Next</h1><p>Přehled funkčních problémů a jejich řešení</p></header>
+<p class="scope">Vývojový offline přehled. Opravy a ověření se vztahují pouze k izolovanému testovacímu scénáři. Živý HAOS nebyl ověřen.</p><section><h2>Co nefunguje</h2><p class="empty">Žádné položky v tomto exportu.</p></section><section><h2>Co HADS vyšetřuje</h2><p class="empty">Žádné položky v tomto exportu.</p></section><section><h2>Co ode mě potřebuje</h2><p class="empty">Žádné položky v tomto exportu.</p></section><section><h2>Co se podařilo vyřešit</h2><article><h3>Vyřešeno a ověřeno</h3><p>Po opravě se automatizace spustila, správné zařízení změnilo stav a během sledování se závada neopakovala.</p><details><summary>Technický detail</summary><pre>{
+  &quot;classification&quot;: &quot;Vyřešeno a ověřeno&quot;,
+  &quot;clock_mode&quot;: &quot;caller_supplied_offline_clock&quot;,
+  &quot;coverage_checkpoints&quot;: 1,
+  &quot;created_at&quot;: 1794152126.23927,
+  &quot;evidence&quot;: [
+    {
+      &quot;kind&quot;: &quot;monitoring_checkpoint&quot;,
+      &quot;observed_at&quot;: 1794152125.23927,
+      &quot;payload&quot;: {
+        &quot;continuous_since&quot;: 1794152092.23927,
+        &quot;entity_id&quot;: &quot;light.living_room&quot;,
+        &quot;healthy&quot;: true
+      }
+    },
+    {
+      &quot;kind&quot;: &quot;automation_triggered&quot;,
+      &quot;observed_at&quot;: 1794152093.23927,
+      &quot;payload&quot;: {
+        &quot;automation_id&quot;: &quot;radio_button&quot;,
+        &quot;context_id&quot;: &quot;offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0&quot;
+      }
+    },
+    {
+      &quot;kind&quot;: &quot;target_state&quot;,
+      &quot;observed_at&quot;: 1794152094.23927,
+      &quot;payload&quot;: {
+        &quot;context_id&quot;: &quot;offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0&quot;,
+        &quot;entity_id&quot;: &quot;light.living_room&quot;,
+        &quot;state&quot;: &quot;on&quot;
+      }
+    }
+  ],
+  &quot;execution_id&quot;: &quot;6a4b44b436f46e6bb7f7150513a6e7f0&quot;,
+  &quot;functional_successes&quot;: 1,
+  &quot;incident_id&quot;: &quot;0b97a3eb-9221-42f2-b16b-31ba7553ac92&quot;,
+  &quot;language&quot;: &quot;cs&quot;,
+  &quot;limitation&quot;: &quot;Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován. Sledovací interval používá testovací hodiny; nedokládá skutečnou dobu sledování domácnosti.&quot;,
+  &quot;plan_id&quot;: &quot;b52a4e1d2202afed7ad4892c3e49487a9f30cc76eefeaaaf70b45932578c0ae9&quot;,
+  &quot;recurrences&quot;: 0,
+  &quot;scope&quot;: &quot;offline_isolated_fixture&quot;,
+  &quot;summary&quot;: &quot;Po opravě se automatizace spustila, správné zařízení změnilo stav a během sledování se závada neopakovala.&quot;
+}</pre></details></article></section><section><h2>Co se opakuje</h2><p class="empty">Žádné položky v tomto exportu.</p></section></body></html>

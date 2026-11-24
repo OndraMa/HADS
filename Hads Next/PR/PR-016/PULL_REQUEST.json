@@ -1,0 +1,17 @@
+{
+  "number": 16,
+  "title": "HADS Next RC5: ověření doplňků, soukromý přenos nastavení a ověřený instalátor",
+  "state": "open",
+  "body": "RC5 doplňuje nativní ověření devíti zdrojů, stáří dat a konkrétní HAGHS čtení. Odděluje načtenou komponentu/aplikaci, proces, registry, čtení entity a neověřenou vlastní diagnostiku. HASK je podle zadání vynechaný. Zahrnuje následnou opravu System Health/Repairs reportů z PR14 a audit Spook/HA-MCP z PR15.\n\nSoukromý přenos ze starého Hermes RC3 provede jeden pevný Supervisor GET aplikace local_hads4 a ověří verzi 2.0.0-rc3. Vybere pouze deset známých připojovacích polí do neaktivního návrhu 0600. Nepřenáší AI klíče/náklady, souhlasy, oprávnění ani historickou důvěru. Tokeny a URL nejsou v UI, evidenci ani modelu. Export JSON má stejnou ochranu role a CSRF. Chybové zprávy nevypisují vzdálené odpovědi.\n\nInstalátor --upgrade-rc4 ověřuje přesný vydaný RC4 manifest a aktualizuje pouze HADS Next přes Supervisor s částečnou zálohou. Zachovává data a stav; předem není potřeba zastavení nebo uninstall. Název aplikace je stabilní HADS Next – diagnostika.\n\nOvěřena zdrojová revize 84bb795b522c60d26b2b67e7e07fb9b0fc12bcce:\n\n- 249 izolovaných a bezpečnostních testů na každé nativní architektuře ARM64/AMD64.\n- Skutečný Core a původní izolovaný Hermes; místní skriptovaný HTTPS model, 0 placených volání. Malý test provedl dvě čtení ve třech požadavcích a odmítl čtvrtý před sítí.\n- Produkční image bez Core fixture, paměťová brána, SIGTERM exit 0 a data po restartu.\n- Skutečný instalátor se skutečnými RC4 zdroji a falešným HA CLI/Supervisorem; záloha vyžadována, nejasný výsledek se neopakuje.\n- 18 prohlížečových zobrazení a uchované anonymizované snímky. Aplikační vstupy prohlížeče jsou hashově shodné s testovanou zdrojovou revizí.\n- Identické instalační bytes na obou architekturách, všech 57 souborů porovnáno s Git revizí, kompletní ZIP vytvořen dvakrát identicky.\n\n[Nativní výsledky](https://github.com/OndraMa/HADS/actions/runs/43540465092) · [Prohlížeč](https://github.com/OndraMa/HADS/actions/runs/43539064833)\n\nSoubory: KE_STAZENI/HADS_Next_1.0.0-rc5/. Instalační SHA-256: a1f88f5e7389f9deb06374f0f707bf1a727c1d9a0e14edbdb2151ca60624260a. Protokoly a přesné hranice: hads-next/docs/evidence/installation-1.0.0-rc5/ a RC5_DELIVERY_CS.md.\n\nNení to dokončené funkční propojení všech doplňků. Plné HA-MCP/Hamster/HADocs/Inspector adaptéry a obecné schvalované zápisy Spook/HA-MCP nejsou hotové; neaktivní návrh je nezapne. Živá HAOS přejímka, obnova záloh, skutečný LLM, RPi a fyzická zařízení zůstávají neověřené. Rezerva 576 MiB, AI limity a zálohové kontroly se nemění. Bez zásahů v domácnosti. Main a všechny starší vydané archivy zůstaly nedotčené.",
+  "created_at": "2026-11-14T00:50:02Z",
+  "updated_at": "2026-11-14T01:39:43Z",
+  "head": {
+    "ref": "codex/hads-next-rc5",
+    "sha": "cf7ca24acc0c76b883daf4b111f0133b30ecfa3f",
+    "tree": "68c061bddaa3fa8706771c75668ab6c4ca67f51c"
+  },
+  "base": {
+    "ref": "codex/hads-next-rc4",
+    "sha": "0d30b0de0f21a7f64f30ff3345286cdd753ea6ca"
+  }
+}

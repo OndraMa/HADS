@@ -1,0 +1,17 @@
+{
+  "number": 2,
+  "title": "4.7.0-rc2: bezpečnostní stabilizace po auditu Work",
+  "state": "open",
+  "body": "Navazuje na RC1 bez přepisu main. 146 offline testů bez chyb; payload shodný se zdrojem.\n\nOpraveno: negativní/neprůkazné rescue odpovědi a upload-ACK fallback; falešný úspěch po tichu v logu; denní OOM a healthcheck triáž; journal INFO; waiting_budget a počty nedokončené práce; typované Repairs; omezení publikace při 502; Hamster command search; volitelně bez denních AI limitů dle uživatele.\n\nNení celé zadání dokončeno: OneDrive verifier služba musí existovat mimo HADS, rotace záloh a plné automatické přeplánování po selhání nejsou implementovány. Další A/B nálezy zůstávají dle RELEASE_4.7.0-rc2.md. Živý HAOS/Ingress, cílový Docker a restore netestovány. Kandidát není stabilní vydání a neslibuje odemčení oprav.",
+  "created_at": "2026-09-13T18:05:01Z",
+  "updated_at": "2026-09-13T18:05:01Z",
+  "head": {
+    "ref": "codex/hads-4.7.0-rc2",
+    "sha": "174f9e128f2e5afc40ff800b20ba59909914469c",
+    "tree": "58f638926d83c631fc7ebe432dba4b398b888311"
+  },
+  "base": {
+    "ref": "codex/hads-4.7.0-rc1",
+    "sha": "507f66399cb074bb42e70ae184b33ac2de110122"
+  }
+}

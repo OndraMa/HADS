@@ -1,0 +1,77 @@
+{
+  "scope": "container_with_fake_supervisor",
+  "live_haos": false,
+  "arm64_tested": false,
+  "installer_sha256": "8f0f168042e4b269de6edc213b9522b402789f809ec73e16f639b66440a2f2d4",
+  "runtime": {
+    "health": {
+      "service": "hads-next",
+      "version": "0.1.0-dev1",
+      "mode": "read_only_development"
+    },
+    "runtime_uid": 65532,
+    "capabilities": 0,
+    "direct_data_access": 403
+  },
+  "case_persisted_after_container_restart": true,
+  "image": {
+    "Id": "sha256:594f30bf3b416b0b90a459e40a3b44585df26b5824f872a73f9c3bb30a094569",
+    "Architecture": "amd64",
+    "Os": "linux",
+    "Size": 121883234
+  },
+  "install": {
+    "fake_supervisor_only": true,
+    "commands": [
+      [
+        "apps",
+        "--help"
+      ],
+      [
+        "apps",
+        "--raw-json"
+      ],
+      [
+        "store",
+        "reload"
+      ],
+      [
+        "apps",
+        "install",
+        "local_hads_next_dev"
+      ],
+      [
+        "apps",
+        "start",
+        "local_hads_next_dev"
+      ],
+      [
+        "apps",
+        "info",
+        "local_hads_next_dev",
+        "--raw-json"
+      ]
+    ],
+    "reinstallation_refused": true
+  },
+  "passed": true,
+  "source_sha256": {
+    "haos/config.yaml": "dec43c427d7bd2d72483e430a56dd6790ef3ac00a855c403b8f3a085885b6dcb",
+    "haos/Dockerfile": "287b0bf2d0ffd4a16a40b934ac118d83d91a8d20f39d950279a7d137970ce50f",
+    "haos/README.md": "40e195da35b4ca6829ea165e76277fcb6d31650dd249160d266be8ca85ef832c",
+    "haos/run.sh": "5a74693dddfeaa91cdaf6c5ebd386018e3e0ee0bf2fec325aa1d7b55cc617530",
+    "haos/DOCS.md": "9724511a96d6d98998779b9a0a124efe6946b69f164f70b493c19e95c22051bb",
+    "src/hads_next/verification.py": "86c210b6b7c1892304d0fc96e0bccfe3366294d81a8fdd575591fd2506973e4f",
+    "src/hads_next/observability.py": "b170f6669e420eb3178ae417755d119e92e14711e48c18b21af675e4ad2faef9",
+    "src/hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+    "src/hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+    "src/hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+    "src/hads_next/haos_application.py": "a761539592735a0c5faafd1fc4cd43185cd486e9b5f02cc17951d3eec4fced38",
+    "src/hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "src/hads_next/addon_server.py": "453c7620b2c259655281ba77482387cdf95face1cfa0a0de0ae5ec2c50800347",
+    "src/hads_next/evidence.py": "865930f81a28c44b1e43c103c393d75bfe40956649fd0d77b216998ec43b5c2f",
+    "src/hads_next/repair.py": "3466277aa496be74e1b2a3291b38a3a4dd327e2eea9d3806276c75b745ec6189",
+    "src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "scripts/build_haos_installer.py": "63cd2b3a826a252f256c8a7b3756fe726f5252ad11dec980ea37917c3d86980f"
+  }
+}

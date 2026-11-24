@@ -1,0 +1,17 @@
+{
+  "number": 13,
+  "title": "HADS Next RC4: automatická čtení, omezený AI test a instalátor pro RC3",
+  "state": "open",
+  "body": "RC3 nechával běžná diagnostická čtení na uživateli. RC4 při paměťovém incidentu samo přečte Core, Supervisor a běžící aplikace, uloží výsledky a mezery, po pěti minutách jednou porovná spotřebu. Marketplace/github_web pokračuje nativním System Health, souvisejícím System Log a omezeným HEAD na github.com s výslovně odděleným síťovým kontextem HADS. Tyto kroky nevyžadují model ani další aplikaci.\n\nPůvodní izolovaný Hermes zůstává součástí image. Výchozí volitelný AI test má trvalý společný limit 3 odeslané požadavky za klouzavých 24 hodin, 48 000 vstupních bajtů a 512 výstupních tokenů na požadavek. Neprobíhá automatická placená fronta; restart, souběh a změna klíče rozpočet neobcházejí. Starý souhlas vyžaduje nové potvrzení. Jde o technické limity, ne o dolarový strop. Rezerva 576 MiB zůstává.\n\nAktualizátor `--upgrade-rc3` ověřuje přesné vydané RC3 zdroje a předá aktualizaci pouze HADS Next nativnímu Supervisoru s částečnou zálohou. RC3 se předem ručně nezastavuje ani neodinstalovává. Nejasný stav, změněné zdroje nebo nedokončený zásah zápis blokují. Korektní SIGTERM a startovní souběh Core mají regresní ověření.\n\nOvěřeno na přesné zdrojové revizi `cae2eabf1287ef4d952e66df4c1ffa79033b4ede`:\n\n- 224 offline a bezpečnostních testů na každé nativní architektuře ARM64/AMD64.\n- Skutečný Core 2026.11.0 a původní izolovaný Hermes; lokální skriptovaný HTTPS endpoint, žádný placený model.\n- Malý AI test provedl dvě čtení ve třech požadavcích a odmítl čtvrtý před odesláním.\n- Produkční image bez Core fixture, SIGTERM exit 0, zachování dat při restartu, paměťová brána.\n- Skutečný RC4 instalátor se skutečnými vydanými RC3 zdroji a falešným HA CLI/Supervisorem; požadovaná záloha a zákaz opakovaného zásahu.\n- 16 zobrazení rozhraní v prohlížeči.\n- Identické instalační bytes na obou architekturách, všech 53 vložených souborů porovnáno s Git revizí; kompletní ZIP je reprodukovatelný.\n\n[ARM64/AMD64 výsledky](https://github.com/OndraMa/HADS/actions/runs/43442196703) · [Prohlížeč](https://github.com/OndraMa/HADS/actions/runs/43442203778)\n\nInstalátor, kompletní ZIP, součty a české návody jsou v `KE_STAZENI/HADS_Next_1.0.0-rc4/`. Instalační SHA-256: `1499885b48e763e97c0d8f5047b20e83b374dbffc03a3850b9e433c7f22fd375`.\n\nŽivá HAOS aktualizace/obnova, RPi při skutečné zátěži, reálný model, MA FastMCP a fyzické rádio/Zigbee čekají na přejímku. Paměť 373 MiB nadále nedovoluje spuštění Hermesu. Žádné zásahy v domácnosti ani placené modelové požadavky nebyly provedeny. Podporované opravy stále vyžadují přesný schválený plán a funkční ověření; existující pravidla záloh se neobcházejí. Main, původní Hermes RC3 a dříve vydané archivy nejsou změněny.",
+  "created_at": "2026-11-13T13:48:10Z",
+  "updated_at": "2026-11-13T18:54:04Z",
+  "head": {
+    "ref": "codex/hads-next-rc4",
+    "sha": "0d30b0de0f21a7f64f30ff3345286cdd753ea6ca",
+    "tree": "344cb0494835c95cf1023eee6a5d1e094efe4838"
+  },
+  "base": {
+    "ref": "codex/hads-next-health-evidence",
+    "sha": "334b3fe1877b018e85b55db5f7c674374365bfe2"
+  }
+}

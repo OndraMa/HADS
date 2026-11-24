@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "purpose": "Recovery of already uninstalled HADS Next with verified orphan RC2/RC3 sources",
+  "date_utc": "2026-11-13",
+  "tested_source_commit": "df5ec2cb99c67adeafd8c96c0fbd417c43797053",
+  "helper_sha256": "fcf52e7500a29a609703b0225feea0234f219bf2ebcbc509c12e5552e7b621ad",
+  "original_RC3_installer_sha256": "8a23625c688b4282f2661e6b24000a8e5ce3e7886705b4dd02f33805fe5b13d1",
+  "unchanged_RC3_release_commit": "a1933b1e8ad07d9df2a13a1dc5cba1eafb491def",
+  "ci": {
+    "run_id": 43420601632,
+    "url": "https://github.com/OndraMa/HADS/actions/runs/43420601632",
+    "conclusion": "success",
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "artifacts": {
+      "amd64": {
+        "id": 14034325388,
+        "sha256": "860b26b7aaf4e38b27c582c69cf1186388d93db490dda352adc49674e1f9765a"
+      },
+      "arm64": {
+        "id": 14033991528,
+        "sha256": "8434d5e77afd1620959dd59cb9a21903dca097493eab727ce032707ddf528b2c"
+      }
+    }
+  },
+  "tests_per_architecture": 195,
+  "native_container_recovery_passed": true,
+  "actual_published_installer_used": true,
+  "supervisor": "fake HA CLI; not live HAOS",
+  "production_installed_or_modified": false,
+  "previous_uninstalled_data_restored": false,
+  "stop_error_root_cause_fixed": false,
+  "live_haos_acceptance": "pending",
+  "model_calls": 0,
+  "evidence_sha256": {
+    "amd64/offline-tests.json": "37757fe1e5ea09183a078d10b3c51e716f7dc0bf42dbe7ff056264281dfc8cd1",
+    "amd64/recovery-amd64.json": "1b55d2b75387531d27c99694a2efd241401213bd379c41cedbd9fa7837eab3f4",
+    "arm64/offline-tests.json": "f0362e091c3f19d9db43d6fa3b4469e90246978aa314e388e039b8824d535acb",
+    "arm64/recovery-arm64.json": "c28273b7d33f6ee23b8f3f5d0f5ceba62bc9ec57f187aba0aea22e896683e9d1"
+  },
+  "limitations": [
+    "No physical HAOS access during this recovery validation",
+    "Uninstall may already have removed private app data; no data restoration claimed",
+    "Registered apps including state error are refused; no stop/uninstall/force performed",
+    "Existing RC3 application and all previous release archives remain unchanged"
+  ]
+}

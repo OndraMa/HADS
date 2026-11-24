@@ -1,0 +1,12 @@
+{
+  "description":"Synthetic captured event to trace to target chain, using normalized HADS evidence fields.",
+  "device_id":"anonymous_remote_1",
+  "automation_id":"remote_middle_button",
+  "target_entity_id":"light.reading_lamp",
+  "incident_at":1794139300,
+  "events":[
+    {"source":"ha/zha","kind":"zha_event","observed_at":1794139300,"event_id":"zha-middle-1","payload":{"device_id":"anonymous_remote_1","command":"middle_press","context":{"id":"ctx-zha-1"},"linkquality":112}},
+    {"source":"ha/trace","kind":"automation_trace","observed_at":1794139300.2,"event_id":"trace-1","payload":{"automation_id":"remote_middle_button","trigger_context_id":"ctx-zha-1","result":"completed","target_entity_id":"light.reading_lamp","expected_state":"on","context":{"id":"ctx-automation-1","parent_id":"ctx-zha-1"}}},
+    {"source":"ha/core","kind":"target_state","observed_at":1794139301,"event_id":"target-state-1","payload":{"entity_id":"light.reading_lamp","state":"off","context":{"id":"ctx-target-1","parent_id":"ctx-automation-1"}}}
+  ]
+}

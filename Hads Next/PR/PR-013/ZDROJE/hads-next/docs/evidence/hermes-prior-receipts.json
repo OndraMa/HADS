@@ -1,0 +1,68 @@
+{
+  "scope": "prior-test-image-before-final-constrained-build",
+  "receipts": {
+    "hermes-native.json": {
+      "engine": "NousResearch/hermes-agent",
+      "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "completed": true,
+      "read_receipts": [
+        {
+          "source": "automation",
+          "bytes": 50
+        },
+        {
+          "source": "trace",
+          "bytes": 62
+        }
+      ],
+      "snapshot_sha256": "65d3cf77d6783e0c35d31e14812e764bddf529f172d01d249c4f093e53205ea1",
+      "summary_cs": "Automatizace odkazuje na neexistující entitu light.old_lamp. Trace dokládá nedosažený cíl. Připravit přesnou změnu odkazu; nic nebylo opraveno.",
+      "execution_authority": "none",
+      "scope": "offline-container",
+      "model_requests": 3,
+      "model": "scripted-local-endpoint-no-cost",
+      "peak_rss_bytes": 182329344
+    },
+    "hermes-vertical.json": {
+      "engine": "NousResearch/hermes-agent",
+      "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "completed": true,
+      "read_receipts": [
+        {
+          "source": "automation",
+          "bytes": 105
+        },
+        {
+          "source": "trace",
+          "bytes": 343
+        }
+      ],
+      "snapshot_sha256": "892a7d618d76fc2b00024a675390e7df6ee79225f6f9b86e6639347308bce88b",
+      "summary_cs": "Automatizace odkazuje na neexistující entitu light.old_lamp. Trace dokládá nedosažený cíl. Připravit přesnou změnu odkazu; nic nebylo opraveno.",
+      "execution_authority": "none",
+      "scope": "offline-container",
+      "model_requests": 3,
+      "python_version": "3.14.10",
+      "platform": "x86_64",
+      "model": "scripted-local-endpoint-no-cost",
+      "peak_rss_bytes": 182460416,
+      "image_id": "sha256:5b3abd7e05c9a055f9fef2b202db41e7d07e73bfa91b5d932652237e693e608a"
+    },
+    "hermes-native-negative.json": {
+      "engine": "NousResearch/hermes-agent",
+      "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "completed": false,
+      "read_receipts": [],
+      "execution_authority": "none",
+      "scope": "offline-container",
+      "security_outcome": "native_loop_stopped_after_unapproved_tools",
+      "unauthorized_native_tool_attempts_denied": 3,
+      "model_requests": 3,
+      "python_version": "3.14.10",
+      "platform": "x86_64",
+      "model": "scripted-local-endpoint-no-cost",
+      "peak_rss_bytes": 181485568,
+      "image_id": "sha256:5b3abd7e05c9a055f9fef2b202db41e7d07e73bfa91b5d932652237e693e608a"
+    }
+  }
+}

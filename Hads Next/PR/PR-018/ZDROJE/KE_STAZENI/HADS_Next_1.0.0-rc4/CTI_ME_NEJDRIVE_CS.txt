@@ -1,0 +1,15 @@
+﻿HADS Next 1.0.0-rc4 — automatická nativní diagnostika
+
+Pro běžící RC3 ulož instalátor do /config a spusť pouze úvodní aktualizaci:
+  bash /config/HADS_Next_install_1.0.0-rc4.sh --verify
+  bash /config/HADS_Next_install_1.0.0-rc4.sh --upgrade-rc3
+
+RC3 předem nezastavuj ani neodinstalovávej. Supervisor aktualizuje jen HADS Next s částečnou zálohou.
+Potom otevři HADS. Nativní zdroje, statistiky a diagnostické pokračování čte samo.
+Další diagnostické příkazy od tebe nepotřebuje; AI klíč pro tato čtení není potřeba.
+Původní Hermes je v obrazu. Jeho načtení hlídá paměťová rezerva 576 MiB.
+Malý AI test povol až později v nastavení: 3 požadavky / klouzavých 24 h, max. 512 výstupních tokenů; bez automatické placené fronty.
+Limit požadavků není dolarový strop. Klíč neposílej do chatu nebo GitHubu.
+Zdrojový commit: cae2eabf1287ef4d952e66df4c1ffa79033b4ede
+Nativní kontejnery ARM64 i AMD64 a skutečný Hermes se skriptovaným modelem jsou ověřené; živý HAOS, LLM a fyzické přístroje stále čekají.
+Podrobný návod: HADS_Next_1.0.0-rc4-navod-CS.md. Při chybě zachovej hlášku a marker; nic nemaž a neodinstalovávej.

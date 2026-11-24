@@ -1,0 +1,201 @@
+name: "HADS 4 - Kapitánské diagnostické centrum"
+version: "4.7.0-rc3"
+slug: "hads4"
+description: "První důstojník pro Home Assistant: nepřetržitá diagnostika, chytré priority, historie, výzkum a řízené opravy výhradně po schválení kapitánem."
+url: "https://www.home-assistant.io/"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+startup: application
+boot: auto
+init: false
+stage: experimental
+backup: hot
+hassio_api: true
+hassio_role: manager
+homeassistant_api: true
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_icon: "mdi:shield-crown-outline"
+panel_title: "HADS 4"
+panel_admin: true
+watchdog: "http://[HOST]:[PORT:8099]/health"
+map:
+  - type: share
+    read_only: false
+  - type: homeassistant_config
+    read_only: false
+options:
+  schedule_time: "08:10"
+  run_missed_scan: true
+  import_legacy_hads2: true
+  watchdog_enabled: true
+  watchdog_interval_minutes: 15
+  quick_log_lines: 1500
+  quick_include_addon_logs: true
+  log_lines: 8000
+  include_host_logs: true
+  include_addon_logs: true
+  include_service_logs: true
+  keep_raw_days: 30
+  keep_exports_days: 180
+  metrics_retention_days: 90
+  collector_history_days: 180
+  max_upload_mb: 50
+  yaml_audit_enabled: true
+  yaml_entity_reference_check: true
+  yaml_max_file_kb: 2048
+  correlation_window_minutes: 15
+  fix_observation_hours: 72
+  notify_p1_p2: true
+  redact_local_ips_in_exports: true
+  onedrive_enabled: true
+  onedrive_config_entry_id: ""
+  onedrive_destination_folder: "HADS/HADS4"
+  hads2_compat_folder: "HADS"
+  daily_chatgpt_report: true
+  upload_markdown: true
+  upload_chatgpt_txt: true
+  advisor_use_ha_conversation: false
+  advisor_agent_id: ""
+  smart_triage_enabled: true
+  auto_resolve_transient_hours: 48
+  persistent_p2_days: 7
+  persistent_p1_days: 14
+  onedrive_retry_count: 2
+  onedrive_single_file_fallback: true
+  onedrive_deferred_retry_minutes: 60
+  onedrive_deferred_retry_max: 8
+  captain_mode: true
+  repairs_enabled: true
+  backup_before_repairs: true
+  allow_repair_without_backup: false
+  allow_core_restart: false
+  repair_watch_hours: 72
+  auto_scan_after_repair: true
+  openai_enabled: false
+  openai_api_key: ""
+  openai_model: "gpt-5.6"
+  openai_web_search_enabled: true
+  openai_allowed_domains: "developers.home-assistant.io,home-assistant.io,github.com,community.home-assistant.io"
+  ha_dashboard_enabled: true
+  ha_dashboard_publish_seconds: 60
+  observer_enabled: true
+  observer_reconnect_seconds: 10
+  dependency_graph_enabled: true
+  knowledge_base_enabled: true
+  current_health_window_hours: 6
+  ai_mode: "officer"
+  ai_tool_max_rounds: 3
+  first_officer_enabled: true
+  first_officer_grace_minutes: 15
+  automatic_repair_planner: true
+  automatic_planner_limit: 25
+  periodic_investigation: true
+  rescue_onedrive_folder: "HADS/Repairs"
+  rescue_remote_verify_service: ""
+  rescue_accept_upload_ack: false
+  ha_mcp_url: ""
+  ha_mcp_token: ""
+  hamster_mcp_url: ""
+  hamster_mcp_token: ""
+  hadocs_api_url: ""
+  hadocs_token: ""
+  automation_inspector_api_url: ""
+  automation_inspector_token: ""
+  external_connector_timeout_seconds: 30
+  ai_background_research: false
+  ai_max_output_tokens: 4000
+  ai_call_limits_enabled: false
+  ai_daily_call_limit: 20
+  ai_case_daily_call_limit: 6
+  recorder_maintenance_enabled: false
+  recorder_sqlite_path: ""
+schema:
+  schedule_time: "match(^([01][0-9]|2[0-3]):[0-5][0-9]$)"
+  run_missed_scan: bool
+  import_legacy_hads2: bool
+  watchdog_enabled: bool
+  watchdog_interval_minutes: "int(5,1440)"
+  quick_log_lines: "int(100,10000)"
+  quick_include_addon_logs: bool
+  log_lines: "int(100,50000)"
+  include_host_logs: bool
+  include_addon_logs: bool
+  include_service_logs: bool
+  keep_raw_days: "int(1,3650)"
+  keep_exports_days: "int(1,3650)"
+  metrics_retention_days: "int(1,3650)"
+  collector_history_days: "int(1,3650)"
+  max_upload_mb: "int(1,500)"
+  yaml_audit_enabled: bool
+  yaml_entity_reference_check: bool
+  yaml_max_file_kb: "int(64,10240)"
+  correlation_window_minutes: "int(1,120)"
+  fix_observation_hours: "int(1,720)"
+  notify_p1_p2: bool
+  redact_local_ips_in_exports: bool
+  onedrive_enabled: bool
+  onedrive_config_entry_id: str
+  onedrive_destination_folder: str
+  hads2_compat_folder: str
+  daily_chatgpt_report: bool
+  upload_markdown: bool
+  upload_chatgpt_txt: bool
+  advisor_use_ha_conversation: bool
+  advisor_agent_id: str
+  smart_triage_enabled: bool
+  auto_resolve_transient_hours: "int(12,720)"
+  persistent_p2_days: "int(2,60)"
+  persistent_p1_days: "int(3,180)"
+  onedrive_retry_count: "int(0,5)"
+  onedrive_single_file_fallback: bool
+  onedrive_deferred_retry_minutes: "int(15,720)"
+  onedrive_deferred_retry_max: "int(1,24)"
+  captain_mode: bool
+  repairs_enabled: bool
+  backup_before_repairs: bool
+  allow_repair_without_backup: bool
+  allow_core_restart: bool
+  repair_watch_hours: "int(1,720)"
+  auto_scan_after_repair: bool
+  openai_enabled: bool
+  openai_api_key: password
+  openai_model: str
+  openai_web_search_enabled: bool
+  openai_allowed_domains: str
+  ha_dashboard_enabled: bool
+  ha_dashboard_publish_seconds: "int(15,3600)"
+  observer_enabled: bool
+  observer_reconnect_seconds: "int(3,300)"
+  dependency_graph_enabled: bool
+  knowledge_base_enabled: bool
+  current_health_window_hours: "int(1,168)"
+  ai_mode: str
+  ai_tool_max_rounds: "int(1,12)"
+  first_officer_enabled: bool
+  first_officer_grace_minutes: "int(1,240)"
+  automatic_repair_planner: bool
+  automatic_planner_limit: "int(1,100)"
+  periodic_investigation: bool
+  rescue_onedrive_folder: str
+  rescue_remote_verify_service: str
+  rescue_accept_upload_ack: bool
+  ha_mcp_url: str
+  ha_mcp_token: password
+  hamster_mcp_url: str
+  hamster_mcp_token: password
+  hadocs_api_url: str
+  hadocs_token: password
+  automation_inspector_api_url: str
+  automation_inspector_token: password
+  external_connector_timeout_seconds: "int(5,120)"
+  ai_background_research: bool
+  ai_max_output_tokens: "int(512,12000)"
+  ai_call_limits_enabled: bool
+  ai_daily_call_limit: "int(1,200)"
+  ai_case_daily_call_limit: "int(1,30)"
+  recorder_maintenance_enabled: bool
+  recorder_sqlite_path: str

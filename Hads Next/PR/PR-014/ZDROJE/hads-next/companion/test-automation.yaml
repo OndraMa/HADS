@@ -1,0 +1,21 @@
+# Jen do oddělené testovací instalace. Sloučit do odpovídajících sekcí YAML;
+# nepřepsat existující configuration.yaml ani automations.yaml.
+hads_reference: {}
+input_boolean:
+  hads_next_test_target:
+    name: HADS Next virtuální cíl
+    initial: false
+input_button:
+  hads_next_test_run:
+    name: HADS Next testovací spouštěč
+# Záznam níže patří do seznamu automatizací. Nemá akce na fyzické zařízení.
+automation:
+  - id: hads_next_reference_test
+    alias: HADS Next reference test
+    triggers:
+      - trigger: state
+        entity_id: input_button.hads_next_test_run
+    actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: "{{ states('sensor.hads_next_test_reference') }}"

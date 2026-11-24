@@ -1,0 +1,72 @@
+type: grid
+columns: 1
+square: false
+cards:
+  - type: markdown
+    content: |-
+      {% set health = states('sensor.hads4_system_score') %}
+      {% set reliability = states('sensor.hads4_reliability') %}
+      {% set coverage = states('sensor.hads4_diagnostic_coverage') %}
+      # ♜ HADS 4 · First Officer
+      **Stav lodi:** {{ health }}/100 · **Spolehlivost:** {{ reliability }}/100 · **Pokrytí:** {{ coverage }} %
+
+      **Repair write gate je běžně LOCKED.** Odemkne jej pouze kapitánem spuštěný batch po kontrole konfliktů a nezávislém vzdáleném ověření rescue archivu na OneDrive.
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.hads4_system_score
+        name: Current Health
+        min: 0
+        max: 100
+        needle: true
+        severity: {red: 0, yellow: 60, green: 85}
+      - type: gauge
+        entity: sensor.hads4_reliability
+        name: Reliability
+        min: 0
+        max: 100
+        needle: true
+        severity: {red: 0, yellow: 60, green: 85}
+      - type: gauge
+        entity: sensor.hads4_diagnostic_coverage
+        name: Coverage
+        min: 0
+        max: 100
+        needle: true
+        severity: {red: 0, yellow: 60, green: 85}
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.hads4_captain_actions
+        name: Kapitánská rozhodnutí
+        color: orange
+      - type: tile
+        entity: sensor.hads4_pending_approvals
+        name: Připravené návrhy
+        color: amber
+      - type: tile
+        entity: sensor.hads4_watching
+        name: Aktivní verifikace
+        color: blue
+  - type: markdown
+    title: Kapitánská fronta
+    content: |-
+      {% set actions = state_attr('sensor.hads4_captain_actions', 'top_actions') or [] %}
+      {% if actions %}
+      {% for item in actions %}
+      - {{ item }}
+      {% endfor %}
+      {% else %}
+      ✅ Žádný root-case právě nevyžaduje rozhodnutí.
+      {% endif %}
+  - type: button
+    entity: binary_sensor.hads4_action_required
+    name: Otevřít HADS 4 First Officer
+    icon: mdi:shield-crown-outline
+    show_state: true
+    tap_action:
+      action: navigate
+      navigation_path: /hassio/ingress/local_hads4
+

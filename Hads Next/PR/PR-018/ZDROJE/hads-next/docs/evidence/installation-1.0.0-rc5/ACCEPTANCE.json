@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "version": "1.0.0-rc5",
+  "source_commit": "84bb795b522c60d26b2b67e7e07fb9b0fc12bcce",
+  "both_passed": true,
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "paid_model_calls": 0,
+  "tests_each_architecture": 249,
+  "native_ci": {
+    "run_id": 43540465092,
+    "url": "https://github.com/OndraMa/HADS/actions/runs/43540465092",
+    "conclusion": "success",
+    "artifacts": [
+      {
+        "id": 14091552592,
+        "architecture": "amd64",
+        "sha256": "c231d5100a7f450f3eae6ca92c1ada12703cd937f9a39630339874a11324a738"
+      },
+      {
+        "id": 14091198218,
+        "architecture": "arm64",
+        "sha256": "a1698647796fb91a48c4d9152728f2568fce7697c26eab585e4ec08341a1794c"
+      }
+    ]
+  },
+  "browser_ci": {
+    "run_id": 43539064833,
+    "url": "https://github.com/OndraMa/HADS/actions/runs/43539064833",
+    "conclusion": "success",
+    "views": 18,
+    "workflow_commit": "c07ddd8f57fffef2dfcb952c7b1f77f41c61707b",
+    "runtime_inputs_identical_to_source_commit": true,
+    "artifact": {
+      "id": 14090973702,
+      "sha256": "568492a4044dfcd7c698e4a667d8773a31a529105bba700d468ad57775bb3f2c"
+    }
+  },
+  "evidence_sha256": {
+    "amd64/offline-tests.json": "d562b6f437b9523af134c19db6f23f84aebf5f0fff909f33cc2f07327a393e79",
+    "amd64/core-hermes.json": "b497fb1b37b39c52dbc6f63341d8665e2285149d503d68ccaa57380d811f9769",
+    "amd64/package.json": "7298f004084da7a8ebdc217ec077231d437addad113825a89c69afcd796dd0c8",
+    "arm64/offline-tests.json": "7c00e010e2b01d612cc690be6491665d4d6966fcf74f49f8e7f42be51b088dac",
+    "arm64/core-hermes.json": "493ea8d4efe1f69233ce052c99c889f0df9cf44563d16e29f151c6bf0d5feb48",
+    "arm64/package.json": "840e581c504d8bd4b7dd01b92053ae1bd7efefecaf91acf3e07949c0c51316f1"
+  },
+  "source_files_compared_with_exact_git_commit": true,
+  "identical_installable_bytes_across_architectures": true,
+  "actual_original_Hermes_and_actual_Core_verified": true,
+  "trial_model_endpoint": "local_scripted_HTTPS_not_paid_LLM",
+  "trial_model_calls": 3,
+  "fourth_trial_request_refused_before_network": true,
+  "trial_unattended_start_refused": true,
+  "production_image_has_no_Core_fixture": true,
+  "graceful_SIGTERM_exit_code_each": 0,
+  "container_restart_data_preserved": true,
+  "RC4_to_RC5_upgrade": "actual_published_RC4_sources_and_actual_RC5_installer_with_fake_Supervisor_CLI",
+  "live_native_backup_restore_proven": false,
+  "memory_reserve_bytes_unchanged": 603979776,
+  "user_manually_runs_diagnostic_commands": false,
+  "provider_functional_tests_live": false,
+  "migrated_connection_settings_activated": false,
+  "HASK_included": false,
+  "remaining_live_acceptance": [
+    "HAOS update and native data backup restore",
+    "Actual native provider reads and identities",
+    "Full HA-MCP/Hamster/HADocs/Inspector connector implementation and live functional reads",
+    "Live Music Assistant FastMCP and physical radio/Zigbee/lighting verification",
+    "Real provider reasoning under actual memory load",
+    "Approved Spook/HA-MCP write adapters not implemented; statistics backup/restore not verified"
+  ],
+  "installer_sha256": "a1f88f5e7389f9deb06374f0f707bf1a727c1d9a0e14edbdb2151ca60624260a",
+  "source_archive_sha256": "143d95b220e59be78347498094b278aa1bc1dce7c8ea0765c88c35804826b981",
+  "payload_files_verified": 57
+}

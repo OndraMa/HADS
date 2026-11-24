@@ -1,0 +1,4 @@
+03c52dfbb89bec24721bb57674d5379c0ebf6f4d8ec0c8984da0efbc6574e964  HADS4_install_4.7.0-rc3.sh
+a709ae03525ff594f27d1b2d2eb6356b5db790aa6a06450e2f93743911d6a6da  HADS4_4.7.0-rc3-source.zip
+982b7f48c4810a08a080c2ee80778fbed58512823bcc7d2ce5a6ecedfc192576  HADS_Rescue_Readback_0.1.0.zip
+5be1097104988eb5649e7b44ad28df6cf9fb8f8e39ca6f5c5668ba51dc9fed54  HADS4_4.7.0-rc3-payload.tar.gz

@@ -1,0 +1,657 @@
+"""Practical isolated provider wire scenarios. No live HAOS or paid LLM."""
+import base64
+import copy
+import json
+import tempfile
+import threading
+import unittest
+from datetime import datetime,timezone
+from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+from contextlib import closing
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
+from hads_next.haos_application import Application
+from hads_next.observability import CoreReader,CoreWSReader,ReadFailure
+from hads_next.connector_transport import MCPConnection,ReportHTTP
+from hads_next.connector_policy import READS,WRITES
+from hads_next.tool_registry import ToolDenied,object_schema,validate,fingerprint
+from hads_next.repair import RepairPlan,RepairBlocked,ApprovalAuthority,connect
+from hads_next.evidence import canonical
+from hads_next.tool_ui import settings
+
+class OrchestratedWire(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+        self.expected_auth='Bearer fixture-only-token';self.now=1800000000.;self.writes=[];self.calls=[];self.meta=False;self.provider_mode=None;self.changed_schema=False;self.uncertain=False;self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-1234abcd'
+        self.old='light.original_fixture';self.new='light.current_fixture';self.auto='automation.fixture_room'
+        self.light_state='off'
+        self.light_identity={'entity_id':self.new,'platform':'zha','unique_id':'light_identity_fixture','device_id':'light_device_fixture','config_entry_id':'zha_fixture','disabled_by':None}
+        self.config={'id':'automation_fixture_id','alias':'Fixture room','triggers':[{'trigger':'state','entity_id':'binary_sensor.fixture_button','to':'on'}],
+                     'conditions':[],'actions':[{'action':'light.turn_on','target':{'entity_id':self.old}}]}
+        self.entry={'entity_id':'binary_sensor.fixture_contact','unique_id':'fixture_identity','device_id':'device_fixture','platform':'zha','config_entry_id':'zha_fixture','disabled_by':'user'}
+        self.server=ThreadingHTTPServer(('127.0.0.1',0),self.handler());self.addCleanup(self.server.server_close);self.addCleanup(self.server.shutdown)
+        threading.Thread(target=self.server.serve_forever,daemon=True).start()
+        self.url='http://127.0.0.1:'+str(self.server.server_port)
+        self.app=Application(self.tmp.name,CoreReader(self.core),core_ws=CoreWSReader(self.ws),clock=lambda:self.now)
+        self.addCleanup(self.app.repairs.close);self.addCleanup(self.app.detection.close)
+        with self.app.store._connect() as db:db.execute("INSERT INTO application_settings VALUES('owner','owner-fixture')")
+        self.app.tools.connections.configure('ha_mcp',url=self.url+'/mcp',token='fixture-only-token',private_http=True,enabled=True,principal='owner-fixture')
+        self.client=self.app.tools.connections.clients['ha_mcp'];self.app.tools._mcp('ha_mcp',self.client)
+        previous={'platform':'zha','unique_id':'light_identity_fixture','device_id':'light_device_fixture','entity_id':self.old,'config_entry_id':'zha_fixture'}
+        self.app.approved_tools.identities([previous]);self.app.approved_tools.identities([{**previous,'entity_id':self.new}])
+        self.case=self.app.store.open_incident('automation_reference','Ovladač nerozsvítí světlo',[self.auto,self.old],self.now,correlation_key='fixture:room')
+        self.app.store.add_evidence(self.case['id'],{'source':'native_entity_context','kind':'entity_context','event_id':'fixture_initial','observed_at':self.now,'payload':{'entity_id':self.old,'classification':'missing'}})
+        self.evidence=[e['evidence_id'] for e in self.app.store.case(self.case['id'])['evidence']]
+    def definitions(self):
+        rows=[{'name':n,'inputSchema':s} for n,s in {**READS,**WRITES}.items()]
+        if self.changed_schema:rows[-1]['inputSchema']={**rows[-1]['inputSchema'],'description':'changed schema binding'}
+        rows.append({'name':'run_arbitrary_shell','inputSchema':object_schema({'command':{'type':'string'}}),'annotations':{'readOnlyHint':True}})
+        return rows
+    def handler(self):
+        outer=self
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def output(self,value,status=200):
+                data=json.dumps(value).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+            def do_POST(self):
+                outer.assertEqual(self.headers.get('Authorization'),outer.expected_auth)
+                msg=json.loads(self.rfile.read(int(self.headers['Content-Length'])));outer.calls.append(msg)
+                if msg['method']=='notifications/initialized':self.send_response(202);self.send_header('Content-Length','0');self.end_headers();return
+                if msg['method']=='initialize':
+                    result={'protocolVersion':'2025-06-18',
+                            'serverInfo':{'name':'ha-mcp','version':'fixture-contract-1'}}
+                elif msg['method']=='tools/list':
+                    if outer.provider_mode=='native_mcp':result={'tools':[{'name':'GetLiveContext','inputSchema':object_schema()},{'name':'DangerousWrite','inputSchema':object_schema(),'annotations':{'readOnlyHint':True}}]}
+                    elif outer.meta:
+                        result={'tools':[{'name':'ha_search_tools','inputSchema':object_schema({'tools':{'type':'array','items':{'type':'string'}}})},
+                            *[{'name':n,'inputSchema':object_schema({'name':{'type':'string'},'arguments':{'type':'object'}})} for n in ('ha_call_read_tool','ha_call_write_tool')]]}
+                    elif msg.get('params',{}).get('cursor')=='page2':result={'tools':outer.definitions()[2:]}
+                    else:result={'tools':outer.definitions()[:2],'nextCursor':'page2'}
+                elif msg['method']=='tools/call':
+                    name=msg['params']['name'];args=msg['params']['arguments']
+                    if name=='GetLiveContext':value={'success':True,'entities':[{'entity_id':outer.old,'state':'unavailable'}]}
+                    elif name=='ha_search_tools':value=[r for r in outer.definitions() if r['name'] in args['tools']]
+                    else:
+                        if name in {'ha_call_read_tool','ha_call_write_tool'}:name=args['name'];args=args['arguments']
+                        if name=='ha_get_skill_guide':value={'success':True,'file':args['file'],'content':'Acknowledgment key: '+outer.guide_ack+' — strict best-practices. Use literal targets and supported state triggers.'}
+                        elif name=='ha_config_get_automation':value={'success':True,'config':copy.deepcopy(outer.config),'config_hash':fingerprint(outer.config),'references':{'entities':[outer.old]}}
+                        elif name=='ha_get_state':
+                            value={'data':{'entity_id':getattr(outer,'unexpected_mcp_target',args['entity_id']),'state':'unavailable','private_token':'NEVER_EXPORT'},'metadata':{'timestamp_format':'native'}}
+                        elif name=='ha_get_entity':
+                            value={'success':True,'entity_entry':{'entity_id':args['entity_id'],'platform':'zha','device_id':'fixture','disabled_by':'user','token':'NEVER_EXPORT'}}
+                        elif name=='ha_get_history':
+                            value={'success':True,'source':'history','entities':[{'entity_id':args['entity_ids'],'states':[{'state':'unavailable','last_updated':args['start_time']}]}]}
+                        elif name=='ha_set_entity':
+                            outer.assertEqual(set(args),{'entity_id','enabled'})
+                            outer.assertEqual(args['entity_id'],outer.entry['entity_id'])
+                            outer.entry['disabled_by']=None if args['enabled'] else 'user'
+                            outer.writes.append(copy.deepcopy(args));value={'success':True}
+                        elif name=='ha_config_set_automation':
+                            outer.assertEqual(args['config_hash'],fingerprint(outer.config));outer.assertIs(args['run_actions'],False);outer.assertEqual(args['BestPracticeKey'],outer.guide_ack)
+                            outer.writes.append(copy.deepcopy(args));outer.config=copy.deepcopy(args['config'])
+                            if outer.uncertain:self.output({'error':'lost reply'},503);return
+                            value={'success':True,'config_hash':fingerprint(outer.config)}
+                        elif name=='ha_get_device':value={'success':True,'device_id':'light_device_fixture','lqi':75}
+                        else:value={'success':True,'repairs':[]}
+                    result={'structuredContent':{'result':value},'_meta':{'fastmcp':{'wrap_result':True}}} if name=='ha_search_tools' else {'content':[{'type':'text','text':json.dumps(value)}]}
+                else:outer.fail('unexpected MCP method '+msg['method'])
+                self.output({'jsonrpc':'2.0','id':msg['id'],'result':result})
+            def do_GET(self):
+                if self.path=='/api/v1/status':self.output({'ready':True,'stale':False,'generation':1});return
+                if self.path=='/api/v1/inspection':self.output({'schema_version':2,'app_version':'1.2.4','generated_at':outer.iso(outer.now),
+                    'automations':{outer.auto:{'entity_id':outer.auto,'status':'enabled','entities':[{'id':outer.old,'status':'missing'}],'issue_count':1}},'scripts':{}});return
+                if self.path=='/api/status':self.output({'version':'0.17.0-rc5','running':False,'finished_at':outer.iso(outer.now),'exit_code':0});return
+                if self.path=='/api/summary':self.output({'available':True,'health':{'score':97},'incidents':[{'entity_id':outer.old,'reason':'invalid reference'}],'recommendations':[{'entity_id':outer.old,'description':'Inspect exact dependency'}]});return
+                outer.fail('unexpected report path '+self.path)
+        return Handler
+    @staticmethod
+    def iso(t):return datetime.fromtimestamp(t,timezone.utc).isoformat()
+
+    def test_saved_ha_mcp_connection_proves_read_without_incident_and_rejects_wrong_target(self):
+        states = [{'entity_id':self.new, 'state':'on'}]
+        app = Application(self.tmp.name+'/no-incidents', CoreReader(self.core))
+        with app.store._connect() as db:
+            db.execute("INSERT INTO application_settings VALUES('owner','owner-fixture')")
+        app.tools.connections.configure('ha_mcp',url=self.url+'/mcp',token='fixture-only-token',
+                                        private_http=True,enabled=True,principal='owner-fixture')
+        self.unexpected_mcp_target=self.old
+        app.tools.refresh({},states)
+        status = lambda: next(row for row in app.tools.registry.providers() if row['id']=='ha_mcp')
+        self.assertTrue(status()['catalog_loaded'])
+        self.assertFalse(status()['diagnostic_read_verified'])
+        del self.unexpected_mcp_target
+        app.tools.refresh({},states)
+        self.assertTrue(status()['diagnostic_read_verified'])
+        self.assertIn('diagnostic_read_at',status())
+        self.assertNotIn(self.new,canonical(status()))
+        self.assertEqual(app.snapshot()['cases'],[])
+        self.assertEqual(self.writes,[])
+    def core(self,path):
+        if path=='/api/states/'+self.old:raise ReadFailure('http_error',404)
+        if path=='/api/states/'+self.new:return {'entity_id':self.new,'state':self.light_state,'last_updated':self.iso(self.now)}
+        if path=='/api/states/'+self.auto:return {'entity_id':self.auto,'state':'on','attributes':{'id':self.config['id']}}
+        if path=='/api/states/'+self.entry['entity_id']:
+            if self.entry['disabled_by'] is not None:raise ReadFailure('http_error',404)
+            return {'entity_id':self.entry['entity_id'],'state':'on','last_updated':self.iso(self.now)}
+        raise ReadFailure('unknown_fixture')
+    def ws(self,command):
+        if command['type']=='config/auth/list':return [{'id':'owner-fixture','is_active':True,'is_owner':True,'system_generated':False,'group_ids':[]}]
+        if command['type']=='get_services':return {'homeassistant':{'enable_entity':{'fields':{'entity_id':{'required':True}}},'disable_entity':{'fields':{'entity_id':{'required':True}}}}}
+        if command['type']=='manifest/get':return {'domain':'spook','version':'fixture-contract-1'}
+        if command['type']=='config/entity_registry/get':return copy.deepcopy(self.light_identity if command['entity_id']==self.new else self.entry)
+        if command['type']=='call_service':
+            self.assertEqual(command['domain'],'homeassistant');self.assertIn(command['service'],{'enable_entity','disable_entity'})
+            self.assertEqual(command['service_data'],{'entity_id':[self.entry['entity_id']]})
+            self.entry['disabled_by']=None if command['service']=='enable_entity' else 'user';self.writes.append(copy.deepcopy(command));return None
+        raise ReadFailure('unsupported_fixture')
+    def receipt(self,original):
+        key=Ed25519PrivateKey.generate();public=key.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)
+        attestation={'schema':1,'storage':'OneDrive','scope':'HAOS_config_and_registry','restored':True,'verifier':'independent-fixture-verifier',
+            'target_sha256':fingerprint(original),'verified_at':self.now,'expires_at':self.now+3600,'backup_sha256':'a'*64}
+        envelope={'attestation':attestation,'signature':base64.b64encode(key.sign(canonical(attestation).encode())).decode()}
+        for name,value in [('backup-verifier.pub',base64.b64encode(public).decode()),('restore-attestation.json',json.dumps(envelope))]:
+            p=self.app.data_dir/name;p.write_text(value);p.chmod(0o600)
+    def prepare(self):
+        proposed=copy.deepcopy(self.config);proposed['actions'][0]['target']['entity_id']=self.new
+        original={'config':copy.deepcopy(self.config),'config_hash':fingerprint(self.config)};self.receipt(original)
+        return self.app.approved_tools.prepare(self.case['id'],'ha_mcp','ha_config_set_automation',{'entity_id':self.auto,'config':proposed,'config_hash':fingerprint(self.config),'wait':True,'run_actions':False},self.evidence,'Doložená nová identita stejného zařízení',exclusive=True)
+    def test_A_B_real_wire_reports_discovery_iteration_and_approved_config_change(self):
+        for p in ('automation_inspector','hadocs'):self.app.tools._http(p,ReportHTTP(self.url,allow_private_http=True))
+        result=self.app.investigations.broker.read(self.case['id'],'hads_diagnostic_tool',{'provider':'automation_inspector','tool':'dependency_report','arguments':{}})
+        self.assertEqual(result['status'],'available');self.assertEqual(result['data']['items'][0]['entities'][0]['id'],self.old)
+        hadocs=self.app.investigations.broker.read(self.case['id'],'hads_diagnostic_tool',{'provider':'hadocs','tool':'analysis_report','arguments':{}})
+        self.assertEqual(hadocs['data']['health']['score'],97)
+        self.assertTrue(result['evidence_ids']);self.assertEqual(self.writes,[])
+        self.assertTrue(any(m['method']=='tools/list' and m['params'].get('cursor')=='page2' for m in self.calls))
+        plan=self.prepare();self.assertEqual(len(self.app.repairs.plans(self.case['id'])),1)
+        execution=self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(len(self.writes),1);self.assertEqual(execution.status,'applied_verification_pending');self.assertEqual(self.config['actions'][0]['target']['entity_id'],self.new)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        # No log disappearance or successful write can substitute a real trigger,
+        # matching context, physical confirmation and continuous coverage.
+        self.now+=1;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now)
+        self.app.repairs.trigger_coverage=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        trigger=self.now;self.app.repairs.on_trigger({'data':{'entity_id':self.auto},'time_fired':self.iso(self.now),'context':{'id':'fixture_context'}})
+        self.now+=1;self.app.repairs.observe_state({'entity_id':self.new,'state':'on','context':{'id':'fixture_context'}},self.now)
+        self.now+=1;self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')
+        self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno','A contradictory current Core state must prevent false verification')
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        self.light_state='on'
+        self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno','The earlier contradictory read must break coverage')
+        self.now+=1;trigger=self.now
+        self.app.repairs.on_trigger({'data':{'entity_id':self.auto},'time_fired':self.iso(self.now),'context':{'id':'fixture_new_context'}})
+        self.now+=1;self.app.repairs.observe_state({'entity_id':self.new,'state':'on','context':{'id':'fixture_new_context'}},self.now)
+        self.now+=1;self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')
+        self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'resolved')
+        self.now+=1
+        self.app.repairs.on_functional_failure(self.case['id'],self.new,self.now,'fixture-failure-after-verification')
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        with closing(connect(self.app.store.db_path)) as db:
+            self.assertEqual(db.execute('SELECT status FROM repair_executions WHERE plan_id=?',(plan.plan_id,)).fetchone()[0],'recurred')
+    def test_private_path_endpoint_does_not_send_an_invalid_empty_bearer_header(self):
+        self.expected_auth=None
+        client=MCPConnection(self.url+'/mcp',allow_private_http=True)
+        self.assertTrue(client.discover())
+        self.assertEqual(client.call('ha_config_get_automation',{'entity_id':self.auto})['config'],self.config)
+        self.assertEqual(self.writes,[])
+
+    def test_meta_tool_search_is_discovered_but_proxies_never_exposed_to_AI(self):
+        self.meta=True;self.app.tools._mcp('ha_mcp',self.client)
+        self.assertIn('ha_config_get_automation',self.client.delegated)
+        self.assertEqual(self.client.call('ha_config_get_automation',{'entity_id':self.auto})['config'],self.config)
+        with self.assertRaises(ToolDenied):self.app.tools.registry.get('ha_mcp','ha_call_write_tool',effect='read')
+
+    def test_unchanged_catalog_preserves_actual_read_time_but_schema_change_invalidates_it(self):
+        request={'provider':'ha_mcp','tool':'ha_config_get_automation','arguments':{'entity_id':self.auto}}
+        self.assertEqual(self.app.tools.diagnostic_read(self.case['id'],request)['status'],'available')
+        read_at=self.now;self.now+=61;self.app.tools._mcp('ha_mcp',self.client)
+        provider=next(p for p in self.app.tools.registry.providers() if p['id']=='ha_mcp')
+        self.assertTrue(provider['diagnostic_read_verified']);self.assertEqual(provider['diagnostic_read_at'],read_at)
+        self.changed_schema=True;self.app.tools._mcp('ha_mcp',self.client)
+        provider=next(p for p in self.app.tools.registry.providers() if p['id']=='ha_mcp')
+        self.assertFalse(provider['diagnostic_read_verified']);self.assertIsNone(provider['diagnostic_read_at'])
+        self.assertEqual(self.writes,[])
+
+    def test_native_mcp_reads_without_generic_write_path(self):
+        self.provider_mode='native_mcp'
+        client=MCPConnection(self.url+'/mcp','fixture-only-token',allow_private_http=True)
+        self.app.tools._mcp('native_mcp',client)
+        result=self.app.tools.diagnostic_read(self.case['id'],{'provider':'native_mcp','tool':'GetLiveContext','arguments':{}})
+        self.assertEqual(result['status'],'available')
+        self.assertTrue(result['evidence_ids'])
+        with self.assertRaises(ToolDenied):self.app.tools.registry.get('native_mcp','DangerousWrite',effect='read')
+        self.assertEqual(self.writes,[])
+
+    def test_dialogue_triggers_scoped_mcp_reads_and_persists_reply_without_paid_ai(self):
+        triggered=[]
+        self.app.request_source_check=lambda:triggered.append(True)
+        incident=self.app.store.open_incident('device_unavailable','Nedostupnost: '+self.old,[self.old],self.now)
+        message=self.app.dialogue.add(incident['id'],'Prověř kontakt a také sensor.cizi','owner-fixture')
+        self.assertEqual(triggered,[True])
+        self.app.orchestration.cycle(budget=12)
+        case=self.app.store.case(incident['id'])
+        reply=next(r['content'] for r in case['records'] if r['kind']=='owner_diagnostic_reply')
+        self.assertEqual(reply['message_id'],message)
+        self.assertIn('ha_get_history',reply['summary_cs'])
+        self.assertIn('ha_get_entity',reply['summary_cs'])
+        self.assertEqual(reply['paid_model_calls'],0)
+        self.assertNotIn('sensor.cizi',canonical(self.calls))
+        self.assertNotIn('NEVER_EXPORT',canonical(case))
+        history=next(row for row in case['evidence'] if row['kind']=='tool:ha_mcp:ha_get_history')
+        self.assertEqual(history['payload']['data']['entity_id'],self.old)
+        request={'entity_ids':'sensor.cizi','start_time':self.iso(self.now-300),'end_time':self.iso(self.now),'source':'history','minimal_response':True,'limit':32}
+        with self.assertRaises(ToolDenied):
+            self.app.tools.diagnostic_read(incident['id'],{'provider':'ha_mcp','tool':'ha_get_history','arguments':request})
+        self.assertEqual(self.writes,[])
+
+    def test_retired_hamster_settings_and_catalog_are_removed_without_breaking_other_connections(self):
+        from hads_next.tool_connections import ToolConnections
+        from hads_next.tool_registry import ToolRegistry
+        path=self.app.tools.connections.path
+        active={'endpoint':self.url+'/mcp','token':'fixture-active-token','private_http':True,'enabled':True}
+        path.write_text(json.dumps({'schema':1,'connections':{'ha_mcp':active,'hamster_mcp':{'token':'RETIRED_SECRET'}}}))
+        path.chmod(0o600)
+        with self.app.store._connect() as db:
+            db.execute("INSERT INTO tool_providers VALUES('hamster_mcp','{}',0)")
+            db.execute("INSERT INTO tool_catalog VALUES('hamster_mcp','call','{}',0)")
+        migrated=ToolConnections(self.app)
+        self.assertEqual(set(migrated.clients),{'ha_mcp'})
+        self.assertEqual(json.loads(path.read_text())['connections'],{'ha_mcp':active})
+        with self.assertRaises(ToolDenied):migrated.configure('hamster_mcp',url=self.url,token='',private_http=True,enabled=True,principal='owner-fixture')
+        registry=ToolRegistry(self.app.store,self.app.clock)
+        self.assertNotIn('hamster_mcp',[row['id'] for row in registry.providers()])
+        self.assertNotIn('hamster_mcp',[row['provider'] for row in registry.tools()])
+        self.assertNotIn('hamster_mcp',settings(self.app,'csrf'))
+
+    def test_statistics_metadata_and_history_are_compared_without_import_or_causal_guess(self):
+        from hads_next.native_tool_reads import install
+        entity='sensor.fixture_energy';commands=[];fail=False
+        case=self.app.store.open_incident('manual_functional','Statistika má jinou jednotku',[entity],self.now)
+        def ws(command):
+            commands.append(command)
+            if command['type']=='recorder/list_statistic_ids':return [{'statistic_id':entity,'unit_of_measurement':'kWh','has_sum':True}]
+            if command['type']=='recorder/statistics_during_period':
+                if fail:raise ReadFailure('fixture_recorder_unavailable')
+                return {entity:[{'start':self.now*1000,'sum':12.5,'state':1.5}]}
+            raise AssertionError(command)
+        self.app.core_ws=CoreWSReader(ws);self.app.core=CoreReader(lambda path:{'entity_id':entity,'state':'1500','attributes':{'unit_of_measurement':'Wh','state_class':'total_increasing'}})
+        self.app.tools.registry.provider('core',connected=True,catalog_loaded=True);install(self.app.tools)
+        request={'provider':'core','tool':'statistics','arguments':{'entity_id':entity}}
+        result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'available');self.assertTrue(result['data']['unit_mismatch_observed'])
+        self.assertIs(result['data']['root_cause_proven'],False);self.assertIs(result['data']['write_available'],False)
+        self.assertEqual(result['data']['values'][0]['sum'],12.5)
+        fail=True;result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'not_read');self.assertEqual(result['evidence_ids'],[])
+        self.assertTrue(all(c['type'] in {'recorder/list_statistic_ids','recorder/statistics_during_period'} for c in commands))
+        self.assertEqual(self.writes,[])
+
+    def test_toolkit_reads_one_bound_standard_attribute_and_denies_write_parameters(self):
+        commands=[];fail=False;entity=self.entry['entity_id'];ieee='00:11:22:33:44:55:66:77'
+        case=self.app.store.open_incident('manual_functional','Kontakt neodpovídá',[entity],self.now)
+        with self.app.store._connect() as db:
+            db.execute('INSERT INTO entity_context_reports VALUES(?,?,?)',(entity,self.now,canonical({'entity_id':entity,'zha':{'ieee':ieee}})))
+        def ws(command):
+            if command['type']=='zha/devices':return []
+            commands.append(command)
+            self.assertEqual(command,{'type':'call_service','domain':'zha_toolkit','service':'attr_read','return_response':True,
+                'service_data':{'ieee':ieee,'endpoint':1,'cluster':1,'attribute':33,'use_cache':0,'tries':1}})
+            return {'response':{'success':not fail,'errors':['device not reachable'] if fail else [],'result_read':[{'33':175},{}]}}
+        self.app.core_ws=CoreWSReader(ws)
+        self.app.entity_context.toolkit={'read_succeeded':True,'version':'v1.1.35','devices':[]}
+        self.app.tools._sensors({'entity_registry':[],'core_config':{'components':['zha_toolkit']}},[])
+        request={'provider':'zha_toolkit','tool':'attr_read','arguments':{'entity_id':entity,'endpoint':1,'cluster':1,'attribute':33}}
+        result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'available');self.assertEqual(result['data']['result_read'][0]['33'],175)
+        before=len(commands)
+        with self.assertRaises(ToolDenied):self.app.tools.diagnostic_read(case['id'],{**request,'arguments':{**request['arguments'],'attr_val':0}})
+        self.assertEqual(len(commands),before)
+        fail=True;result=self.app.tools.diagnostic_read(case['id'],request)
+        self.assertEqual(result['status'],'not_read');self.assertEqual(result['evidence_ids'],[])
+        self.assertEqual(self.writes,[])
+
+    def test_toolkit_automatically_attaches_only_bound_device_from_large_cache(self):
+        entity = self.entry['entity_id']
+        case = self.app.store.open_incident('manual_functional', 'Kontakt neodpovídá', [entity], self.now)
+        self.app.tools.snapshot_values = {'entity_registry': [self.entry]}
+        devices = [{'device_id': f'unrelated_{i}', 'ieee': f'00:11:22:33:44:55:66:{i:02x}'}
+                   for i in range(240)]
+        bound = {'device_id': self.entry['device_id'], 'ieee': '00:11:22:33:44:55:77:88', 'lqi': 75}
+        self.app.entity_context.toolkit = {'read_succeeded': True, 'version': 'v1.2.6', 'devices': devices + [bound]}
+        self.app.tools._sensors(self.app.tools.snapshot_values, [])
+        self.app.orchestration.cycle(budget=6)
+        proof = next(row for row in self.app.store.case(case['id'])['evidence'] if row['source'] == 'zha_toolkit')
+        self.assertEqual(proof['payload']['data']['devices'], [bound])
+        self.app.tools.snapshot_values = {'entity_registry': []}
+        unrelated = self.app.tools.diagnostic_read(self.case['id'], {
+            'provider': 'zha_toolkit', 'tool': 'diagnostics', 'arguments': {},
+        })
+        self.assertEqual(unrelated['status'], 'no_relevant_data')
+        self.assertEqual(unrelated['evidence_ids'], [])
+        self.assertEqual(self.writes, [])
+    def test_F_unknown_shell_hint_and_write_through_diagnostic_route_are_denied(self):
+        for name,args in [('run_arbitrary_shell',{'command':'echo forbidden'}),('ha_config_set_automation',{})]:
+            with self.assertRaises(ToolDenied):self.app.tools.diagnostic_read(self.case['id'],{'provider':'ha_mcp','tool':name,'arguments':args})
+        with self.assertRaises(ToolDenied):validate({'$ref':'https://invalid.invalid/schema'}, {})
+        self.assertEqual(self.writes,[])
+
+    def test_real_approved_tool_HTTP_route_requires_fresh_HA_owner_CSRF_and_exact_plan(self):
+        from hads_next.addon_server import Server
+        from http.client import HTTPConnection
+        from urllib.parse import urlencode
+        controller=Server(('127.0.0.1',0),self.app,ingress_peer='127.0.0.1')
+        self.addCleanup(controller.server_close);self.addCleanup(controller.shutdown)
+        threading.Thread(target=controller.serve_forever,daemon=True).start()
+        plan=self.prepare()
+        def post(principal,csrf,exclusive=True):
+            conn=HTTPConnection('127.0.0.1',controller.server_port,timeout=5)
+            body=urlencode({'plan_id':plan.plan_id,'decision':'approve','csrf':csrf,'exclusive':'yes' if exclusive else 'no'})
+            headers={'Content-Type':'application/x-www-form-urlencoded'}
+            if principal:headers['X-Remote-User-Id']=principal
+            try:
+                conn.request('POST','/tool-repair/decide',body,headers);response=conn.getresponse();response.read();return response.status
+            finally:conn.close()
+        self.assertEqual(post(None,controller.csrf),403)
+        self.assertEqual(post('other-user',controller.csrf),403)
+        self.assertEqual(post('owner-fixture','forged'),403)
+        self.assertEqual(post('owner-fixture',controller.csrf,False),409)
+        self.assertEqual(self.writes,[])
+        self.assertEqual(post('owner-fixture',controller.csrf),303);self.assertEqual(len(self.writes),1)
+        self.assertEqual(post('owner-fixture',controller.csrf),409);self.assertEqual(len(self.writes),1)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+    def test_expired_forged_wrong_principal_changed_schema_and_target_block_before_write(self):
+        plan=self.prepare()
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.execute(plan,'forged','owner-fixture')
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','other',exclusive=True)
+        token=ApprovalAuthority(self.app.store.db_path,owner='owner-fixture',clock=lambda:self.now).approve(plan,principal='owner-fixture',ttl=1)
+        self.now+=2
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.execute(plan,token,'owner-fixture')
+        self.changed_schema=True
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.changed_schema=False;self.config['alias']='concurrent editor'
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.writes,[])
+    def test_G_timeout_after_write_is_durable_unknown_and_restart_never_replays(self):
+        plan=self.prepare();self.uncertain=True
+        result=self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(result.status,'unknown_requires_reconciliation');self.assertEqual(len(self.writes),1)
+        from hads_next.dashboard import render_dashboard
+        waiting=render_dashboard(self.app,'fixture-csrf').split('id="waiting"')[1].split('</section>')[0]
+        self.assertIn('Výsledek zásahu potřebuje kontrolu',waiting);self.assertIn(self.case['id'],waiting)
+        from hads_next.approved_tools import ApprovedRepairBroker
+        restarted=ApprovedRepairBroker(self.app)
+        self.assertTrue(restarted.reconcile(plan.plan_id)['matches_proposed'])
+        with self.assertRaises(RepairBlocked):restarted.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(len(self.writes),1)
+    def test_restore_attestation_signature_target_and_expiry_cannot_be_checkbox(self):
+        with self.assertRaises(ToolDenied):self.app.approved_tools.backups.verify('x')
+        self.receipt({'fixture':'old'})
+        with self.assertRaises(ToolDenied):self.app.approved_tools.backups.verify('not-the-target')
+        self.now+=3601
+        with self.assertRaises(ToolDenied):self.app.approved_tools.backups.verify(fingerprint({'fixture':'old'}))
+    def test_spook_entity_enable_is_separately_approved_and_functionally_verified(self):
+        self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
+        incident=self.app.store.open_incident('manual_functional','Kontakt neaktualizuje stav',[self.entry['entity_id']],self.now)
+        self.app.store.add_evidence(incident['id'],{'source':'native_entity_context','kind':'entity_context','event_id':'disabled-fixture','observed_at':self.now,'payload':{'entity_id':self.entry['entity_id'],'disabled_by':'user'}})
+        ids=[e['evidence_id'] for e in self.app.store.case(incident['id'])['evidence']];self.receipt(self.entry)
+        plan=self.app.approved_tools.prepare(incident['id'],'spook','homeassistant.enable_entity',{'entity_id':self.entry['entity_id']},ids,'Vlastník schvaluje povolení tohoto konkrétního kontaktu',exclusive=True)
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertIsNone(self.entry['disabled_by']);self.assertEqual(len(self.writes),1)
+        self.now+=31;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now-30)
+        self.assertNotEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        self.assertEqual(self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')['classification'],'Vyřešeno a ověřeno')
+        self.now+=1
+        self.app.repairs.on_functional_failure(incident['id'],self.entry['entity_id'],self.now,'fixture-contact-failed-again')
+        self.assertEqual(self.app.store.case(incident['id'])['incident']['status'],'open')
+        self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Problém se opakoval')
+
+    def test_ha_mcp_contact_enable_requires_targeted_backup_and_approval_then_verifies(self):
+        incident=self.app.store.open_incident('manual_functional','Kontakt neaktualizuje stav',[self.entry['entity_id']],self.now)
+        self.app.store.add_evidence(incident['id'],{'source':'native_entity_context','kind':'entity_context',
+            'event_id':'mcp-enable-contact','observed_at':self.now,'payload':{'entity_id':self.entry['entity_id'],'disabled_by':'user'}})
+        ids=[e['evidence_id'] for e in self.app.store.case(incident['id'])['evidence']]
+        params={'entity_id':self.entry['entity_id'],'enabled':True}
+        broker=self.app.approved_tools
+        def prepare(parameters):
+            return broker.prepare(incident['id'],'ha_mcp','ha_set_entity',parameters,ids,'Doložený zakázaný kontakt',exclusive=True)
+        with self.assertRaises(ToolDenied):prepare(params)
+        self.receipt(self.entry)
+        for rejected in ({**params,'enabled':False},{**params,'name':'Zakázaná změna'}):
+            with self.assertRaises(ValueError):prepare(rejected)
+        plan=prepare(params)
+        self.assertEqual(self.writes,[])
+        with self.assertRaises(RepairBlocked):broker.decide(plan.plan_id,'approve','other',exclusive=True)
+        self.assertEqual(broker.decide(plan.plan_id,'approve','owner-fixture',exclusive=True).status,'applied_verification_pending')
+        self.assertEqual(self.writes,[params])
+        self.now+=31;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now-30)
+        self.assertNotEqual(broker.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        self.assertEqual(broker.confirm_physical(plan.plan_id,'owner-fixture')['classification'],'Vyřešeno a ověřeno')
+    def test_disable_is_not_a_repair_and_forged_rollback_cannot_bypass_identity(self):
+        self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
+        with self.assertRaises(RepairBlocked):
+            self.app.approved_tools.prepare(self.case['id'],'spook','homeassistant.disable_entity',{'entity_id':self.old},self.evidence,'Nesmí skrýt závadu',exclusive=True)
+        plan=self.prepare()
+        with self.assertRaises(RepairBlocked):
+            self.app.approved_tools.prepare(self.case['id'],'ha_mcp','ha_config_set_automation',plan.document['parameters'],self.evidence,'Falešný návrat',exclusive=True,rollback_of='not-a-plan')
+        self.assertEqual(self.writes,[])
+
+    def test_C_E_shared_DNS_correlation_and_H_AI_unavailable_keep_evidence_without_cost(self):
+        self.app.orchestration.correlate([{'source':'core','component':'resolver','observed_at':self.now-20,'message':'DNS name resolution failed'},
+            {'source':'application','component':'radio','observed_at':self.now-15,'message':'Cannot connect to provider'},
+            {'source':'core','component':'weather','observed_at':self.now-10,'message':'connection refused'}])
+        groups=self.app.orchestration.correlate([]);self.assertEqual(len(groups),1);self.assertEqual(len(groups[0]['components']),3);self.assertFalse(groups[0]['root_cause_proven']);self.assertEqual(len([c for c in self.app.snapshot()['cases'] if c['kind']=='network_correlation']),1)
+        self.app.orchestration.cycle();self.assertFalse(self.app.investigations.status()['provider']['enabled'] if 'provider' in self.app.investigations.status() else False)
+        self.assertTrue(self.app.store.case(self.case['id'])['evidence']);self.assertEqual(self.writes,[])
+    def test_upstream_best_practice_receipt_is_read_bound_and_not_disabled(self):
+        plan=self.prepare();self.assertEqual(plan.document['parameters']['BestPracticeKey'],self.guide_ack)
+        self.assertIsNotNone(plan.document['guide_receipt'])
+        self.guide_ack='I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-abcd1234'
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.writes,[])
+        self.assertFalse(any(c.get('params',{}).get('arguments',{}).get('MandatoryBPS') is False for c in self.calls))
+
+    def test_real_runtime_catalog_stays_within_unchanged_launcher_limit(self):
+        from hads_next.investigator_roles import RoleBroker
+        role=RoleBroker(self.app.investigations.broker,'fixture-job',self.case['id'])
+        self.assertLessEqual(len(role.schemas()),32)
+        names={r['name'] for r in role.schemas()}
+        self.assertTrue({'hads_list_tools','hads_diagnostic_tool','hads_get_tool_schema','hads_propose_tool_repair'}<=names)
+
+    def test_application_wires_report_discovery_and_collects_without_a_model(self):
+        app=self.app
+        app.tools.connections.clients['automation_inspector']=ReportHTTP(self.url,allow_private_http=True)
+        app.tools.connections.clients['hadocs']=ReportHTTP(self.url,allow_private_http=True)
+        def core(path):
+            if path=='/api/config':return {'version':'2026.11.1','components':[]}
+            if path=='/api/states':return []
+            return self.core(path)
+        def ws(command):
+            if command['type'] in {'config/entity_registry/list','config/device_registry/list','system_log/list'}:return []
+            if command['type']=='repairs/list_issues':return {'issues':[]}
+            if command['type']=='system_health/info':return {'domains':{},'complete':True}
+            return self.ws(command)
+        app.core=CoreReader(core);app.core_ws=CoreWSReader(ws)
+        app.investigations.broker.core=app.core;app.investigations.broker.ws=app.core_ws
+        app.check_sources()
+        providers={r['id']:r for r in app.tools.registry.providers()}
+        self.assertTrue(providers['automation_inspector']['diagnostic_read_verified'])
+        self.assertTrue(providers['hadocs']['diagnostic_read_verified'])
+        self.assertTrue(any(e['source']=='automation_inspector' for e in app.store.case(self.case['id'])['evidence']))
+        from hads_next.provider_ui import render_providers
+        page=render_providers(app,'fixture-csrf')
+        inspector=page.split('<h2>Automation Inspector</h2>')[1].split('</article>')[0]
+        self.assertIn('Společný konektor přečetl diagnostickou odpověď',inspector)
+        self.assertNotIn('HADS zatím neověřil vlastní diagnostiku',inspector)
+        self.assertEqual(self.writes,[])
+
+    def test_old_HADocs_report_survives_process_restart_without_claiming_a_new_scan(self):
+        from hads_next.provider_reports import hadocs,sensor_report
+        value=hadocs({'available':True,'health':{'health_score':97},'incidents':[],'recommendations':[]},
+                     {'version':'0.17.0-rc5','running':False,'exit_code':None,'finished_at':None,'report_available':True})
+        self.assertIsNone(value['generated_at']);self.assertFalse(value['freshness_verified'])
+        report=sensor_report('entity_availability',[{'entity_id':'sensor.availability','platform':'entity_availability'}],
+            [{'entity_id':'sensor.availability','state':'99.8','last_updated':self.iso(self.now),'attributes':{'per_device':{'binary_sensor.fixture_contact':99.8},'offline_entities':['binary_sensor.fixture_contact'],'count':1}}])
+        attrs=report['sensors'][0]['attributes']
+        self.assertEqual(attrs['per_device']['binary_sensor.fixture_contact'],99.8)
+        self.assertEqual(attrs['offline_entities'],['binary_sensor.fixture_contact'])
+
+    def test_public_research_uses_actual_provider_version_and_explicit_consent(self):
+        self.app.tools._http('automation_inspector',ReportHTTP(self.url,allow_private_http=True))
+        research=self.app.investigations.research
+        urls=[];research.transport=lambda url:(urls.append(url) or json.dumps({'items':[]}))
+        request={'project':'automation_inspector','version':'1.2.4','terms':'missing reference'}
+        result=research.read(self.case['id'],'hads_get_known_issues',request)
+        self.assertEqual(result['status'],'not_read');self.assertEqual(urls,[])
+        self.app.tools.diagnostic_read(self.case['id'],{'provider':'automation_inspector','tool':'dependency_report','arguments':{}})
+        research.configure(True,'owner-fixture','owner-fixture')
+        result=research.read(self.case['id'],'hads_get_known_issues',request)
+        self.assertNotEqual(result['status'],'not_read');self.assertEqual(len(urls),1)
+        from urllib.parse import unquote_plus
+        self.assertIn('repo:ITSpecialist111/Automation-Inspector',unquote_plus(urls[0]))
+        self.assertEqual(self.writes,[])
+
+    def test_corrupt_connector_configuration_does_not_disable_incident_collection(self):
+        path=self.app.data_dir/'tool-connections.json'
+        path.write_text('{broken');path.chmod(0o600)
+        from hads_next.tool_connections import ToolConnections
+        connections=ToolConnections(self.app)
+        self.assertTrue(connections.load_error);self.assertEqual(connections.clients,{})
+        self.assertEqual(path.read_text(),'{broken')
+        for content in ('[]','{"schema":1,"connections":[]}'):
+            path.write_text(content)
+            self.assertTrue(ToolConnections(self.app).load_error)
+        with tempfile.TemporaryDirectory() as directory:
+            app=Application(directory)
+            app.enroll_owner('owner-without-sources')
+            case=app.report_incident('Senzor neodpovídá','binary_sensor.fixture','owner-without-sources')
+            self.assertEqual(case['incident']['status'],'open')
+            self.assertEqual(app._source_job['state'],'idle')
+            self.assertEqual(len(app.snapshot()['cases']),1)
+
+    def test_reused_entity_id_cannot_redirect_an_approved_light_repair(self):
+        plan=self.prepare();original_core=self.app.core
+        self.app.core=CoreReader(lambda path:{'entity_id':self.old,'state':'off'} if path=='/api/states/'+self.old else self.core(path))
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.app.core=original_core;self.light_identity['device_id']='different_device'
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.writes,[])
+
+    def test_other_reads_cannot_turn_permission_failure_into_missing_reference_proof(self):
+        original=self.core
+        def denied(path):
+            if path=='/api/states/'+self.old:raise ReadFailure('http_error',403)
+            return original(path)
+        class ClobberedSharedStatus(CoreReader):
+            def states(self,entity_id=None):
+                result=super().states(entity_id)
+                self.status.last_response_status=404  # another request replaces shared status
+                return result
+        self.app.core=ClobberedSharedStatus(denied)
+        with self.assertRaises(RepairBlocked):self.prepare()
+        self.assertEqual(self.writes,[])
+
+    def test_uncertain_write_is_read_automatically_and_owner_adopts_without_replay(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.now+=1;self.app.repair_recovery.cycle()
+        report=self.app.repair_recovery.status(plan.plan_id)
+        self.assertTrue(report['matches_proposed']);self.assertTrue(report['target_identity_matches'])
+        self.assertEqual(len(self.writes),1)
+        with self.assertRaises(RepairBlocked):self.app.repair_recovery.adopt(plan.plan_id,'not-owner')
+        self.app.repair_recovery.adopt(plan.plan_id,'owner-fixture')
+        with closing(connect(self.app.store.db_path)) as db:
+            row=db.execute('SELECT status,completed_at,error FROM repair_executions WHERE plan_id=?',(plan.plan_id,)).fetchone()
+        self.assertEqual(row['status'],'applied_verification_pending');self.assertEqual(row['completed_at'],self.now)
+        self.assertIn('write_origin_uncertain',row['error']);self.assertEqual(len(self.writes),1)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+
+    def test_uncertain_write_blocks_another_case_and_a_different_provider(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.app.tools.registry.provider('spook',connected=True,catalog_loaded=True,version='fixture-contract-1');self.app.tools._services()
+        incident=self.app.store.open_incident('manual_functional','Kontakt nereaguje',[self.entry['entity_id']],self.now)
+        self.app.store.add_evidence(incident['id'],{'source':'native_entity_context','kind':'entity_context','event_id':'second-case','observed_at':self.now,'payload':{'entity_id':self.entry['entity_id'],'disabled_by':'user'}})
+        ids=[e['evidence_id'] for e in self.app.store.case(incident['id'])['evidence']];self.receipt(self.entry)
+        other=self.app.approved_tools.prepare(incident['id'],'spook','homeassistant.enable_entity',{'entity_id':self.entry['entity_id']},ids,'Samostatný vlastnický požadavek',exclusive=True)
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(other.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(self.entry['disabled_by'],'user');self.assertEqual(len(self.writes),1)
+
+    def test_actual_rollback_requires_new_approval_and_cannot_target_reused_identifier(self):
+        plan=self.prepare();self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.now+=1;trigger=self.now;self.app.detection.health.update(state='listening',heartbeat_at=self.now,continuous_since=self.now)
+        self.app.repairs.trigger_coverage=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.app.repairs.on_trigger({'data':{'entity_id':self.auto},'time_fired':self.iso(self.now),'context':{'id':'rollback-test-context'}})
+        self.now+=1;self.light_state='on';self.app.repairs.observe_state({'entity_id':self.new,'state':'on','context':{'id':'rollback-test-context'}},self.now)
+        self.now+=1;self.app.approved_tools.confirm_physical(plan.plan_id,'owner-fixture')
+        self.now=trigger+33;self.app.detection.health['heartbeat_at']=self.now;self.app.repairs.trigger_heartbeat=self.now
+        self.assertEqual(self.app.approved_tools.verify(plan.plan_id)['classification'],'Vyřešeno a ověřeno')
+        occurrences=len(self.app.store.case(self.case['id'])['occurrences'])
+        self.receipt({'config':copy.deepcopy(self.config),'config_hash':fingerprint(self.config)})
+        inverse=self.app.approved_tools.rollback_plan(plan.plan_id,exclusive=True)
+        from hads_next.dashboard import render_dashboard
+        waiting=render_dashboard(self.app,'fixture-csrf').split('id="waiting"')[1].split('</section>')[0]
+        self.assertIn('Návrat změny čeká na schválení',waiting)
+        self.assertEqual(len(self.writes),1)
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.execute(inverse,'not-an-approval','owner-fixture')
+        core=self.core
+        self.app.core=CoreReader(lambda path:{'entity_id':self.old,'state':'off'} if path=='/api/states/'+self.old else core(path))
+        with self.assertRaises(RepairBlocked):self.app.approved_tools.decide(inverse.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(len(self.writes),1)
+        self.app.core=CoreReader(core)
+        self.app.approved_tools.decide(inverse.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertEqual(len(self.writes),2);self.assertEqual(self.config['actions'][0]['target']['entity_id'],self.old)
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+        self.assertEqual(len(self.app.store.case(self.case['id'])['occurrences']),occurrences,'Rollback invalidates resolution but does not manufacture a functional recurrence')
+        report=self.app.approved_tools.verify(inverse.plan_id)
+        self.assertIn('Návrat změny ověřen čtením',report['classification'])
+        self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+
+    def test_approved_tool_starts_actual_event_subscription_and_restart_restores_it(self):
+        subscribed=threading.Event();outer=self
+        class Transport:
+            def __call__(self,command):return outer.ws(command)
+            def automation_events(self,stop,callback,ready,heartbeat):
+                ready();subscribed.set();stop.wait(3)
+        transport=Transport();self.app.core_ws=CoreWSReader(transport)
+        plan=self.prepare();self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.assertTrue(subscribed.wait(1));self.assertIsNotNone(self.app.repairs.trigger_coverage)
+        self.app.repairs.close();subscribed.clear()
+        restarted=Application(self.tmp.name,self.app.core,core_ws=CoreWSReader(transport),clock=lambda:self.now)
+        self.addCleanup(restarted.repairs.close);self.addCleanup(restarted.detection.close)
+        restarted.enroll_owner('owner-fixture')
+        self.assertTrue(subscribed.wait(1));self.assertEqual(restarted.repairs.status()['provider_pending_verifications'],1)
+        self.assertEqual(len(self.writes),1)
+
+    def test_recovery_read_failure_is_visible_without_interrupting_other_collection(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        def unavailable(*args):raise ReadFailure('fixture_connection_lost')
+        self.client.call=unavailable
+        self.app.repair_recovery.cycle()
+        self.assertIs(self.app.repair_recovery.status(plan.plan_id)['read_verified'],False)
+        self.assertEqual(len(self.writes),1);self.assertTrue(self.app.store.case(self.case['id'])['evidence'])
+
+    def test_exhausted_automatic_recovery_can_be_rechecked_by_owner_without_replay(self):
+        plan=self.prepare();self.uncertain=True
+        self.app.approved_tools.decide(plan.plan_id,'approve','owner-fixture',exclusive=True)
+        self.config=copy.deepcopy(plan.document['original']['config'])
+        self.app.repair_recovery.cycle();self.now+=301;self.app.repair_recovery.cycle()
+        self.assertTrue(self.app.repair_recovery.status(plan.plan_id)['matches_original'])
+        with self.assertRaises(RepairBlocked):self.app.repair_recovery.recheck(plan.plan_id,'not-owner')
+        with self.assertRaises(RepairBlocked):self.app.repair_recovery.recheck(plan.plan_id,'owner-fixture')
+        self.config=copy.deepcopy(plan.document['proposed']['config']);self.now+=61
+        result=self.app.repair_recovery.recheck(plan.plan_id,'owner-fixture')
+        self.assertTrue(result['matches_proposed']);self.assertTrue(result['requested_by_owner'])
+        self.app.repair_recovery.adopt(plan.plan_id,'owner-fixture')
+        self.assertEqual(len(self.writes),1);self.assertEqual(self.app.store.case(self.case['id'])['incident']['status'],'open')
+
+    def test_private_connection_identity_never_reaches_public_setup_or_catalog(self):
+        html=settings(self.app,'fixture-csrf');self.assertNotIn('fixture-only-token',html);self.assertNotIn(self.url,html)
+        raw=canonical(self.app.tools.list_read(self.case['id'],{}));self.assertNotIn('fixture-only-token',raw);self.assertNotIn(self.url,raw)
+
+if __name__=='__main__':unittest.main()

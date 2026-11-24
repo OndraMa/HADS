@@ -1,0 +1,53 @@
+{
+  "repository": "home-assistant/supervisor",
+  "tag": "2026.11.0",
+  "revision": "c1c6f0a754c0656eb1af189f11009f1cfc4b3e28",
+  "scope": "source_contract_verified_not_live_HAOS",
+  "GET": {
+    "/core/stats": {
+      "permission": "hassio_api with existing manager app role; read failures remain gaps",
+      "schema_fields": [
+        "memory_usage",
+        "memory_limit",
+        "memory_percent",
+        "cpu_percent"
+      ]
+    },
+    "/supervisor/stats": {
+      "schema_fields": [
+        "memory_usage",
+        "memory_limit",
+        "memory_percent",
+        "cpu_percent"
+      ]
+    },
+    "/addons/{slug}/stats": {
+      "namespace": "existing legacy v1 route",
+      "schema_fields": [
+        "memory_usage",
+        "memory_limit",
+        "memory_percent",
+        "cpu_percent"
+      ]
+    }
+  },
+  "optional_cpu_percent_may_be_null": true,
+  "files": {
+    "supervisor/api/homeassistant.py": {
+      "blob_sha": "701f0c1b6e3b9045d77da7ab1f63be779d78281e",
+      "url": "https://github.com/home-assistant/supervisor/blob/c1c6f0a754c0656eb1af189f11009f1cfc4b3e28/supervisor/api/homeassistant.py"
+    },
+    "supervisor/api/supervisor.py": {
+      "blob_sha": "384f9631da7c20bfe04fd556c9916a65417a1033",
+      "url": "https://github.com/home-assistant/supervisor/blob/c1c6f0a754c0656eb1af189f11009f1cfc4b3e28/supervisor/api/supervisor.py"
+    },
+    "supervisor/api/__init__.py": {
+      "blob_sha": "a9de70ae25e383b3d6ba22e0d5936dcf0b47eab2",
+      "url": "https://github.com/home-assistant/supervisor/blob/c1c6f0a754c0656eb1af189f11009f1cfc4b3e28/supervisor/api/__init__.py"
+    },
+    "supervisor/api/utils.py": {
+      "blob_sha": "33cc40f165f58eb00479c59097e5d36d33924704",
+      "url": "https://github.com/home-assistant/supervisor/blob/c1c6f0a754c0656eb1af189f11009f1cfc4b3e28/supervisor/api/utils.py"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "scope": "offline_download_bundle_acceptance",
+  "live_haos": false,
+  "source_commit": "7b3df242cd3aa056d76d64a478f122dca4fed6e9",
+  "documentation_commit": "ade374d2c6ee05a0842feb5d66d39f0d7f6cccb9",
+  "zip_files": 207,
+  "all_zip_member_hashes_verified": true,
+  "installer_verify_passed": true,
+  "extract_only_passed": true,
+  "no_core_lab_writer_in_payload": true,
+  "modified_accepted_installer_refused": true,
+  "output_overwrite_refused": true,
+  "bundle_sha256": "cdca80038efc22c70ab45704afceb36dbfd90f908d4272d5d37c38a2d4cac374",
+  "passed": true
+}

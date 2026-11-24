@@ -1,0 +1,17 @@
+{
+  "number": 3,
+  "title": "HADS 4.7.0-rc3: evidence-driven investigation and scoped repair launch",
+  "state": "open",
+  "body": "## Implemented\n- Fresh Core state, Recorder/device/battery/signal read-only tools; system/addon log tails, container RAM history and lifecycle evidence.\n- Iterative AI evidence readbacks with persistent receipts visible in incident detail; explicit omissions and bounded context.\n- Reviewable advice/questions without trusting a model's verified flag; failed repair follow-up without blind replay; no phone rename by string similarity alone.\n- Explicit approve-and-start endpoint/button scoped to one plan; batch IDs frozen at launch.\n- Optional Core companion for independent OneDrive download/SHA-256 verification, exact service discovery and HA service_response handling. Recorder rescue includes consistent SQLite snapshot.\n\n## Validation\n181 offline tests passed, no skips/failures. Python compile, JavaScript syntax, WebMCP contract, unique YAML keys, source/archive/installer identity and companion package checked. See outputs/HADS4_4.7.0-rc3-verification.json.\n\n## Not a stable release\nNo live HAOS install, Core companion setup/cloud readback, paid API call, Docker target build or restore test performed. Companion requires separate explicit installation. Full cloud-backup orchestration/rotation, per-process telemetry and universal positive functional verification remain incomplete. Do not equate API success or quiet logs with a repaired physical system.\n\nStacked on RC2; does not modify main. No user logs, databases or keys are included.",
+  "created_at": "2026-09-14T11:11:16Z",
+  "updated_at": "2026-09-14T11:11:16Z",
+  "head": {
+    "ref": "codex/hads-4.7.0-rc3",
+    "sha": "9562366a795a8e8716c903f72c7534f5d8975a46",
+    "tree": "77f0d7c8ef8cd496ce0c93ae4c649a87f1cf3f34"
+  },
+  "base": {
+    "ref": "codex/hads-4.7.0-rc2",
+    "sha": "174f9e128f2e5afc40ff800b20ba59909914469c"
+  }
+}

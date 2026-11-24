@@ -1,0 +1,17 @@
+{
+  "number": 9,
+  "title": "HADS Next: srozumitelný přehled a správné rozlišení zastavených aplikací",
+  "state": "open",
+  "body": "Uživatel RC2 doložil dvě nerozlišitelná hlášení aplikací ve stavu error, vypnutou AI a paměť těsně nad rezervou. Doplnil, že error může následovat po záměrném zastavení. Samotný tento stav neprokazuje funkční poruchu ani chybu HAOS.\n\nNový přehled má jednu navigaci, konkrétní názvy aplikací i pro historické nálezy, oddělené funkční případy, čekající kroky, ověřené výsledky, opakování a srozumitelný stav AI. Technické údaje jsou v detailu. Historické automatické stavové nálezy bez opravného plánu zůstávají dohledatelné jako pozorování; nejsou smazané ani označené za vyřešené. Uživatelem nahlášené funkční problémy a schvalované plány se neschovávají.\n\nSamotný automatický stav aplikace už nezahajuje placené AI vyšetřování. Doložená očekávaná funkce, například neočekávaně vypnutá vybraná automatizace, nadále používá původní opt-in a limity. Brána 576 MiB se nesnižuje; průvodce nově ukazuje i odstup od hranice. Podmínky autorizace a vykonávání oprav se nemění.\n\nLokálně prošlo 179 regresních testů a 10 pohledů v Chromium (desktop 1280 px / mobil 390 px), včetně XSS, relativních ingress odkazů, zachování evidence a zákazu automatického modelového volání ze samotného stavu aplikace. Přidaný CI ověřuje stejné scénáře. Žádná produkční aplikace nebyla změněna, restartována ani znovu instalována; nebyl volán placený model.\n\n[Desktopový náhled](https://github.com/OndraMa/HADS/blob/codex/hads-next-command-center/hads-next/docs/command-center-review/dashboard-desktop.png) · [Mobilní náhled](https://github.com/OndraMa/HADS/blob/codex/hads-next-command-center/hads-next/docs/command-center-review/dashboard-mobile.png) · [Přesný rozsah a omezení](https://github.com/OndraMa/HADS/blob/codex/hads-next-command-center/hads-next/docs/command-center-review/README_CS.md)\n\nSnímky jsou z anonymní fixture, nikoli ze skutečného HAOS. Přímý přístup k uživatelovu bočnímu prohlížeči zde chybí a cloud nemá VPN připojení. Jeho vložené údaje nejsou vydávané za nezávislou živou přejímku. Vydaný RC2 instalátor/archivy zůstávají beze změny; tato zdrojová úprava zatím není nasazená ani vydaná jako nový kandidát.\n\n**GitHub CI prošlo:** [běh 43375800490](https://github.com/OndraMa/HADS/actions/runs/43375800490) nad přesnou revizí `931add6fd8a472e1cb7de0864da8d51b1b4bed0c`: regresní sada a Chromium desktop/mobil, bez živého HAOS a bez volání modelu.",
+  "created_at": "2026-11-13T06:01:20Z",
+  "updated_at": "2026-11-13T06:06:08Z",
+  "head": {
+    "ref": "codex/hads-next-command-center",
+    "sha": "931add6fd8a472e1cb7de0864da8d51b1b4bed0c",
+    "tree": "90496f24a3a2f484438016530e1696324ff71644"
+  },
+  "base": {
+    "ref": "codex/hads-next-practical-acceptance",
+    "sha": "0097c74e6333c2b5c86e4dba098ee61e0f128d67"
+  }
+}

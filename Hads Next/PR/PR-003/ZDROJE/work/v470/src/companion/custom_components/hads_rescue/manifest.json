@@ -1,0 +1,10 @@
+{
+  "domain": "hads_rescue",
+  "name": "HADS Rescue Readback",
+  "version": "0.1.0",
+  "config_flow": true,
+  "after_dependencies": ["onedrive"],
+  "documentation": "https://github.com/OndraMa/HADS",
+  "codeowners": ["@OndraMa"],
+  "iot_class": "cloud_polling"
+}

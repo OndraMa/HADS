@@ -1,0 +1,17 @@
+{
+  "number": 17,
+  "title": "HADS Next RC6: oprava sběru, Watchman a ověřený návod HA-MCP/Hermes",
+  "state": "open",
+  "body": "RC5 zahazoval celý inventář aplikací kvůli platným Supervisor slugům s pomlčkou a z Watchmanu četl jen čítač. RC6 zachová validní aplikace, viditelně eviduje vadné řádky a automaticky čte existující Watchman atributy podle vlastnictví a unique IDs v registru. Podrobnosti odkazů/souborů/řádků ukládá do společného diagnostického spisu, bez report triggerů, zápisů, falešné funkční diagnózy a duplicitních důkazů při novém čase stejného skenu.\n\nSoučástí je podrobný český návod HA-MCP/Hermes podle přesných upstream revizí, API Inspector 1.2.4 a HADocs 0.17.0-rc5, hranice HASK a posouzení HASS-AI-Orchestrator 0.13.6. Ten není automaticky instalován ani oprávněn zapisovat. Obecné aktivní MCP konektory a opravné adaptéry Spook/registry/statistiky/YAML zůstávají výslovně nedokončené.\n\nOvěřeno:\n- 259 offline a negativních bezpečnostních testů na každé nativní architektuře ARM64/AMD64.\n- Skutečný Core a původní izolovaný Hermes se skriptovaným lokálním HTTPS modelem; 3 trial požadavky, čtvrtý odmítnutý před sítí, bez placeného LLM.\n- Produkční kontejner bez laboratorního Core, graceful SIGTERM exit 0, zachování incidentů po restartu, paměťová ochrana.\n- Skutečný vydaný RC5 zdroj a skutečný RC6 instalátor proti testovacímu Supervisor CLI; update s částečnou zálohou, bez předchozího stop/uninstall a bez automatického retry při nejistotě.\n- 18 webových pohledů desktop/mobil; 59 souborů payloadu porovnáno s Git commitem, shodné instalační bajty z obou architektur; kompletní ZIP sestaven dvakrát shodně.\n\nTestovaný zdroj: `6a067f716b1e4870cbb21f08ed44e134800ecdff`. Následné commity přidávají pouze důkazy, dokumentaci a přesné ověřené instalační soubory. [Nativní CI](https://github.com/OndraMa/HADS/actions/runs/43638589294) · [Webové CI](https://github.com/OndraMa/HADS/actions/runs/43638592113) · [Vydání a soubory RC6](https://github.com/OndraMa/HADS/releases/tag/hads-next-1.0.0-rc6).\n\nŽivý HAOS, skutečný model, fyzické rádio/Zigbee a nezávislá obnovitelnost záloh čekají. RC6 není úplné splnění původního zadání. Původní produkční větve a vydané archivy zůstávají beze změny.",
+  "created_at": "2026-11-14T20:38:34Z",
+  "updated_at": "2026-11-14T20:54:37Z",
+  "head": {
+    "ref": "codex/hads-next-collector-audit",
+    "sha": "33ab9c5a75def9a6c5554517cffc32564e494117",
+    "tree": "6f99148a366f67dd72399712eef36b228d1add0e"
+  },
+  "base": {
+    "ref": "codex/hads-next-rc5",
+    "sha": "cf7ca24acc0c76b883daf4b111f0133b30ecfa3f"
+  }
+}

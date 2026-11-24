@@ -1,0 +1,172 @@
+{
+  "scope": "offline_browser_fake_ingress_no_HAOS",
+  "browser": "system Chromium with Playwright",
+  "live_haos": false,
+  "views": [
+    {
+      "width": 1280,
+      "path": "/",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/setup/lighting",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/setup/monitors",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/acceptance",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/setup/ai",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/setup/providers",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/setup/lighting",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/setup/monitors",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/acceptance",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/setup/ai",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/setup/providers",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/case/",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "path": "/case/",
+      "passed": true
+    }
+  ],
+  "acceptance_steps": 12,
+  "cost_consent_default": false,
+  "anonymous_export": true,
+  "script_injection_escaped": true,
+  "historical_application_names_distinguished": true,
+  "single_navigation": true,
+  "AI_disabled_visible": true,
+  "status_only_apps_not_functional_failures": true,
+  "application_observations_expanded_for_preview": true,
+  "data_origin": "anonymous_fixture_based_on_owner_reported_UI_shape_not_live_HAOS",
+  "keyboard_focus": true,
+  "real_model_called": false,
+  "passed": true,
+  "input_sha256": {
+    "src/hads_next/managed_repair.py": "437276dd820db3e274926bd3cc9d5f1d6229ea0bac1bbff9427076bc95c77252",
+    "src/hads_next/command_center.py": "1f9cb5e306e7b0351d74512f9352f9760bb57366d41be261c6cbae4b092d02c8",
+    "src/hads_next/entity_context.py": "406a4622112ad049302e5731dc6efb25914ddeacc8abc2af52e0451b9f41dec4",
+    "src/hads_next/evidence_broker.py": "41d927fbcc3aca3f1d243d74d000454d2760a8764cc2373ed4541f6d5484eb84",
+    "src/hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+    "src/hads_next/investigator_roles.py": "da83e0614e883183972b6aef196a72a0f2300916fe16705b1715cea4dcbf5191",
+    "src/hads_next/addon_server.py": "7b6ca926b226f54d2d88984f520e68437f9e724ec1224af42fc4e299da6bdec0",
+    "src/hads_next/automatic_reads.py": "d86700b3e3aba95c4dbcea5410de6cffe1bc3ce4aed8dd6be39d3e53f5c3bfba",
+    "src/hads_next/entity_context_ui.py": "3ac8fa2d0a07560697787ae42baa2ea62c6cb6f555f06afb47b62f4b6da42d56",
+    "src/hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+    "src/hads_next/evidence.py": "accbcf35aff8d10fbb54982e6382889b0f627af7c9d96d0cae294b366b3050e8",
+    "src/hads_next/ai_budget.py": "ca6f8f5d502fe3e14d15fa82ef471d7ed573dc1d292c509e9bb832d567aad1b4",
+    "src/hads_next/repair_service.py": "c1eb9d74619facb43bb9f43837ac7f2093948284b792935808e34c633b69ece2",
+    "src/hads_next/provider_ui.py": "0a1f9f82be69095a893de7c1114cf4d3c8eb958e67e9a555b2636eeccca44310",
+    "src/hads_next/hermes_sandbox.py": "cc235b984711febe1423d0131216175bdb208cae2f16fd531a8b25dfa47652e9",
+    "src/hads_next/music_assistant.py": "cb201cc61fd10266775aa661c5c6383f16bb373adc260ca93c9db9b35ce9a98a",
+    "src/hads_next/verification.py": "73fa52bd780abfeb7cd953dd610d60bf0e9192a9c9e0b72b0680c0948894ef4d",
+    "src/hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+    "src/hads_next/hermes_runtime.py": "46cf21bf4c2583eb2dd5bdfd136550a129e752c177d91a2056e15a1f61932806",
+    "src/hads_next/zigbee_reads.py": "27cd2d63e23c9a68478df179c56dc3d39059898600b9be709d5c192679f5a4be",
+    "src/hads_next/ai_provider.py": "a42f674747db4eafcee8b20d3d3a76d02e0cd6270531db87d62f0d55944f082a",
+    "src/hads_next/music_configuration.py": "185dfda40c1b2ec51aa085dcabb8772218557169e322180fb6e528dc7ffc74b4",
+    "src/hads_next/research.py": "a9abf2d889af700d53a283ea50d7dece66b51fa6acf675f161e47c6efe9ed8ae",
+    "src/hads_next/watchman_contract.py": "aefc7f292b4d6a1660fce4f2ca2707c42ba839302a5de1b0b51388179edd0819",
+    "src/hads_next/command_center_style.py": "26de8f849094fdb25bedfa07b2186d9c6b54a07d525972cc799b0fe2746ea54d",
+    "src/hads_next/haos_application.py": "25be64aedcb21d03b31e0268f3acb3d77c74b71cc52ab3824d053c37cd772a77",
+    "src/hads_next/readiness.py": "b1cee2de80ecb8de75acffce21d99880c68110f91cadc62c9a2dd638e26b5f66",
+    "src/hads_next/investigation_service.py": "20dc5e232f30138e7abdf8acdab901cc411bfd25b91a0ba59f7b58ae2c9a0c81",
+    "src/hads_next/observability.py": "554fb03005d4521080873e8fc90f9e462ef759d08eeb1ecd22bcac82d902d440",
+    "src/hads_next/detection.py": "65faf23fe497efd057c0e9d795188b19975a7be98419e19c405b45911824fc2f",
+    "src/hads_next/worker_protocol.py": "f7a8bdf0cfaba528e7c167067cdd67b04e26b84f574e6c51abd544a383f715c6",
+    "src/hads_next/native_followup.py": "863211f4f34399336c6e7b988657f64111118a208ed66f020c813ed51fb162fe",
+    "src/hads_next/hermes_worker.py": "b78257450cb2620f87f716fd7843bd8fa325a0ed0cf598b05094901d79566cfe",
+    "src/hads_next/legacy_connectors.py": "27f401608f0b431f6a2e4c36a5a799d0264cea7b23e3fdb6d5ac74e807f0b5ff",
+    "src/hads_next/investigation_jobs.py": "370330049c2770658350f92d430e04691c269801ce7ad8c90bcfd1d7f1d7c49e",
+    "src/hads_next/migration.py": "080bdea688947b438ab1463163f088b9250234fd996a73d404d5780cc42443c2",
+    "src/hads_next/system_diagnostics.py": "19d23a0a64bcfb852afff72e4301431b7e708db64906ef2b171cda546c9755ed",
+    "src/hads_next/runtime_launcher.py": "0419dbf4b57542296ba26bef734c3cacf9a7741e7af61bff16aca4aee55d6027",
+    "src/hads_next/zha_observer.py": "16d50044c3e608802ae84a540cdbfb3de431b2ce1931a9a20265b3961a28bc1e",
+    "src/hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "src/hads_next/repair_suggestions.py": "835a7b40f0c148be9401fecf41e9d30da33c5728fc3088da9d079f441d5ad67c",
+    "src/hads_next/dashboard.py": "164ea64ede91f869560940da24960278fd47f4efa90c991f6af757827ced8dbf",
+    "src/hads_next/native_repair.py": "5e0e611e162311af483fba2322e85f8bffd5d5caacff95975ac1e173c9e8f14d",
+    "src/hads_next/health_cases.py": "a3f7c466260c6a3afeae8827c3498199bebcfac1a88af4c325a39783557271be",
+    "src/hads_next/provider_verification.py": "269ce817acf41924938dc48619a47a219d01001df73906031d579638c36eac9e",
+    "src/hads_next/repair.py": "2189b05c1330188148960a2bbc1340cd148467f84481c4fb940ad7c7380ae432",
+    "src/hads_next/live_acceptance.py": "d5fdd80650c0a0df99ef91357a829b21304978c4a785ef8aa2e4165936c47c3d",
+    "src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "src/hads_next/runtime_check.py": "7d8de972ca897b50c2a445bd26c06fc18a07edec30ffb6731e390e3389486bb4",
+    "scripts/practical_browser.py": "a9267eeee59683c1b4fd4c2df3ca5ca3450895cd2bc9afeddd3ee880ac50ab16"
+  }
+}

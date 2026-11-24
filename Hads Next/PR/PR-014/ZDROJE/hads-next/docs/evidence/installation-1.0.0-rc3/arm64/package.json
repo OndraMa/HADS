@@ -1,0 +1,116 @@
+{
+  "scope": "container_with_fake_supervisor",
+  "live_haos": false,
+  "arm64_tested": true,
+  "installer_sha256": "8a23625c688b4282f2661e6b24000a8e5ce3e7886705b4dd02f33805fe5b13d1",
+  "native_runtime_readiness": {
+    "scope": "isolated_container_native_Hermes_readiness",
+    "live_haos": false,
+    "ha_connected": false,
+    "model_provider_configured": false,
+    "controller_uid": 65532,
+    "result": {
+      "completed": true,
+      "probe_only": true,
+      "engine": "NousResearch/hermes-agent",
+      "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+      "native_agent_loaded": true,
+      "model_calls": 0,
+      "isolation_verified": true,
+      "uid": 65534,
+      "peak_rss_bytes": 139141120,
+      "execution_authority": "none",
+      "broker_requests_rejected": 0
+    },
+    "passed": true
+  },
+  "memory_admission_refused_without_model": {
+    "scope": "isolated_container_native_Hermes_readiness",
+    "live_haos": false,
+    "ha_connected": false,
+    "model_provider_configured": false,
+    "controller_uid": 65532,
+    "result": {
+      "completed": false,
+      "error": "insufficient_memory_reserve",
+      "required_reserve_bytes": 603979776,
+      "broker_requests_rejected": 0
+    },
+    "passed": false
+  },
+  "runtime": {
+    "health": {
+      "service": "hads-next",
+      "version": "1.0.0-rc3",
+      "mode": "read_only_development"
+    },
+    "runtime_uid": 65532,
+    "capabilities": 0,
+    "direct_data_access": 403
+  },
+  "case_persisted_after_container_restart": true,
+  "container_resource_snapshot": {
+    "BlockIO": "0B / 32.8kB",
+    "CPUPerc": "0.01%",
+    "Container": "hads-next-dev-smoke-15f51bfce989",
+    "ID": "cf110124bb2d",
+    "MemPerc": "4.21%",
+    "MemUsage": "32.3MiB / 768MiB",
+    "Name": "hads-next-dev-smoke-15f51bfce989",
+    "NetIO": "0B / 0B",
+    "PIDs": "2"
+  },
+  "controller_pid1_memory_status": "VmHWM:\t   32584 kB\nVmRSS:\t   32584 kB\n",
+  "image": {
+    "Id": "sha256:98b5743da8d70ffa011427ff53054932b1c4499258cb46788ba51850ecaf06cb",
+    "Architecture": "arm64",
+    "Os": "linux",
+    "Size": 593425666
+  },
+  "raspberry_pi_tested": false,
+  "install": {
+    "fake_supervisor_only": true,
+    "commands": [
+      [
+        "apps",
+        "--help"
+      ],
+      [
+        "apps",
+        "--raw-json"
+      ],
+      [
+        "store",
+        "reload"
+      ],
+      [
+        "apps",
+        "install",
+        "local_hads_next_practical"
+      ],
+      [
+        "apps",
+        "start",
+        "local_hads_next_practical"
+      ],
+      [
+        "apps",
+        "info",
+        "local_hads_next_practical",
+        "--raw-json"
+      ]
+    ],
+    "reinstallation_refused": true
+  },
+  "rc2_upgrade": {
+    "fake_supervisor_only": true,
+    "real_installer_executed": true,
+    "exact_released_RC2_source_verified": true,
+    "data_sentinel_preserved": true,
+    "backup_flag_required": true,
+    "live_native_backup_tested": false,
+    "remained_stopped": true,
+    "no_automatic_replay": true
+  },
+  "passed": true
+}

@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0-rc3",
+  "conclusion": "success",
+  "source_commit": "e1f3f880c98bfa5fafc28261b7859483e11a7e1d",
+  "source_sha256": "fc57575471294dc968d78c4474db2ae1717b6c37b5aba1aab6246799febcf848",
+  "checks": {
+    "python_unittest": {
+      "tests": 416,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "status": "passed",
+      "environment": "GitHub Actions native ARM64 Python 3.14"
+    },
+    "python_compileall": "passed_cloud_arm64",
+    "javascript_syntax": "passed_cloud_arm64",
+    "javascript_ui_suites": {
+      "count": 9,
+      "status": "passed_cloud_arm64"
+    },
+    "docker_build": "passed_cloud_arm64_with_real_Hermes_mandatory_smoke",
+    "local_full_suite": "not_completed_Windows_socketpair_accept_blocked_in_environment",
+    "local_focused_tests": {
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "status": "passed"
+    },
+    "cloud_arm64_verification": {
+      "result": "passed",
+      "url": "https://github.com/OndraMa/HADS/actions/runs/41439798311",
+      "job_id": 125258501454,
+      "source_commit": "e1f3f880c98bfa5fafc28261b7859483e11a7e1d",
+      "source_sha256": "fc57575471294dc968d78c4474db2ae1717b6c37b5aba1aab6246799febcf848",
+      "scope": "real_pinned_Hermes_v0.22.2_fake_model_three_sequential_steps_ENOSYS_Landlock_512MiB_no_swap_no_network_readonly_root",
+      "memory_peak_bytes": 186634240,
+      "worker_peak_VmHWM_bytes": 166727680,
+      "oom_kill": 0,
+      "container_exit_code": 0,
+      "paid_api_calls": 0,
+      "live_haos_acceptance": false
+    }
+  }
+}

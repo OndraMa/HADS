@@ -1,5 +1,5 @@
-# Vývoj a pull requesty Hermes
+# Hermes — soubory vývoje a vydání
 
-V dostupném repozitáři není samostatný PR této Hermes větve. Její změny jsou zachované ve [větvi hermes-2-rc2-cloud-verification](https://github.com/OndraMa/HADS/tree/hermes-2-rc2-cloud-verification) a [úplném snímku](../HISTORIE/hermes-2-rc2-cloud-verification/).
+Otevřete složku HERMES-2.0.0-rc3. Přímo obsahuje ZDROJE, BALICKY a POPIS.md; nejde o zástupné odkazy.
 
-[RC3 cloudové ověření](https://github.com/OndraMa/HADS/actions/runs/41439798311) · [všech 19 PR projektu](../../Hads%20Next/PR/README.md) · [Hermess](../README.md).
+Pro tuto Hermes větev nebyl založen samostatný pull request. Název složky PR zůstává kvůli zachování požadovaného členění. Původní README je beze změny zachované v ARCHIV_PUVODNICH_PREHLEDU. Původní zdroje a historie zůstávají na svých místech.
