@@ -1,0 +1,34 @@
+{
+  "scope": "upstream_source_contract_review_not_live_HAOS",
+  "checked_date": "2026-11-19",
+  "cli": {
+    "repository": "home-assistant/cli",
+    "commit": "66d704d34424eb14e9e99381d3672456e164b08a",
+    "path": "cmd/apps_update.go",
+    "git_blob_sha1": "ce339cba8225d5c991b0d4e846a09ecd2ed88632",
+    "backup_flag_default_false": true,
+    "backup_parameter_only_if_flag_changed": true
+  },
+  "supervisor": {
+    "repository": "home-assistant/supervisor",
+    "commit": "99cee7768ee9867040836fd6de97904f97aab827",
+    "manager_path": "supervisor/apps/manager.py",
+    "manager_git_blob_sha1": "b1d7abd6d8d856d5379eb87cfffd00ac5ba06f77",
+    "api_path": "supervisor/api/store.py",
+    "api_git_blob_sha1": "42fd9cf9306197be6031f55bb9e9da81c296377f",
+    "update_backup_optional_default_false": true,
+    "backup_requires_truthy_parameter": true,
+    "api_omitted_backup_is_None": true
+  },
+  "openai": {
+    "repository": "openai/openai-python",
+    "commit": "0d50c9daece1a4a0f4920f64b5ff90846b4e2050",
+    "parameters_path": "src/openai/types/chat/completion_create_params.py",
+    "models_path": "src/openai/types/shared_params/chat_model.py",
+    "max_completion_tokens_documented": true,
+    "legacy_max_tokens_deprecated": true,
+    "example_model_gpt_4_1_mini_in_SDK": true,
+    "actual_account_availability_verified": false,
+    "paid_model_calls": 0
+  }
+}

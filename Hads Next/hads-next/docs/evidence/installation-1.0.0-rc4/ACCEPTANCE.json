@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "version": "1.0.0-rc4",
+  "source_commit": "cae2eabf1287ef4d952e66df4c1ffa79033b4ede",
+  "both_passed": true,
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "paid_model_calls": 0,
+  "installer_sha256": "1499885b48e763e97c0d8f5047b20e83b374dbffc03a3850b9e433c7f22fd375",
+  "source_archive_sha256": "f4122f235665bab7e3695de417c7528c998adc96ffeca351153e360f74e1d45b",
+  "native_ci": {
+    "run_id": 43442196703,
+    "url": "https://github.com/OndraMa/HADS/actions/runs/43442196703",
+    "conclusion": "success",
+    "artifacts": [
+      {
+        "id": 14046981121,
+        "architecture": "amd64",
+        "sha256": "016ec211d23a4cbd198e9025e99f273a3f76b2e798ad6e439fced0890bf9f191"
+      },
+      {
+        "id": 14046426660,
+        "architecture": "arm64",
+        "sha256": "3ba0741aa169da88a2d5ef612ef2292ce25ffa837a1360f9f4dfcf83fe8fa2c0"
+      }
+    ]
+  },
+  "browser_ci": {
+    "run_id": 43442203778,
+    "url": "https://github.com/OndraMa/HADS/actions/runs/43442203778",
+    "conclusion": "success",
+    "views": 16,
+    "artifact": {
+      "id": 14046295740,
+      "sha256": "d68582e3154e5339cf0e8d6a1600dfd2d33e3376bb51db10b0e5899d2150b4d2"
+    }
+  },
+  "tests_each_architecture": 224,
+  "source_files_compared_with_exact_git_commit": true,
+  "identical_installable_bytes_across_architectures": true,
+  "actual_original_Hermes_and_actual_Core_verified": true,
+  "trial_actual_Hermes_read_tools": [
+    "hads_get_incident",
+    "hads_get_entity_state"
+  ],
+  "trial_model_endpoint": "local_scripted_HTTPS_not_paid_LLM",
+  "trial_model_calls": 3,
+  "fourth_trial_request_refused_before_network": true,
+  "trial_unattended_start_refused": true,
+  "production_image_has_no_Core_fixture": true,
+  "graceful_SIGTERM_exit_code_each": 0,
+  "container_restart_data_preserved": true,
+  "RC3_to_RC4_upgrade": "actual_published_RC3_sources_and_actual_RC4_installer_with_fake_Supervisor_CLI",
+  "live_native_backup_restore_proven": false,
+  "memory_reserve_bytes_unchanged": 603979776,
+  "user_manually_runs_diagnostic_commands": false,
+  "remaining_live_acceptance": [
+    "Physical HAOS update and backup restore",
+    "Real available host memory and Core/apps collection",
+    "HAOS original Hermes readiness under actual workload",
+    "Real provider reasoning after explicit limited consent",
+    "Live Music Assistant FastMCP and physical radio/Zigbee/lighting verification"
+  ],
+  "evidence_sha256": {
+    "amd64/offline-tests.json": "ca5675c74c1e134f7c1e1dbc5708c17440bbf42c460fcb940e77a420e5865d28",
+    "amd64/core-hermes.json": "a69ba534722554b6bcb07b8b3f1033cf68f94734eba74822e4a59fd972f45272",
+    "amd64/package.json": "62613253e29443b3d150ad39e32bdf8c74e30d8ae4ca9d17d99e571ca6ef0b96",
+    "arm64/offline-tests.json": "16e8ff71cadead8bba99def9aa14586fb1a52cd0cf2cfb65ebe671ffe14bf5bb",
+    "arm64/core-hermes.json": "27f363d79c056a5e8728c1f92221164a6f0664a244539b1004dac1369cce38b3",
+    "arm64/package.json": "e61d8f9a11cb0a612bd705cca35d70c37a633f5382d42718ec91632b5fba0127"
+  },
+  "payload_files_verified": 53
+}

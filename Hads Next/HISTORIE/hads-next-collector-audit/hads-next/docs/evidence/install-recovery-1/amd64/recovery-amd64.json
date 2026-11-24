@@ -1,0 +1,16 @@
+{
+  "scope": "native_container_actual_recovery_helper_and_published_RC3_installer_fake_Supervisor",
+  "architecture": "x86_64",
+  "live_haos": false,
+  "actual_installer_sha256": "8a23625c688b4282f2661e6b24000a8e5ce3e7886705b4dd02f33805fe5b13d1",
+  "installed_error_refused": true,
+  "uninstalled_orphan_guard_reproduced": true,
+  "verify_alone_did_not_install": true,
+  "exact_released_RC2_sources_preserved": true,
+  "unrelated_data_untouched": true,
+  "uninstalled_data_restored": false,
+  "RC3_installed_and_started_in_fake_Supervisor": true,
+  "no_repeated_install": true,
+  "no_uninstall_stop_or_restart_commands": true,
+  "passed": true
+}

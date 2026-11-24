@@ -1,0 +1,22 @@
+﻿HADS Next 1.0.0-rc3 — kandidát pro oddělený testovací HAOS
+
+Instalátor: HADS_Next_install_1.0.0-rc3.sh (nespouštět ve Windows).
+Český návod: HADS_Next_1.0.0-rc3-navod-CS.md
+Nejprve porovnej SHA-256, potom v odpovídajícím testovacím terminálu:
+  bash HADS_Next_install_1.0.0-rc3.sh --verify
+  bash HADS_Next_install_1.0.0-rc3.sh --install-dev
+
+Původní Hermes je součástí aplikace. Kontrola runtime nepotřebuje model.
+AI i veřejný výzkum vyžadují zvláštní souhlas. Obecné a rizikové zápisy jsou zakázané.
+AMD64 a ARM64: nativní kontejnerové testy prošly, model byl skriptovaný.
+Živý HAOS, skutečný LLM a fyzická zařízení NEJSOU ověřené.
+Starý Hermes 2.0.0-rc3 se nemění. RC3 lze výslovně aktualizovat z ověřeného zastaveného Next RC2. Nejde o produkční RC.
+
+Přesný testovaný zdrojový commit: 02fad0672de32f0edda264196800f9f80a3ed482
+Commit dokumentace a verzovaného repozitáře v tomto ZIPu: 52d9fe69124782291c03a849656144da39e31680
+ZIP obsahuje aktuální HADS Next zdroje a dokumentaci; historické release ZIPy zůstávají samostatně na GitHubu.
+Návody a stav přejímky čti nejprve v kořeni tohoto balíčku.
+
+Praktická oprava umí po přesném schválení zapnout vybranou jednoduchou světelnou automatizaci nativní službou. Konfiguraci nepřepisuje; služba nemá CAS. Potřebuje výlučnou práci s cílem a funkční i fyzické ověření. Návrat vypne budoucí triggery, nevrací fyzické účinky. Živá přejímka je v UI.
+
+Pro existující RC2 nejprve zastav pouze HADS Next a použij --upgrade-rc2. Data se zachovají; nativní update vytváří částečnou zálohu aplikace. Potom spusť HADS Next ručně. Nepoužívej uninstall ani mazání /data. Úplná nezávislá obnovitelnost HAOS/OneDrive tím není doložená.

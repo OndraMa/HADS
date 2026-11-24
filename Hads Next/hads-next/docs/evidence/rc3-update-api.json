@@ -1,0 +1,40 @@
+{
+  "scope": "upstream_source_inspection_not_live_HAOS",
+  "date": "2026-11-13",
+  "cli": [
+    {
+      "path": "cmd/apps_rebuild.go",
+      "blob_sha": "43e7e3e48b035376bfb4980cbdaa8091af33c158"
+    },
+    {
+      "path": "cmd/apps_info.go",
+      "blob_sha": "e7d3971b4d853945f2cb87361e701fe590cd2e77"
+    },
+    {
+      "path": "cmd/apps.go",
+      "blob_sha": "d3c8253eb44b6b96dbcd0cd1184b9c59a9687dcf"
+    },
+    {
+      "path": "cmd/store_reload.go",
+      "blob_sha": "5d358c749bc08c5382e23e0d7e354d3ddbadaab1"
+    }
+  ],
+  "update": {
+    "path": "cmd/apps_update.go",
+    "blob_sha": "ce339cba8225d5c991b0d4e846a09ecd2ed88632"
+  },
+  "supervisor": {
+    "version": "2026.11.0",
+    "manager_blob_sha": "402a8bd8e44162774dfbb6a15f56bb577c2b1d9e",
+    "api_blob_sha": "5511bf5ab099a231c78c51b3d826b9b7e7cedd5e"
+  },
+  "decision": "Use apps update --backup after a local store version change. Rebuild explicitly rejects installed/store version mismatch.",
+  "preconditions": [
+    "exact released RC2 manifest SHA256",
+    "all original source bytes match",
+    "app stopped",
+    "store advertises exact RC3",
+    "no earlier uncertain upgrade marker"
+  ],
+  "backup_claim": "source snapshot only; native partial app backup requested; no independent whole-HAOS restore proof"
+}

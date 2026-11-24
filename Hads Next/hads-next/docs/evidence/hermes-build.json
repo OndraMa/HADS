@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-11-08T15:44:03.790929+00:00",
+  "scope": "offline-container",
+  "build": "passed-with-recorded-dependency-constraints",
+  "image_id": "sha256:da868e0fd12d26b10a34439e42e292548588f580a37c4efe5b172d948c224627",
+  "image_size_bytes": 513694006,
+  "platform": "linux/amd64",
+  "hermes_revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+  "build_command": "docker --host=unix:///var/run/docker.sock build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt -f scripts/hermes_smoke.Dockerfile -t hads-next-hermes-smoke .",
+  "input_sha256": {
+    "scripts/hermes_smoke.Dockerfile": "6611b17f5b42d967479c46a19ec570491bba1e7aa37e9528aae484378e9232bc",
+    "scripts/hermes_smoke.py": "72a9e653b1227b657a91b8ef11b49d6f358adfa94a78d95d30d913c79f0f3f94",
+    "scripts/hermes_smoke_run.py": "2315c93ee96d67eaedf71187f5af015866882bf24fc490d2dc5551dc081a36cd",
+    "src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "docs/evidence/hermes-dependencies.txt": "440353ed7e083937e9c0eb830a7988eda0d136c1884f35f02c794a28608e325a"
+  },
+  "retested_receipts_sha256": {
+    "hermes-native.json": "5619180e5c00b75fde07d02ddd674f0d342764bde90d1b4040cfa7172e0d484b",
+    "hermes-vertical.json": "49e16f949a81fe2a806ae7b6b328cf14a8cab01fbc018e7758079883e3ec2625",
+    "hermes-native-negative.json": "82008b130ac21897ef95f5c4dee16b52df082023a1bdda0b86294e6663fec3b3"
+  },
+  "checks": {
+    "positive_native_loop": "passed",
+    "fullvertical_native_loop": "passed",
+    "unauthorized_terminal_python_bridge": "blocked_before_write"
+  },
+  "not_tested": [
+    "ARM64",
+    "live HAOS",
+    "RPi4 2GB",
+    "real LLM reasoning",
+    "paid inference",
+    "production chroot/broker launcher"
+  ]
+}

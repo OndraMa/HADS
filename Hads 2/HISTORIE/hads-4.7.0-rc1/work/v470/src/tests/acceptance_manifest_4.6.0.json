@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "hads_version": "4.6.0",
+  "phase": "post-install-real-haos",
+  "expected_webmcp_tools": 9,
+  "prohibited_actions": ["approve_repair", "execute_repair", "rollback", "restart", "shell", "database_maintenance", "settings_write"],
+  "layers": ["human_ui", "webmcp", "hads_backend", "hads_sqlite", "home_assistant_diagnostics"],
+  "checks": [
+    "version_and_console",
+    "five_page_navigation",
+    "provider_runtime_truthfulness",
+    "structured_watchman_deduplication",
+    "automation_inspector_owner_and_replacement",
+    "spook_entity_availability_haghs_cross_check",
+    "log_collection_complete_partial_failed",
+    "functional_incident_priority",
+    "strict_ai_advisory_output",
+    "repair_plan_read_only_preview",
+    "full_backup_and_rescue_before_write",
+    "repair_outcome_receipt",
+    "reload_persistence",
+    "no_webmcp_repair_queue_mutation"
+  ],
+  "pass_rule": "all_required_checks_pass_and_no_prohibited_action_occurs"
+}

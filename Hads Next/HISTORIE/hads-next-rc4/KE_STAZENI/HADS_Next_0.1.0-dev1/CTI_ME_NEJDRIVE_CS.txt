@@ -1,0 +1,18 @@
+﻿HADS Next 0.1.0-dev1 — vývojová verze
+
+1. Instalátor je soubor HADS_Next_install_0.1.0-dev1.sh. Nespouštěj jej ve Windows.
+2. Podrobný postup je v souboru HADS_Next_0.1.0-dev1-navod-CS.md.
+3. V terminálové/SSH aplikaci testovacího HAOS s ha, bash a python3 spusť:
+
+   bash HADS_Next_install_0.1.0-dev1.sh --verify
+   bash HADS_Next_install_0.1.0-dev1.sh --install-dev
+
+Aplikace se přidá vedle RC3. Hermes a živé opravy nejsou aktivní.
+Živá HAOS a ARM64/RPi přejímka zatím neproběhla. Nejde o produkční RC.
+
+zdrojovy-repozitar/ obsahuje VŠECHNY verzované soubory vybraného Git commitu,
+včetně zdrojů, dokumentace a testů. Starý 4.6.3 uvnitř historických souborů
+není nový instalátor; používej výše uvedený instalátor HADS Next v kořeni ZIPu.
+
+Commit zdrojů a dokumentace: b1849199ea4013d4ee20fad9cdbcbc180c8fc97b
+Repozitář je soukromý; pro další stažení se přihlas do GitHubu.

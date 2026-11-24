@@ -1,0 +1,458 @@
+{
+  "approved_provider_operations": [
+    "ha_mcp.ha_config_set_automation:single_proven_lighting_reference",
+    "spook.homeassistant.enable_entity:owner_intent"
+  ],
+  "build_id": "13624a787e71de577bf18345d229e57177ca384df1b9913763aa2722d1d5aff8",
+  "development_base_commit": "5fb2ba17cf0b50d483128bc0ccb834cc126dee47",
+  "files": {
+    "DOCS.md": {
+      "bytes": 3151,
+      "sha256": "ef7428ecbb950ad07d0271e050faf6f80a10a8ed8a2b794a3c9f8787febdd0e4",
+      "source": "haos/DOCS.md"
+    },
+    "Dockerfile": {
+      "bytes": 4487,
+      "sha256": "184e6254756ad64125e55c80aa7b2ffb1a690de9793b6d9d72a2b56d6070a19f",
+      "source": "haos/Dockerfile"
+    },
+    "HAMCP_HERMES_CS.md": {
+      "bytes": 15149,
+      "sha256": "8b06f996026da94554a3e8337debc8e81a755835cf9a9e27448d3ab08e48dd47",
+      "source": "haos/HAMCP_HERMES_CS.md"
+    },
+    "INTEGRATIONS_CS.md": {
+      "bytes": 5284,
+      "sha256": "81071ded27cf7d5655af6b3935baf8ce6f449a4a40ab4d2ea7bb8d7b07d0ee31",
+      "source": "haos/INTEGRATIONS_CS.md"
+    },
+    "README.md": {
+      "bytes": 587,
+      "sha256": "bf8f2d4b3a1187e391b2485b60c244ce095b79cb3b276a6d23f4e334a9ef991c",
+      "source": "haos/README.md"
+    },
+    "companion/README_CS.md": {
+      "bytes": 2933,
+      "sha256": "4eeee85f17ff7f621d442de4faa5a81452c1f8f90c5bc03a99496b68f5a8ad9e",
+      "source": "companion/README_CS.md"
+    },
+    "companion/custom_components/hads_reference/__init__.py": {
+      "bytes": 3923,
+      "sha256": "fe4012b0a6ace28894bf2f31e4044a38f252462fdd0517c950bfd1369ff89225",
+      "source": "companion/custom_components/hads_reference/__init__.py"
+    },
+    "companion/custom_components/hads_reference/manifest.json": {
+      "bytes": 228,
+      "sha256": "bbecf294ba8f5f56c44d3f200db54dec65e3cd7590bb0f95c9dd5c969d4c22c6",
+      "source": "companion/custom_components/hads_reference/manifest.json"
+    },
+    "companion/test-automation.yaml": {
+      "bytes": 740,
+      "sha256": "e6baa3eb66fbfdfe83ed4e760f2f3744cb5ad0b39258f409e3d66b168c3aa674",
+      "source": "companion/test-automation.yaml"
+    },
+    "config.yaml": {
+      "bytes": 719,
+      "sha256": "b21cf051300807ad519e7d8a836a6d4c21ef376821dd38974191ca18b18c4878",
+      "source": "haos/config.yaml"
+    },
+    "docs/ORCHESTRATION_ACCEPTANCE_CS.md": {
+      "bytes": 13033,
+      "sha256": "33791c0e95106fecdea7274fbd67c6dd0bd69db0e27f909d11e2f56896fc0587",
+      "source": "docs/ORCHESTRATION_ACCEPTANCE_CS.md"
+    },
+    "docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md": {
+      "bytes": 10719,
+      "sha256": "855d971462e59911dcfe17bf6994ba2fd4a926511f6ac0b387a2c5d5439be036",
+      "source": "docs/ORCHESTRATION_LIVE_ACCEPTANCE_CS.md"
+    },
+    "docs/ORCHESTRATION_REVIEW_CS.md": {
+      "bytes": 13776,
+      "sha256": "adbad56568e2d81a20d5ea81afb1c0b218db0c9767f50db6bce739836ab940b6",
+      "source": "docs/ORCHESTRATION_REVIEW_CS.md"
+    },
+    "docs/ORCHESTRATION_SETUP_CS.md": {
+      "bytes": 11859,
+      "sha256": "83e5d4b0b031538bf0635d93a14463e8cd7dccda3bff2548a9eeeccee1241a9c",
+      "source": "docs/ORCHESTRATION_SETUP_CS.md"
+    },
+    "docs/PR19_ACCEPTANCE_MATRIX_CS.md": {
+      "bytes": 4462,
+      "sha256": "3d708ea3af6c3caffeac9b5061868e956e6b599afcbe06fbbf8516071fd4c0df",
+      "source": "docs/PR19_ACCEPTANCE_MATRIX_CS.md"
+    },
+    "docs/RC10_CONNECTORS_CS.md": {
+      "bytes": 5241,
+      "sha256": "70efb85f133c4642d3dc989acbc25ef66228207ddd106ba17d155fa949412821",
+      "source": "docs/RC10_CONNECTORS_CS.md"
+    },
+    "docs/RESTORE_VERIFIER_CONTRACT.md": {
+      "bytes": 2656,
+      "sha256": "f84bcb942e7e50af5793d83ddcca5e80478c6019e5ce439b5fec6baf44b1b895",
+      "source": "docs/RESTORE_VERIFIER_CONTRACT.md"
+    },
+    "hads_next/__init__.py": {
+      "bytes": 70,
+      "sha256": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+      "source": "src/hads_next/__init__.py"
+    },
+    "hads_next/addon_server.py": {
+      "bytes": 55528,
+      "sha256": "fe38b61b9be94329e4d47090abd6b4f44db77f0a0a7dc71e969cb67e211b30e5",
+      "source": "src/hads_next/addon_server.py"
+    },
+    "hads_next/ai_budget.py": {
+      "bytes": 2029,
+      "sha256": "ca6f8f5d502fe3e14d15fa82ef471d7ed573dc1d292c509e9bb832d567aad1b4",
+      "source": "src/hads_next/ai_budget.py"
+    },
+    "hads_next/ai_provider.py": {
+      "bytes": 8311,
+      "sha256": "05051779f8913424760d0de5c4f53cf6b8689bc9d6b93b49dd2d2039f8550b0a",
+      "source": "src/hads_next/ai_provider.py"
+    },
+    "hads_next/approved_tools.py": {
+      "bytes": 38734,
+      "sha256": "c984875504c2f26543dd91f6f0acd36712b44939453a617a475321d7a667cb91",
+      "source": "src/hads_next/approved_tools.py"
+    },
+    "hads_next/automatic_reads.py": {
+      "bytes": 17440,
+      "sha256": "d86700b3e3aba95c4dbcea5410de6cffe1bc3ce4aed8dd6be39d3e53f5c3bfba",
+      "source": "src/hads_next/automatic_reads.py"
+    },
+    "hads_next/build_identity.py": {
+      "bytes": 2366,
+      "sha256": "7992d979de994800986aea423dc2be5cb8ae458a9014b5a22b48f024f0485601",
+      "source": "src/hads_next/build_identity.py"
+    },
+    "hads_next/case_dialogue.py": {
+      "bytes": 4414,
+      "sha256": "d3eaffc6b70c0fdd57672d04d2f054e84a6b66714a3cc48b99058c9c91eaeaa0",
+      "source": "src/hads_next/case_dialogue.py"
+    },
+    "hads_next/cli.py": {
+      "bytes": 10460,
+      "sha256": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+      "source": "src/hads_next/cli.py"
+    },
+    "hads_next/command_center.py": {
+      "bytes": 4874,
+      "sha256": "0c64a3e777a32c809f8f59e133aedbba9ea955b54e92e8e0d568dceb533ae797",
+      "source": "src/hads_next/command_center.py"
+    },
+    "hads_next/command_center_style.py": {
+      "bytes": 7448,
+      "sha256": "bb13e77cb1c3449fc1a7736c557d587264cdb9be61840c177cc67427568bd89a",
+      "source": "src/hads_next/command_center_style.py"
+    },
+    "hads_next/connection_diagnostics.py": {
+      "bytes": 1231,
+      "sha256": "8240fcbc6f7850b24794dba4bc2ebe7e44ed5e41e49356b38f7cb9b475f4bc93",
+      "source": "src/hads_next/connection_diagnostics.py"
+    },
+    "hads_next/connector_policy.py": {
+      "bytes": 2875,
+      "sha256": "f49465165056c3eb521f6c99fb184f8529ed6617973f52bc8c6a4ae9c0d75c35",
+      "source": "src/hads_next/connector_policy.py"
+    },
+    "hads_next/connector_transport.py": {
+      "bytes": 7818,
+      "sha256": "8090cd78c61c487c752bbd9777087701b0e66cd04b6c83e1f8153bb5d8b2c52e",
+      "source": "src/hads_next/connector_transport.py"
+    },
+    "hads_next/dashboard.py": {
+      "bytes": 17518,
+      "sha256": "e98777f6eff1e55f9708b77a4a3fbdf6afec4cf77deeb2ebb9a13107374ffd59",
+      "source": "src/hads_next/dashboard.py"
+    },
+    "hads_next/detection.py": {
+      "bytes": 13156,
+      "sha256": "65faf23fe497efd057c0e9d795188b19975a7be98419e19c405b45911824fc2f",
+      "source": "src/hads_next/detection.py"
+    },
+    "hads_next/diagnostics.py": {
+      "bytes": 11603,
+      "sha256": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+      "source": "src/hads_next/diagnostics.py"
+    },
+    "hads_next/entity_context.py": {
+      "bytes": 18809,
+      "sha256": "f10e7382d77299b3a71f0cef3b12569f7ddd3b03cd9fe91d0dfa425035adf6bf",
+      "source": "src/hads_next/entity_context.py"
+    },
+    "hads_next/entity_context_ui.py": {
+      "bytes": 3762,
+      "sha256": "d3d50ecdea01ddaebbe5feed87570ac0b1d63cbcca5eab77a3df82278ff507b0",
+      "source": "src/hads_next/entity_context_ui.py"
+    },
+    "hads_next/evidence.py": {
+      "bytes": 18625,
+      "sha256": "5b437540849f54ad8ff8e799972fcf65d8ed9f225afe2e6e79cebc33690f75ba",
+      "source": "src/hads_next/evidence.py"
+    },
+    "hads_next/evidence_broker.py": {
+      "bytes": 26265,
+      "sha256": "4578081acc43eb843968fbbb0e368b0f6994bfce8edd63f8f8fa060ecad198c5",
+      "source": "src/hads_next/evidence_broker.py"
+    },
+    "hads_next/haos_application.py": {
+      "bytes": 22816,
+      "sha256": "6a800714e6897eebf63a417660024082d66f5b0cc1547b20a067eec8e025f6a4",
+      "source": "src/hads_next/haos_application.py"
+    },
+    "hads_next/health_cases.py": {
+      "bytes": 7555,
+      "sha256": "b09a932b6307a62d5f02959161a4a120a17e3d3e72bd4aeb376f333f1e9e165e",
+      "source": "src/hads_next/health_cases.py"
+    },
+    "hads_next/hermes_runtime.py": {
+      "bytes": 10291,
+      "sha256": "8b76cedefd1216c685b6ebf63219691fb73597bd0444a6633444d65a256b066d",
+      "source": "src/hads_next/hermes_runtime.py"
+    },
+    "hads_next/hermes_sandbox.py": {
+      "bytes": 12160,
+      "sha256": "cc235b984711febe1423d0131216175bdb208cae2f16fd531a8b25dfa47652e9",
+      "source": "src/hads_next/hermes_sandbox.py"
+    },
+    "hads_next/hermes_worker.py": {
+      "bytes": 7206,
+      "sha256": "b78257450cb2620f87f716fd7843bd8fa325a0ed0cf598b05094901d79566cfe",
+      "source": "src/hads_next/hermes_worker.py"
+    },
+    "hads_next/investigation.py": {
+      "bytes": 7515,
+      "sha256": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+      "source": "src/hads_next/investigation.py"
+    },
+    "hads_next/investigation_jobs.py": {
+      "bytes": 11554,
+      "sha256": "370330049c2770658350f92d430e04691c269801ce7ad8c90bcfd1d7f1d7c49e",
+      "source": "src/hads_next/investigation_jobs.py"
+    },
+    "hads_next/investigation_service.py": {
+      "bytes": 9866,
+      "sha256": "20dc5e232f30138e7abdf8acdab901cc411bfd25b91a0ba59f7b58ae2c9a0c81",
+      "source": "src/hads_next/investigation_service.py"
+    },
+    "hads_next/investigator_roles.py": {
+      "bytes": 9303,
+      "sha256": "613a6faec2ac6faca450eea76763da4b13cd77ad6d8d6f9a03e242ebd2470884",
+      "source": "src/hads_next/investigator_roles.py"
+    },
+    "hads_next/legacy_connectors.py": {
+      "bytes": 5586,
+      "sha256": "a100e832b5a7d3d7a856639db61df5e4e3cb6b661f425c3621dbf5a04b0f3901",
+      "source": "src/hads_next/legacy_connectors.py"
+    },
+    "hads_next/live_acceptance.py": {
+      "bytes": 13931,
+      "sha256": "d5fdd80650c0a0df99ef91357a829b21304978c4a785ef8aa2e4165936c47c3d",
+      "source": "src/hads_next/live_acceptance.py"
+    },
+    "hads_next/managed_repair.py": {
+      "bytes": 3275,
+      "sha256": "437276dd820db3e274926bd3cc9d5f1d6229ea0bac1bbff9427076bc95c77252",
+      "source": "src/hads_next/managed_repair.py"
+    },
+    "hads_next/migration.py": {
+      "bytes": 3241,
+      "sha256": "080bdea688947b438ab1463163f088b9250234fd996a73d404d5780cc42443c2",
+      "source": "src/hads_next/migration.py"
+    },
+    "hads_next/music_assistant.py": {
+      "bytes": 13037,
+      "sha256": "a74565e723a9c1c692d8689e09394b2c14507a4bce1cc3262be42395abddb296",
+      "source": "src/hads_next/music_assistant.py"
+    },
+    "hads_next/music_configuration.py": {
+      "bytes": 2522,
+      "sha256": "185dfda40c1b2ec51aa085dcabb8772218557169e322180fb6e528dc7ffc74b4",
+      "source": "src/hads_next/music_configuration.py"
+    },
+    "hads_next/native_followup.py": {
+      "bytes": 5443,
+      "sha256": "863211f4f34399336c6e7b988657f64111118a208ed66f020c813ed51fb162fe",
+      "source": "src/hads_next/native_followup.py"
+    },
+    "hads_next/native_repair.py": {
+      "bytes": 9122,
+      "sha256": "5e0e611e162311af483fba2322e85f8bffd5d5caacff95975ac1e173c9e8f14d",
+      "source": "src/hads_next/native_repair.py"
+    },
+    "hads_next/native_tool_reads.py": {
+      "bytes": 4773,
+      "sha256": "3e5341932982ae63e4b42f3f13f5f81f2b2608afe2c91efbb068f1466df671f4",
+      "source": "src/hads_next/native_tool_reads.py"
+    },
+    "hads_next/observability.py": {
+      "bytes": 20543,
+      "sha256": "554fb03005d4521080873e8fc90f9e462ef759d08eeb1ecd22bcac82d902d440",
+      "source": "src/hads_next/observability.py"
+    },
+    "hads_next/orchestration_cases.py": {
+      "bytes": 33840,
+      "sha256": "f1de8fbd6323313399bea604e7820c77c7aa73a64b586abd4172caf10e0275ff",
+      "source": "src/hads_next/orchestration_cases.py"
+    },
+    "hads_next/provider_reports.py": {
+      "bytes": 6124,
+      "sha256": "22f759e8f8ba7a0d398e3d757b67f3d724c83b371bb3ee0e8ce3b978e2ff519b",
+      "source": "src/hads_next/provider_reports.py"
+    },
+    "hads_next/provider_ui.py": {
+      "bytes": 7453,
+      "sha256": "967818766697b9365360075c6be7aea498eff0f4aff8cd6f2739d583790616a0",
+      "source": "src/hads_next/provider_ui.py"
+    },
+    "hads_next/provider_verification.py": {
+      "bytes": 10024,
+      "sha256": "c9e24b6f8e50312d149772fb6e4bddcfe5e3be3234192b070d8d064dae42f01f",
+      "source": "src/hads_next/provider_verification.py"
+    },
+    "hads_next/readiness.py": {
+      "bytes": 4084,
+      "sha256": "61f6083fd819b3bed17fe6f96f9a3a3840552b92db8538c488e9c563482a0bdd",
+      "source": "src/hads_next/readiness.py"
+    },
+    "hads_next/repair.py": {
+      "bytes": 19927,
+      "sha256": "2189b05c1330188148960a2bbc1340cd148467f84481c4fb940ad7c7380ae432",
+      "source": "src/hads_next/repair.py"
+    },
+    "hads_next/repair_recovery.py": {
+      "bytes": 5010,
+      "sha256": "9500ae7e6f5348cc24d917630f4ffbcf36af94260cf36cc65d0011eb3a45398d",
+      "source": "src/hads_next/repair_recovery.py"
+    },
+    "hads_next/repair_service.py": {
+      "bytes": 22406,
+      "sha256": "d68a9a726481ffca81974a9ddb02927bf80befc27c7755469d067cc22b364c2d",
+      "source": "src/hads_next/repair_service.py"
+    },
+    "hads_next/repair_suggestions.py": {
+      "bytes": 11757,
+      "sha256": "835a7b40f0c148be9401fecf41e9d30da33c5728fc3088da9d079f441d5ad67c",
+      "source": "src/hads_next/repair_suggestions.py"
+    },
+    "hads_next/reporting.py": {
+      "bytes": 6620,
+      "sha256": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+      "source": "src/hads_next/reporting.py"
+    },
+    "hads_next/research.py": {
+      "bytes": 13288,
+      "sha256": "19ae95aeb89d790b5d1bc4e56a101e8088dd7905e6ccaae79c58acd28328138e",
+      "source": "src/hads_next/research.py"
+    },
+    "hads_next/resource_study.py": {
+      "bytes": 4537,
+      "sha256": "460db9b19c0b2b5d93b4b6a19c1b7405da013773ec63f81aec8dea2d86355dd4",
+      "source": "src/hads_next/resource_study.py"
+    },
+    "hads_next/restore_connection.py": {
+      "bytes": 4687,
+      "sha256": "65be5fbdbe43d9535d98731a6b0444a4040f9ab4b82ba5404421f32d185889af",
+      "source": "src/hads_next/restore_connection.py"
+    },
+    "hads_next/restore_receipt.py": {
+      "bytes": 2904,
+      "sha256": "147aa59cbb945afb8e755286a39dae22e050acc39413cccfb7f5c960d0e3a422",
+      "source": "src/hads_next/restore_receipt.py"
+    },
+    "hads_next/runtime_check.py": {
+      "bytes": 2385,
+      "sha256": "7d8de972ca897b50c2a445bd26c06fc18a07edec30ffb6731e390e3389486bb4",
+      "source": "src/hads_next/runtime_check.py"
+    },
+    "hads_next/runtime_launcher.py": {
+      "bytes": 7404,
+      "sha256": "0419dbf4b57542296ba26bef734c3cacf9a7741e7af61bff16aca4aee55d6027",
+      "source": "src/hads_next/runtime_launcher.py"
+    },
+    "hads_next/system_diagnostics.py": {
+      "bytes": 19896,
+      "sha256": "414a17e5dbe83378c8214591e19a5977520b1b5cf06e7b9dbc02f55142eb67ea",
+      "source": "src/hads_next/system_diagnostics.py"
+    },
+    "hads_next/tool_connections.py": {
+      "bytes": 4033,
+      "sha256": "64b3f332fe85217213f30bf49fcd9365b61010c72c272fb9fb09fc3c8f2cf093",
+      "source": "src/hads_next/tool_connections.py"
+    },
+    "hads_next/tool_orchestration.py": {
+      "bytes": 33739,
+      "sha256": "095d9eae2699c5c325ede324a62a9323527833c658a4cd69f883d59e002998bf",
+      "source": "src/hads_next/tool_orchestration.py"
+    },
+    "hads_next/tool_registry.py": {
+      "bytes": 7947,
+      "sha256": "a3f0d74490bf1c9419f4d06704c20eb2d03f267edddf0be9256e9d186ca2c927",
+      "source": "src/hads_next/tool_registry.py"
+    },
+    "hads_next/tool_ui.py": {
+      "bytes": 8976,
+      "sha256": "448588f6a5c25bd1432a68ec504ea07f1297e3f6074ee89a7be3e1e723926484",
+      "source": "src/hads_next/tool_ui.py"
+    },
+    "hads_next/verification.py": {
+      "bytes": 10573,
+      "sha256": "c79446ca0750702c185f23286aad3ebb0e1df11338dc493bf66bf4ea61204bc0",
+      "source": "src/hads_next/verification.py"
+    },
+    "hads_next/watchman_contract.py": {
+      "bytes": 8511,
+      "sha256": "aefc7f292b4d6a1660fce4f2ca2707c42ba839302a5de1b0b51388179edd0819",
+      "source": "src/hads_next/watchman_contract.py"
+    },
+    "hads_next/worker_protocol.py": {
+      "bytes": 1351,
+      "sha256": "f7a8bdf0cfaba528e7c167067cdd67b04e26b84f574e6c51abd544a383f715c6",
+      "source": "src/hads_next/worker_protocol.py"
+    },
+    "hads_next/zha_observer.py": {
+      "bytes": 8164,
+      "sha256": "16d50044c3e608802ae84a540cdbfb3de431b2ce1931a9a20265b3961a28bc1e",
+      "source": "src/hads_next/zha_observer.py"
+    },
+    "hads_next/zigbee_reads.py": {
+      "bytes": 2806,
+      "sha256": "27cd2d63e23c9a68478df179c56dc3d39059898600b9be709d5c192679f5a4be",
+      "source": "src/hads_next/zigbee_reads.py"
+    },
+    "hermes-constraints.txt": {
+      "bytes": 1284,
+      "sha256": "440353ed7e083937e9c0eb830a7988eda0d136c1884f35f02c794a28608e325a",
+      "source": "docs/evidence/hermes-dependencies.txt"
+    },
+    "lab/core-constraints.txt": {
+      "bytes": 8966,
+      "sha256": "5b318ee1a5bcaf234f48bdb14426ffe5b436d2af01d3bda2c9533a1f4242b5f7",
+      "source": "lab/core-constraints.txt"
+    },
+    "lab/service-requirements.txt": {
+      "bytes": 317,
+      "sha256": "7963fdf3871e9637ffd13c6f97394aa01c56dc1a7c2c9c447a0140af039bc23e",
+      "source": "lab/service-requirements.txt"
+    },
+    "run.sh": {
+      "bytes": 66,
+      "sha256": "5a74693dddfeaa91cdaf6c5ebd386018e3e0ee0bf2fec325aa1d7b55cc617530",
+      "source": "haos/run.sh"
+    }
+  },
+  "hermes_upstream_revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+  "independent_restore_proof_required": true,
+  "installer_backup_policy": "no_preinstall_HA_or_cloud_backup_user_requested",
+  "live_haos_verified": false,
+  "native_config_writes_enabled": false,
+  "owned_virtual_reference_CAS_available": true,
+  "production_writes_enabled": false,
+  "scope": "haos_practical_repair_acceptance_candidate",
+  "selected_native_lighting_enable_available": true,
+  "slug": "hads_next_practical",
+  "source_revision_at_build": "78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e",
+  "version": "1.0.0-rc10",
+  "worktree_modified_at_build": false
+}

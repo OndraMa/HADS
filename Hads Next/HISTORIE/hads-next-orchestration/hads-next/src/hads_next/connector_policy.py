@@ -1,0 +1,39 @@
+"""Reviewed operation semantics. Upstream readOnlyHint is never permission."""
+from .tool_registry import object_schema,ENTITY,ID
+
+READS={
+ 'ha_get_skill_guide':object_schema({'file':{'type':'string','enum':['references/triggers-and-conditions.md','references/automation-actions.md']}}),
+ 'ha_get_state':object_schema({'entity_id':ENTITY}),
+ 'ha_get_entity':object_schema({'entity_id':ENTITY}),
+ 'ha_get_device':object_schema({'entity_id':ENTITY}),
+ 'ha_get_history':object_schema({'entity_ids':ENTITY,'start_time':{'type':'string','maxLength':40},
+     'end_time':{'type':'string','maxLength':40},'source':{'const':'history'},'minimal_response':{'const':True},
+     'limit':{'const':32}}),
+ 'ha_config_get_automation':object_schema({'entity_id':ENTITY}),
+ 'ha_config_get_script':object_schema({'script_id':{'type':'string','pattern':r'^script\.[a-z0-9_]+$','maxLength':160}}),
+ 'ha_get_system_health':object_schema({'include':{'type':'string','enum':['repairs','zha_network','supervisor']}},[]),
+}
+WRITES={
+ 'ha_set_entity':object_schema({'entity_id':{'type':'string','pattern':r'^(binary_sensor|sensor)\.[a-z0-9_]+$','maxLength':160},
+     'enabled':{'type':'boolean'}}),
+ 'ha_config_set_automation':object_schema({'entity_id':ENTITY,'config':{'type':'object'},'config_hash':{'type':'string','minLength':16,'maxLength':128},
+     'run_actions':{'const':False},'wait':{'const':True},'BestPracticeKey':{'type':'string','pattern':'^I-HAVE-READ-THE-BEST-PRACTICES-GUIDE-[a-f0-9]{8}$'}},['entity_id','config','config_hash','run_actions','wait']),
+}
+
+
+def policy(provider,name):
+    if provider=='ha_mcp':
+        if name in READS:return 'read','allowed',READS[name],None
+        if name in WRITES:return 'write','allowed',WRITES[name],('entity_enabled' if name=='ha_set_entity' else 'replace_automation_reference')
+    if provider=='native_mcp' and name in {'GetLiveContext','homeassistant__GetLiveContext'}:return 'read','allowed',object_schema(),None
+    return 'unknown','blocked',None,None
+
+
+def descriptor(name,schema,*,effect='read',policy='allowed',executor=None,contract='',risk=None,**extra):
+    return {'name':name,'schema':schema,'effect':effect,'policy':policy,'executor':executor,
+            'risk':risk or ('none_local_read' if effect=='read' else 'configuration_change'),
+            'permissions':['HA admin'] if effect=='write' else ['provider diagnostic access'],
+            'preconditions':['current_catalog','validated_arguments','incident_scope']+(['exact_immutable_owner_approval','current_original','verified_backup'] if effect=='write' else []),
+            'verification':'predefined functional observation after change' if effect=='write' else 'valid actual response with source time and provenance',
+            'rollback':'separately approved exact inverse with current-state guard' if executor else None,
+            'contract':contract,**extra}

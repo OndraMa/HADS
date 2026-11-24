@@ -1,0 +1,81 @@
+name: HADS orchestration and installable candidate acceptance
+on:
+  push:
+    branches: [codex/hads-next-orchestration]
+    paths: [hads-next/src/**, hads-next/tests/**, hads-next/lab/**, hads-next/scripts/**, hads-next/haos/Dockerfile, hads-next/pyproject.toml, .github/workflows/hads-next-orchestration.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hads-orchestration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: amd64
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - name: Isolated provider wire scenarios and all regressions
+        working-directory: hads-next
+        run: |
+          python -m pip install -e . websockets==16.0 mcp==1.29.0 uvicorn==0.54.0
+          python scripts/check.py
+      - name: Exact candidate payload and production image boot without household network
+        working-directory: hads-next
+        run: python scripts/candidate_smoke.py --docker --output .test-tmp/installable-candidate
+      - name: Actual Core, pinned Inspector and confined original Hermes
+        working-directory: hads-next
+        run: |
+          python scripts/investigation_context.py --receipt .test-tmp/orchestration-context
+          python scripts/fetch_inspector_lab.py .test-tmp/orchestration-context
+          docker build --build-arg CORE_LAB=1 --target receipt --output type=local,dest=.test-tmp/orchestration-result .test-tmp/orchestration-context
+      - name: Verify and print exact acceptance scope
+        working-directory: hads-next
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,os
+          root=pathlib.Path('.test-tmp/orchestration-result')
+          proof=json.loads((root/'core-hermes-proof.json').read_text())
+          tests=json.loads(pathlib.Path('docs/evidence/offline-tests.json').read_text())
+          assert proof['passed'] and proof['isolation_verified'] and proof['tool_orchestration']['passed']
+          assert tests['passed'] and not tests['failures'] and not tests['errors']
+          result={'source_commit':os.environ['GITHUB_SHA'],'runner':os.environ['RUNNER_ARCH'],
+              'tests_run':tests['tests_run'],'offline_passed':tests['passed'],
+              'core_hermes_proof_sha256':hashlib.sha256((root/'core-hermes-proof.json').read_bytes()).hexdigest(),
+              'offline_proof_sha256':hashlib.sha256(pathlib.Path('docs/evidence/offline-tests.json').read_bytes()).hexdigest(),
+              'tool_orchestration':proof['tool_orchestration'],'live_haos':False,'real_model_reasoning_tested':False,'paid_model_calls':0}
+          (root/'ORCHESTRATION_PROOF.json').write_text(json.dumps(result,indent=2)+'\n')
+          print('HADS_ORCHESTRATION_PROOF='+json.dumps(result,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: orchestration-${{ matrix.architecture }}-${{ github.sha }}
+          retention-days: 7
+          path: |
+            hads-next/docs/evidence/offline-tests.json
+            hads-next/.test-tmp/orchestration-result/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: candidate-${{ matrix.architecture }}-${{ github.sha }}
+          retention-days: 7
+          path: |
+            hads-next/.test-tmp/installable-candidate/assets/
+            hads-next/.test-tmp/installable-candidate/CANDIDATE_PROOF.json
+      - name: Explicit scope
+        if: ${{ always() }}
+        run: echo 'Installable acceptance candidate only; no production release, household writes, paid model or live HAOS. Scripted reasoning is protocol proof only.' >> "$GITHUB_STEP_SUMMARY"

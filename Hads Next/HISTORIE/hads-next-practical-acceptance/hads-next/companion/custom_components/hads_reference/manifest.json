@@ -1,0 +1,1 @@
+{"domain":"hads_reference","name":"HADS isolated reference repair","version":"1.0.0","documentation":"https://github.com/OndraMa/HADS","codeowners":[],"dependencies":["websocket_api"],"requirements":[],"iot_class":"local_push"}

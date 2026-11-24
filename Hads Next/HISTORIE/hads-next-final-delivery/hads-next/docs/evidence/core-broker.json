@@ -1,0 +1,233 @@
+{
+  "scope": "actual_core_container",
+  "core_version": "2026.11.0",
+  "live_haos": false,
+  "supervisor_tested": false,
+  "approved_repair": false,
+  "native_api_authentication": true,
+  "automation_config_read": true,
+  "invalid_config_rejected_without_write": true,
+  "broken_automation_does_not_operate_target": true,
+  "actual_core_auth_list_and_registries": true,
+  "actual_automation_trace": true,
+  "native_http_reader": true,
+  "repair": {
+    "scope": "actual_core_broker_contract",
+    "hermes_in_this_test": false,
+    "actual_automation_service_executed": false,
+    "read_count": 5,
+    "reads": [
+      {
+        "tool": "hads_get_incident",
+        "source": "hads_database",
+        "status": "available",
+        "data": {
+          "incident": {
+            "id": "82a43f77-b86f-4457-bc6a-4bfce11f5b05",
+            "kind": "automation_reference",
+            "symptom": "Testovací automatizace nezapnula cíl.",
+            "components": [
+              "automation.hads_lab_reference"
+            ],
+            "correlation_key": null,
+            "first_seen": 1794228977.5813153,
+            "last_seen": 1794228977.5813153,
+            "status": "open",
+            "archived_at": null
+          },
+          "occurrences": [
+            {
+              "event_id": "a94b214699105d71ad9b571747820fd190c15dbad666fb6a6a391c6b25279c16",
+              "observed_at": 1794228977.5813153
+            }
+          ],
+          "evidence_index": []
+        },
+        "evidence_ids": [],
+        "read_at": 1794228977.5837595,
+        "detail_cs": null
+      },
+      {
+        "tool": "hads_get_core_status",
+        "source": "ha_core",
+        "status": "available",
+        "data": {
+          "version": "2026.11.0",
+          "state": "RUNNING",
+          "time_zone": "UTC",
+          "components": [
+            "persistent_notification",
+            "api",
+            "automation",
+            "homeassistant",
+            "input_boolean",
+            "websocket_api",
+            "config",
+            "input_button",
+            "trace",
+            "http",
+            "blueprint"
+          ]
+        },
+        "evidence_ids": [
+          "c16f51a06bf3fbb55634da4f4bcae05d5705f2be61fe25e5ff179f8fa35954eb"
+        ],
+        "read_at": 1794228977.5858946,
+        "detail_cs": null
+      },
+      {
+        "tool": "hads_get_automation_config",
+        "source": "ha_core",
+        "status": "available",
+        "data": {
+          "id": "hads_lab_reference",
+          "triggers": [
+            {
+              "trigger": "state",
+              "entity_id": [
+                "input_button.hads_lab_run"
+              ],
+              "omitted_fields": []
+            }
+          ],
+          "conditions": [],
+          "actions": [
+            {
+              "action": "input_boolean.turn_on",
+              "target": {
+                "entity_id": [
+                  "input_boolean.hads_lab_missing"
+                ]
+              },
+              "omitted_fields": []
+            }
+          ],
+          "projection": "references_and_structure_only"
+        },
+        "evidence_ids": [
+          "adce4e78d39a7073727389b3ea2a25eeb763619c3621823accccdef0e3ded08d"
+        ],
+        "read_at": 1794228977.5941675,
+        "detail_cs": null
+      },
+      {
+        "tool": "hads_get_automation_traces",
+        "source": "ha_core_ws",
+        "status": "available",
+        "data": [
+          {
+            "last_step": "action/0",
+            "run_id": "777fb931e5fca9963ff552e19bd8091b",
+            "state": "stopped",
+            "script_execution": "finished",
+            "timestamp": {
+              "start": "2026-11-09T12:56:17.499349+00:00",
+              "finish": "2026-11-09T12:56:17.503927+00:00"
+            },
+            "domain": "automation",
+            "item_id": "hads_lab_reference",
+            "trigger": "state of input_button.hads_lab_run"
+          }
+        ],
+        "evidence_ids": [
+          "e62b523e0affe1632c5f0e92508880b5a7e96587091dd0dc55634c3477d9679a"
+        ],
+        "read_at": 1794228977.6050863,
+        "detail_cs": null
+      },
+      {
+        "tool": "hads_get_automation_trace",
+        "source": "ha_core_ws",
+        "status": "available",
+        "data": {
+          "run_id": "777fb931e5fca9963ff552e19bd8091b",
+          "state": "stopped",
+          "script_execution": "finished",
+          "last_step": "action/0",
+          "timestamp": {
+            "start": "2026-11-09T12:56:17.499349+00:00",
+            "finish": "2026-11-09T12:56:17.503927+00:00"
+          },
+          "steps": {
+            "trigger/0": [
+              {
+                "timestamp": "2026-11-09T12:56:17.499421+00:00",
+                "result": {}
+              }
+            ],
+            "action/0": [
+              {
+                "timestamp": "2026-11-09T12:56:17.499652+00:00",
+                "result": {},
+                "action": {
+                  "domain": "input_boolean",
+                  "service": "turn_on"
+                }
+              }
+            ]
+          },
+          "projection": "no_variables_or_service_secrets"
+        },
+        "evidence_ids": [
+          "003cf57ee8f9d3538fcbd14ae5c83e9e9246d5fb28553e90b3d40479ea678b22"
+        ],
+        "read_at": 1794228977.6115284,
+        "detail_cs": null
+      }
+    ],
+    "missing_supervisor": {
+      "tool": "hads_get_supervisor_status",
+      "source": "supervisor",
+      "status": "unavailable",
+      "data": null,
+      "evidence_ids": [],
+      "read_at": 1794228977.6306362,
+      "detail_cs": "Zdroj není připojen."
+    },
+    "deduplication_verified": true,
+    "unsafe_requests_rejected": 4,
+    "writes_performed": 0
+  },
+  "isolated_configuration": true,
+  "dependency_inventory_verified": true,
+  "runtime_uid": 65532,
+  "process_peak_rss_bytes": 200695808,
+  "passed": true,
+  "recorded_at": "2026-11-09T12:56:22.554199+00:00",
+  "elapsed_seconds": 74.02,
+  "image": {
+    "Id": "sha256:e1179524948bcf7a824f2cd6f3f8db57bad48d54fd7428c15b06bef3038b3c4f",
+    "Architecture": "amd64",
+    "Os": "linux",
+    "Size": 559045674
+  },
+  "isolation": {
+    "network": "none",
+    "read_only_root": true,
+    "uid": 65532,
+    "capabilities": 0,
+    "memory_limit_bytes": 805306368
+  },
+  "input_sha256": {
+    "lab/Core.Dockerfile": "ca7bce962121aa5cc25a286dde9de136ce8469d6b517acedf7ecc2843c979324",
+    "lab/core-constraints.txt": "5b318ee1a5bcaf234f48bdb14426ffe5b436d2af01d3bda2c9533a1f4242b5f7",
+    "lab/core_broker_probe.py": "74be80ebbf0c39fa162de0a16f072206b99f1d56e9ce781ed0f3068200746af5",
+    "lab/core_contract_probe.py": "e77a9866aa5672669775dc72247b6f8988b53cfad1b50fccb400846de5a475d2",
+    "lab/core_repair.py": "b4a1a02ccd8830c7f8f0039e6c8ad4788fe0be813b6bd217a188d103628e45b0",
+    "lab/exercise_repair.py": "902c558ddcc8c04abec9b583c55748cbc71bb5b153a466faaca9eb08f186aeb1",
+    "lab/run_core_lab.py": "050b9ce5884f02e261d6dfa30048864aba9b9813a25a033b97ac8ae128f5a257",
+    "src/hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "src/hads_next/addon_server.py": "b5579992aa99edea07a03805a4e1eb0f143c0c70c35d8e6153db5219c132e07c",
+    "src/hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+    "src/hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+    "src/hads_next/evidence.py": "f74a6cb13a2cedaefb329c04095d89ca597e67c87e8653d9cda9d642ed71ad6e",
+    "src/hads_next/evidence_broker.py": "32d5cb10d4228833d0fe06195a2211efebe4b93a55b01679b8842ab0e8c03486",
+    "src/hads_next/haos_application.py": "0b8abfe9911c595f50a737bcceb1ce70013c649c958b56c77f06c5e570ef3f28",
+    "src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "src/hads_next/observability.py": "add9eb56657d1a747dae613602f35b3d1768b2d38801a2998813aba35dc6aed4",
+    "src/hads_next/repair.py": "6ea5c087c78a5b055ec7fa36216d46dbf9ca2c894ab3eb051e4474717afbb7f0",
+    "src/hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+    "src/hads_next/verification.py": "c0e918695817ec94f7c3c0120ed0c947fd75ab2582bb52759221139edaf8dfb4",
+    "docs/evidence/core-lab-dependencies.txt": "cf756fbbb51b8622c708aa3aee7f43bb140eb9fe0168cfb4a35eb77bdb74fc03"
+  }
+}

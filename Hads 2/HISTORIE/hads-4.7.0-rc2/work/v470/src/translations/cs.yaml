@@ -1,0 +1,168 @@
+configuration:
+  schedule_time:
+    name: Čas denního sběru
+  run_missed_scan:
+    name: Doplnit zmeškaný denní sběr po startu
+  import_legacy_hads2:
+    name: Při prvním startu převést poslední report HADS 2
+  watchdog_enabled:
+    name: Zapnout průběžný watchdog
+  watchdog_interval_minutes:
+    name: Interval rychlé kontroly (minuty)
+  quick_log_lines:
+    name: Počet řádků při rychlé kontrole
+  quick_include_addon_logs:
+    name: Při rychlé kontrole číst i logy doplňků
+  log_lines:
+    name: Počet řádků z každého logu
+  include_host_logs:
+    name: Zahrnout hostitelské logy
+  include_addon_logs:
+    name: Zahrnout logy všech doplňků
+  include_service_logs:
+    name: Zahrnout DNS, audio a multicast
+  keep_raw_days:
+    name: Uchování importovaných surových logů (dny)
+  keep_exports_days:
+    name: Uchování exportů (dny)
+  metrics_retention_days:
+    name: Uchování podrobných metrik (dny)
+  collector_history_days:
+    name: Uchování historie sběrů (dny)
+  max_upload_mb:
+    name: Maximální velikost nahrávaného souboru (MB)
+  yaml_audit_enabled:
+    name: Zapnout hlubokou kontrolu YAML
+  yaml_entity_reference_check:
+    name: Kontrolovat statické odkazy na entity
+  yaml_max_file_kb:
+    name: Maximální velikost jednoho YAML souboru (KB)
+  correlation_window_minutes:
+    name: Časové okno pro spojování souvisejících událostí
+  fix_observation_hours:
+    name: Výchozí sledování po opravě (hodiny)
+  notify_p1_p2:
+    name: Vytvářet HA oznámení pro nové P1/P2
+  redact_local_ips_in_exports:
+    name: Skrýt lokální IP adresy v exportech
+  onedrive_enabled:
+    name: Povolit export na OneDrive
+  onedrive_config_entry_id:
+    name: OneDrive config entry ID
+  onedrive_destination_folder:
+    name: Cílová složka v prostoru Home Assistantu na OneDrive
+  hads2_compat_folder:
+    name: Kompatibilní OneDrive složka pro ChatGPT report
+  daily_chatgpt_report:
+    name: Vytvářet denní kompletní report pro ChatGPT
+  upload_markdown:
+    name: Nahrávat Markdown report
+  upload_chatgpt_txt:
+    name: Nahrávat TXT report pro ChatGPT
+  advisor_use_ha_conversation:
+    name: Použít Home Assistant konverzačního agenta v chatu případu
+  advisor_agent_id:
+    name: ID konverzačního agenta (prázdné = výchozí)
+  smart_triage_enabled:
+    name: Zapnout chytré hodnocení priorit
+  auto_resolve_transient_hours:
+    name: Automaticky uzavřít mírný problém po klidu (hodiny)
+  persistent_p2_days:
+    name: Dny trvání pro dlouhodobou P2
+  persistent_p1_days:
+    name: Dny trvání pro dlouhodobou P1
+  onedrive_retry_count:
+    name: Počet opakování OneDrive uploadu
+  onedrive_single_file_fallback:
+    name: Po chybě hromadného uploadu zkusit soubory jednotlivě
+  onedrive_deferred_retry_minutes:
+    name: Interval odloženého opakování OneDrive (minuty)
+  onedrive_deferred_retry_max:
+    name: Maximální počet odložených OneDrive pokusů
+  captain_mode:
+    name: Režim kapitán / první důstojník
+  repairs_enabled:
+    name: Povolit řízené opravy po výslovném schválení
+  backup_before_repairs:
+    name: Záloha před opravou (od 4.3 vždy povinná)
+  allow_repair_without_backup:
+    name: Zastaralá volba — obejití zálohy není povoleno
+  recorder_maintenance_enabled:
+    name: Povolit přípravu údržby lokální SQLite historie
+  recorder_sqlite_path:
+    name: Ověřená aktivní SQLite DB relativně ke konfiguraci
+  ai_background_research:
+    name: Povolit placený AI výzkum na pozadí
+  ai_max_output_tokens:
+    name: Maximum výstupních tokenů včetně uvažování
+  ai_daily_call_limit:
+    name: Maximum AI požadavků za 24 hodin
+  ai_case_daily_call_limit:
+    name: Maximum AI požadavků na zdrojový případ za 24 hodin
+  allow_core_restart:
+    name: Povolit plánovaný restart Home Assistant Core
+  repair_watch_hours:
+    name: Doba automatického ověřování opravy (hodiny)
+  auto_scan_after_repair:
+    name: Po opravě automaticky spustit rychlou kontrolu
+  openai_enabled:
+    name: Zapnout druhou analytickou vrstvu OpenAI
+  openai_api_key:
+    name: OpenAI API klíč
+  openai_model:
+    name: Model OpenAI pro analýzu
+  openai_web_search_enabled:
+    name: Při analýze použít aktuální webové hledání
+  openai_allowed_domains:
+    name: Povolené webové domény oddělené čárkou
+  ha_dashboard_enabled:
+    name: Publikovat HADS 4 senzory do Home Assistantu
+  ha_dashboard_publish_seconds:
+    name: Interval aktualizace dashboard senzorů (sekundy)
+  observer_enabled:
+    name: Zapnout živý Home Assistant WebSocket Observer
+  observer_reconnect_seconds:
+    name: Interval opakování spojení Observeru (sekundy)
+  dependency_graph_enabled:
+    name: Sestavovat graf závislostí a blast radius
+  knowledge_base_enabled:
+    name: Ukládat lokální paměť příčin, oprav a výsledků
+  current_health_window_hours:
+    name: Časové okno Current Health (hodiny)
+  ai_mode:
+    name: Režim AI (observe / officer / autopilot)
+  ai_tool_max_rounds:
+    name: Maximální počet kroků AI Officera
+  first_officer_enabled:
+    name: Zapnout kapitánskou frontu First Officer
+  first_officer_grace_minutes:
+    name: Ochranná lhůta po restartu (minuty)
+  automatic_repair_planner:
+    name: Automaticky připravovat doložené opravné plány
+  automatic_planner_limit:
+    name: Maximum root-cases zpracovaných v jednom auditu
+  rescue_onedrive_folder:
+    name: OneDrive složka pro záchranné balíky oprav
+  rescue_remote_verify_service:
+    name: Služba pro nezávislé ověření souboru na OneDrive
+  ha_mcp_url:
+    name: Přímá MCP adresa HA-MCP (prázdné = nepřipojovat)
+  ha_mcp_token:
+    name: Token HA-MCP, pokud jej endpoint vyžaduje
+  hamster_mcp_url:
+    name: MCP adresa Hamster MCP (prázdné = nepřipojovat)
+  hamster_mcp_token:
+    name: Token Hamster MCP, pokud jej endpoint vyžaduje
+  hadocs_api_url:
+    name: Čtecí JSON API HADocs (prázdné = pouze zjistit instalaci)
+  hadocs_token:
+    name: Token čtecího API HADocs
+  automation_inspector_api_url:
+    name: Čtecí API Automation Inspectoru
+  automation_inspector_token:
+    name: Token čtecího API Automation Inspectoru
+  external_connector_timeout_seconds:
+    name: Časový limit externího diagnostického spojení (sekundy)
+  ai_call_limits_enabled:
+    name: Omezit počet AI požadavků za den
+    description: Vypnuto znamená bez denního limitu HADS. API může spotřebovat dostupný kredit. Omezení kroků jednoho vyšetření zůstává.

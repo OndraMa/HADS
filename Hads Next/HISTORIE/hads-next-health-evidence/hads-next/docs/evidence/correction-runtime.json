@@ -1,0 +1,37 @@
+{
+  "scope": [
+    "unit",
+    "offline_integration",
+    "docker_container"
+  ],
+  "live_haos": false,
+  "live_hermes": false,
+  "approved_ha_repair": false,
+  "functional_haos_verification": false,
+  "arm64_tested": false,
+  "unit_integration_tests": 100,
+  "docker_wire_test_passed": true,
+  "docker_resource_warnings": false,
+  "memory_limit_bytes": 268435456,
+  "runtime_uid": 65532,
+  "source_sha256": {
+    "hads-next/src/hads_next/verification.py": "86c210b6b7c1892304d0fc96e0bccfe3366294d81a8fdd575591fd2506973e4f",
+    "hads-next/src/hads_next/observability.py": "a2fd38d14f2d6d03d617fa603b6efe47cb9c9c39a80106d9fb58ae21131e672c",
+    "hads-next/src/hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+    "hads-next/src/hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+    "hads-next/src/hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+    "hads-next/src/hads_next/haos_application.py": "0b8abfe9911c595f50a737bcceb1ce70013c649c958b56c77f06c5e570ef3f28",
+    "hads-next/src/hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "hads-next/src/hads_next/addon_server.py": "bf83a474f91e01c2ee92ce004553f16341fce87127cd06561d31a5acbb524986",
+    "hads-next/src/hads_next/evidence.py": "1cbc32b1c70998228568d2925bb9cea31c681b4452bd8e3beca91d3e88ad2def",
+    "hads-next/src/hads_next/repair.py": "3466277aa496be74e1b2a3291b38a3a4dd327e2eea9d3806276c75b745ec6189",
+    "hads-next/src/hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "hads-next/haos/Dockerfile": "736e856f352210e5a06e9eabcb7a9a0f106fa98bf9c5547a245330cdbff5e7f8",
+    "hads-next/haos/config.yaml": "2265a42e4e53090c94db7b86f9618fb9a96634e6258e1892496cbd78c7757fc8",
+    "hads-next/tests/test_runtime_integration.py": "0c83ec31319c8bbab5ae3ee24aad2c49e101022849650e50cbd9dbde7686970a",
+    "hads-next/tests/test_runtime_wire.py": "8bff8df7ef5202fdc5fafb59edcd12e96ecda453aa8c30a15b23d2fd07b0032b"
+  },
+  "live_core_supervisor": false,
+  "product_complete": false,
+  "image_id": "sha256:99a6f1fc53271985a60193c868727cbaa0f56c64abb2ddedca0841644e206f74"
+}

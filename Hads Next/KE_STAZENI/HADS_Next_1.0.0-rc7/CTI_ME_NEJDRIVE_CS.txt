@@ -1,0 +1,14 @@
+﻿HADS Next 1.0.0-rc7 — konkrétní entity, ZHA Toolkit a opravy sběru
+
+Stáhni kompletní ZIP nebo Download raw file; Uložit stránku jako není instalátor. Rozbalený .sh ulož do /config.
+Před spuštěním srovnej SHA-256 se součtem vydání. Potom pro běžící RC6:
+  echo 'c38a295191659d73cb675e3fb1e68ddf059edb40b11a1013db8a10e5ea31f476  /config/HADS_Next_install_1.0.0-rc7.sh' | sha256sum -c - &&
+  bash /config/HADS_Next_install_1.0.0-rc7.sh --verify &&
+  bash /config/HADS_Next_install_1.0.0-rc7.sh --upgrade-rc6
+
+RC6 předem nezastavuj ani neodinstalovávej. Data a stav se zachovají přes nativní update s částečnou zálohou.
+Čtení stavu, registru a omezeného ZHA Toolkit cache probíhá automaticky bez AI a bez diagnostických příkazů uživatele.
+Neznámá příčina není opravný plán. ZHA/registry zápisy stále nejsou hotové; nepovoluj obecné nástroje jen kvůli diagnostice.
+AI zůstává vypnutá, rezerva 576 MiB platí. Živý HAOS a fyzické výsledky nejsou tímto balíčkem doložené.
+Při chybě zachovej hlášku/marker; nic nemaž ani neodinstalovávej.
+Testovaný zdroj: 513394ee9e73f54a639113786f7a6ab92b182870

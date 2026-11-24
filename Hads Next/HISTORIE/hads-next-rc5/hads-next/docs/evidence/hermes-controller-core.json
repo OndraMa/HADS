@@ -1,0 +1,408 @@
+{
+  "completed": true,
+  "engine": "NousResearch/hermes-agent",
+  "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+  "job": {
+    "id": "6584a996aa2043cba6c2b8ab0777bae8",
+    "incident_id": "ba3bd26f-733a-47c3-a8f1-54f281ae3b02",
+    "fingerprint": "de50a36d20af0158368770839050d2dfd0df64a65ebcd91453c1421f1f5dcef1",
+    "state": "hypothesis_ready",
+    "created_at": 1794233259.2056825,
+    "updated_at": 1794233281.0000644,
+    "attempts": 1,
+    "deadline": 1794233439.222432,
+    "conclusion": {
+      "hypotheses": [
+        {
+          "authority": "model_hypothesis_not_functional_verification",
+          "claim": "Neaktivní cíl automatizace; možná neplatná reference.",
+          "confidence": "supported_missing_current_state",
+          "evidence_ids": [
+            "1aa541b9191e56cff0e291f33972fdc02d72edb94531fc3fa471f7fb7867d3ee",
+            "63b1a472c01f482bd5c788f6e6d61ad6625dc42856ab8ce1de08229fd8f0c750",
+            "96dfa17f72df8bcea80fe660a8377720beec39e1ac0f601824e7e5a22a14d9af",
+            "a62856764ee9e05fc8fd0c56e54b437e1ad5fb6cd1c7ab83120c2c8d6169f7e2",
+            "fb17d63542cb1e3902d19c52c4c1f6b42d9c5d6ee84d4bc9fe9f8781d78c49da"
+          ]
+        }
+      ],
+      "needed": [],
+      "next_test_cs": "V izolovaném testu ověř správný odkaz a skutečnou změnu cíle.",
+      "repair_executable": false,
+      "repair_limitation_cs": "Produkční opravný katalog není aktivní. Návrh není schválení ani příkaz.",
+      "repair_proposal": {
+        "backup": "single_object_snapshot",
+        "change": {
+          "from": "input_boolean.hads_lab_missing",
+          "to": "input_boolean.hads_lab_target"
+        },
+        "evidence_ids": [
+          "1aa541b9191e56cff0e291f33972fdc02d72edb94531fc3fa471f7fb7867d3ee",
+          "63b1a472c01f482bd5c788f6e6d61ad6625dc42856ab8ce1de08229fd8f0c750",
+          "96dfa17f72df8bcea80fe660a8377720beec39e1ac0f601824e7e5a22a14d9af",
+          "a62856764ee9e05fc8fd0c56e54b437e1ad5fb6cd1c7ab83120c2c8d6169f7e2",
+          "fb17d63542cb1e3902d19c52c4c1f6b42d9c5d6ee84d4bc9fe9f8781d78c49da"
+        ],
+        "manual_alternative": "Zkontroluj cíl v editoru automatizace.",
+        "reason": "Chybějící reference.",
+        "risk": "virtual_lab_only",
+        "rollback": "separate_approval",
+        "target": "hads_lab_reference",
+        "verification": "actual_trigger_and_target_state"
+      },
+      "source_limitations": [],
+      "summary_cs": "Automatizace se spustila, ale její cíl nemá aktuální stav v Core. Dostupný testovací cíl zůstal vypnutý."
+    },
+    "steps": [
+      {
+        "at": 1794233259.2056825,
+        "state": "new",
+        "reason": "Vyšetřování bylo zařazeno do fronty.",
+        "evidence_ids": "[]"
+      },
+      {
+        "at": 1794233259.2231076,
+        "state": "collecting_evidence",
+        "reason": "Případ získal jediný vyšetřovací slot.",
+        "evidence_ids": "[]"
+      },
+      {
+        "at": 1794233259.2337875,
+        "state": "investigating",
+        "reason": "Hermes zahájil omezené čtecí vyšetřování.",
+        "evidence_ids": "[]"
+      },
+      {
+        "at": 1794233281.000178,
+        "state": "hypothesis_ready",
+        "reason": "Hermes dokončil vícekolové čtecí vyšetřování.",
+        "evidence_ids": "[\"1aa541b9191e56cff0e291f33972fdc02d72edb94531fc3fa471f7fb7867d3ee\",\"63b1a472c01f482bd5c788f6e6d61ad6625dc42856ab8ce1de08229fd8f0c750\",\"96dfa17f72df8bcea80fe660a8377720beec39e1ac0f601824e7e5a22a14d9af\",\"a62856764ee9e05fc8fd0c56e54b437e1ad5fb6cd1c7ab83120c2c8d6169f7e2\",\"fb17d63542cb1e3902d19c52c4c1f6b42d9c5d6ee84d4bc9fe9f8781d78c49da\"]"
+      }
+    ],
+    "reads": [
+      {
+        "name": "hads_get_incident",
+        "arguments": {},
+        "result": {
+          "data": {
+            "evidence_index": [],
+            "incident": {
+              "archived_at": null,
+              "components": [
+                "automation.hads_lab_reference",
+                "input_boolean.hads_lab_target"
+              ],
+              "correlation_key": null,
+              "first_seen": 1794233259.1044414,
+              "id": "ba3bd26f-733a-47c3-a8f1-54f281ae3b02",
+              "kind": "automation_reference",
+              "last_seen": 1794233259.1044414,
+              "status": "open",
+              "symptom": "Tlačítko nezapnulo virtuální cíl."
+            },
+            "occurrences": [
+              {
+                "event_id": "34921fcc7f8072b316c577756a0c31153de2a95217a7ebb74185a7f0b158e754",
+                "observed_at": 1794233259.1044414
+              }
+            ]
+          },
+          "detail_cs": null,
+          "evidence_ids": [],
+          "read_at": 1794233277.7072651,
+          "source": "hads_database",
+          "status": "available",
+          "tool": "hads_get_incident"
+        }
+      },
+      {
+        "name": "hads_get_automation_config",
+        "arguments": {
+          "automation_id": "hads_lab_reference"
+        },
+        "result": {
+          "data": {
+            "actions": [
+              {
+                "action": "input_boolean.turn_on",
+                "omitted_fields": [],
+                "target": {
+                  "entity_id": [
+                    "input_boolean.hads_lab_missing"
+                  ]
+                }
+              }
+            ],
+            "conditions": [],
+            "id": "hads_lab_reference",
+            "projection": "references_and_structure_only",
+            "triggers": [
+              {
+                "entity_id": [
+                  "input_button.hads_lab_run"
+                ],
+                "omitted_fields": [],
+                "trigger": "state"
+              }
+            ]
+          },
+          "detail_cs": null,
+          "evidence_ids": [
+            "63b1a472c01f482bd5c788f6e6d61ad6625dc42856ab8ce1de08229fd8f0c750"
+          ],
+          "read_at": 1794233277.8356736,
+          "source": "ha_core",
+          "status": "available",
+          "tool": "hads_get_automation_config"
+        }
+      },
+      {
+        "name": "hads_get_automation_traces",
+        "arguments": {
+          "automation_id": "hads_lab_reference"
+        },
+        "result": {
+          "data": [
+            {
+              "domain": "automation",
+              "item_id": "hads_lab_reference",
+              "last_step": "action/0",
+              "run_id": "e8d5be0ae82cd28b9d8d125329d8a4e0",
+              "script_execution": "finished",
+              "state": "stopped",
+              "timestamp": {
+                "finish": "2026-11-09T14:07:38.888488+00:00",
+                "start": "2026-11-09T14:07:38.887223+00:00"
+              },
+              "trigger": "state of input_button.hads_lab_run"
+            }
+          ],
+          "detail_cs": null,
+          "evidence_ids": [
+            "1aa541b9191e56cff0e291f33972fdc02d72edb94531fc3fa471f7fb7867d3ee"
+          ],
+          "read_at": 1794233277.9528239,
+          "source": "ha_core_ws",
+          "status": "available",
+          "tool": "hads_get_automation_traces"
+        }
+      },
+      {
+        "name": "hads_get_automation_trace",
+        "arguments": {
+          "automation_id": "hads_lab_reference",
+          "run_id": "e8d5be0ae82cd28b9d8d125329d8a4e0"
+        },
+        "result": {
+          "data": {
+            "last_step": "action/0",
+            "projection": "no_variables_or_service_secrets",
+            "run_id": "e8d5be0ae82cd28b9d8d125329d8a4e0",
+            "script_execution": "finished",
+            "state": "stopped",
+            "steps": {
+              "action/0": [
+                {
+                  "action": {
+                    "domain": "input_boolean",
+                    "service": "turn_on"
+                  },
+                  "result": {},
+                  "timestamp": "2026-11-09T14:07:38.887432+00:00"
+                }
+              ],
+              "trigger/0": [
+                {
+                  "result": {},
+                  "timestamp": "2026-11-09T14:07:38.887279+00:00"
+                }
+              ]
+            },
+            "timestamp": {
+              "finish": "2026-11-09T14:07:38.888488+00:00",
+              "start": "2026-11-09T14:07:38.887223+00:00"
+            }
+          },
+          "detail_cs": null,
+          "evidence_ids": [
+            "fb17d63542cb1e3902d19c52c4c1f6b42d9c5d6ee84d4bc9fe9f8781d78c49da"
+          ],
+          "read_at": 1794233278.0872948,
+          "source": "ha_core_ws",
+          "status": "available",
+          "tool": "hads_get_automation_trace"
+        }
+      },
+      {
+        "name": "hads_get_entity_state",
+        "arguments": {
+          "entity_id": "input_boolean.hads_lab_missing"
+        },
+        "result": {
+          "data": {
+            "entity_id": "input_boolean.hads_lab_missing",
+            "exists": false,
+            "reason": "Core state API returned 404"
+          },
+          "detail_cs": "Entita nemá aktuální stav v Core. To samo nevysvětluje, proč chybí.",
+          "evidence_ids": [
+            "96dfa17f72df8bcea80fe660a8377720beec39e1ac0f601824e7e5a22a14d9af"
+          ],
+          "read_at": 1794233278.2442248,
+          "source": "ha_core",
+          "status": "no_relevant_data",
+          "tool": "hads_get_entity_state"
+        }
+      },
+      {
+        "name": "hads_get_entity_state",
+        "arguments": {
+          "entity_id": "input_boolean.hads_lab_target"
+        },
+        "result": {
+          "data": {
+            "context": {
+              "id": "01M70A5MTWPFCNKY69KR68Y77A",
+              "parent_id": null,
+              "user_id": null
+            },
+            "entity_id": "input_boolean.hads_lab_target",
+            "last_changed": "2026-11-09T14:07:38.844572+00:00",
+            "last_updated": "2026-11-09T14:07:38.844572+00:00",
+            "state": "off"
+          },
+          "detail_cs": null,
+          "evidence_ids": [
+            "a62856764ee9e05fc8fd0c56e54b437e1ad5fb6cd1c7ab83120c2c8d6169f7e2"
+          ],
+          "read_at": 1794233278.3619034,
+          "source": "ha_core",
+          "status": "available",
+          "tool": "hads_get_entity_state"
+        }
+      }
+    ],
+    "model_calls": 7
+  },
+  "isolation_verified": true,
+  "execution_authority": "none",
+  "job_id": "6584a996aa2043cba6c2b8ab0777bae8",
+  "peak_rss_bytes": 173195264,
+  "uid": 65534,
+  "restart_test": {
+    "worker_actually_terminated": true,
+    "controller_state_reconstructed": true,
+    "terminated_worker_exit_status": -9,
+    "new_worker_resumed": true,
+    "same_job_id": true,
+    "evidence_retained": true,
+    "source_reads_after_resume": 0,
+    "model_requests_before_interruption": 2,
+    "model_requests_after_resume": 2,
+    "attempts": 2,
+    "final_state": "waiting_for_source",
+    "full_haos_restart_tested": false
+  },
+  "negative_tests": {
+    "scope": "actual_confined_hermes_and_core_with_scripted_https_model",
+    "scenarios": [
+      {
+        "scenario": "missing_source",
+        "requested_tool": "hads_get_supervisor_status",
+        "model_requests": 2,
+        "final_state": "waiting_for_source",
+        "successful_reads": 0,
+        "core_configuration_unchanged": true,
+        "incident_open": true
+      },
+      {
+        "scenario": "shell",
+        "requested_tool": "terminal",
+        "model_requests": 2,
+        "final_state": "waiting_for_source",
+        "successful_reads": 0,
+        "core_configuration_unchanged": true,
+        "incident_open": true
+      },
+      {
+        "scenario": "python",
+        "requested_tool": "execute_code",
+        "model_requests": 2,
+        "final_state": "waiting_for_source",
+        "successful_reads": 0,
+        "core_configuration_unchanged": true,
+        "incident_open": true
+      },
+      {
+        "scenario": "write_bypass",
+        "requested_tool": "hads_get_automation_config",
+        "model_requests": 2,
+        "final_state": "waiting_for_source",
+        "successful_reads": 0,
+        "core_configuration_unchanged": true,
+        "incident_open": true
+      }
+    ]
+  },
+  "scope": "actual_core_controller_and_confined_hermes_container",
+  "core_version": "2026.11.0",
+  "model_kind": "scripted_protocol_test",
+  "real_model_reasoning_tested": false,
+  "live_haos": false,
+  "supervisor_live": false,
+  "controller_uid": 65532,
+  "ha_token_shared_with_worker": false,
+  "model_requests": 7,
+  "actual_read_tools": [
+    "hads_get_incident",
+    "hads_get_automation_config",
+    "hads_get_automation_traces",
+    "hads_get_automation_trace",
+    "hads_get_entity_state",
+    "hads_get_entity_state"
+  ],
+  "new_evidence_count": 5,
+  "passed": true,
+  "production_controller_flow_tested": true,
+  "model_endpoint": "local_scripted_https_with_verified_test_CA",
+  "ingress_peer": "simulated_loopback_not_HAOS_ingress",
+  "recorded_at": "2026-11-09T14:11:56.895868+00:00",
+  "architecture": "amd64",
+  "container_kind": "BuildKit RUN; original Core APIs, cs/en UI language assets; confined original Hermes; simulated ingress peer; scripted HTTPS model; not HAOS",
+  "input_sha256": {
+    "Dockerfile": "b15fb8100ef691817e81ef8d638a311be225112552109682f23237a2bf9c7b2c",
+    "hads_next/__init__.py": "27d301768a7692843a853ada82157593a02c2d49a4104d6538ef3baa5522612b",
+    "hads_next/addon_server.py": "bdfac03c42dd30d2dea250ff502fc85d78a2323fc2c35d1d626c5efbe6b75e6f",
+    "hads_next/ai_provider.py": "696b306a8c5ba3b67e264abd9650fb061322b371e42cee5105d1ab02533f9865",
+    "hads_next/cli.py": "1a6622238e785be889bacb4bd1afcd1654b08e5a3612507c8dfef118fc1d087b",
+    "hads_next/diagnostics.py": "1ab0bc72615974cda279f46cb3b7091ebb0d424d6c8e1e0ecfebe8b456e93099",
+    "hads_next/evidence.py": "f74a6cb13a2cedaefb329c04095d89ca597e67c87e8653d9cda9d642ed71ad6e",
+    "hads_next/evidence_broker.py": "6d72e0693c4437585aaa0f109658ad8194ba99f844ec406ec482a6a5e899e458",
+    "hads_next/haos_application.py": "bc49a5c3aeddc62ee743131b7797cfddd4a7368549d76a395b9f938604a28eb0",
+    "hads_next/hermes_runtime.py": "5842ea36c6096e3b51c590a7f95a6820e4266e23b6fe27fffc290d45861f6e45",
+    "hads_next/hermes_sandbox.py": "cc235b984711febe1423d0131216175bdb208cae2f16fd531a8b25dfa47652e9",
+    "hads_next/hermes_worker.py": "992b3e0223c90a547eb14abc99d135dd8fb32d83c4ed5c3f2da84f958e8cf532",
+    "hads_next/investigation.py": "fd71742eb94db961be97a2d9c4563dc20f5055867ecc727125f547c3314e9e96",
+    "hads_next/investigation_jobs.py": "6fa663d413dca2f4902d79c96dbad778506bc03839900179899eb36d6a353036",
+    "hads_next/investigation_service.py": "41f90475f56c75f28bb2183ee9c5a5926f8ef5b30bed90c5cf76dc5328c3fa20",
+    "hads_next/observability.py": "3cb6d59db9eb1973e59b7d071e51ce221e46a096c4b2f5740d9ce5776c8fb775",
+    "hads_next/repair.py": "6ea5c087c78a5b055ec7fa36216d46dbf9ca2c894ab3eb051e4474717afbb7f0",
+    "hads_next/reporting.py": "12ebc0bb439299619edeecb4b9ea606063cd12ba680786a9ef720844440666c6",
+    "hads_next/runtime_launcher.py": "681636b07162ef51c614a0fb5e3ede6672927fdf1423ca75f23a5dee8fc364d0",
+    "hads_next/verification.py": "c0e918695817ec94f7c3c0120ed0c947fd75ab2582bb52759221139edaf8dfb4",
+    "hads_next/worker_protocol.py": "f7a8bdf0cfaba528e7c167067cdd67b04e26b84f574e6c51abd544a383f715c6",
+    "hermes-constraints.txt": "440353ed7e083937e9c0eb830a7988eda0d136c1884f35f02c794a28608e325a",
+    "lab/Core.Dockerfile": "ca7bce962121aa5cc25a286dde9de136ce8469d6b517acedf7ecc2843c979324",
+    "lab/README_CS.md": "c5f8cb064ba5750885ea6db360e9fcbd8b1b1ae6b6aaa7754e6ae446c9d8fc5a",
+    "lab/core-constraints.txt": "5b318ee1a5bcaf234f48bdb14426ffe5b436d2af01d3bda2c9533a1f4242b5f7",
+    "lab/core_broker_probe.py": "74be80ebbf0c39fa162de0a16f072206b99f1d56e9ce781ed0f3068200746af5",
+    "lab/core_contract_probe.py": "e77a9866aa5672669775dc72247b6f8988b53cfad1b50fccb400846de5a475d2",
+    "lab/core_hermes_probe.py": "e9e1b66dc1f088e2cf8f3db9daf71b36c2610a466469afc354aad098422c5cbe",
+    "lab/core_repair.py": "b4a1a02ccd8830c7f8f0039e6c8ad4788fe0be813b6bd217a188d103628e45b0",
+    "lab/exercise_repair.py": "902c558ddcc8c04abec9b583c55748cbc71bb5b153a466faaca9eb08f186aeb1",
+    "lab/negative_investigation_probe.py": "1f6ccb47f9cc4341ada1228479c71600386ffb4516c8f36c1e5f9e8df0a21c2d",
+    "lab/restart_investigation_probe.py": "b2170603430644fc345eb719c17b2432e89f1affb158e0063b56fef6cf89bc6c",
+    "lab/run_core_lab.py": "050b9ce5884f02e261d6dfa30048864aba9b9813a25a033b97ac8ae128f5a257",
+    "run.sh": "5a74693dddfeaa91cdaf6c5ebd386018e3e0ee0bf2fec325aa1d7b55cc617530"
+  }
+}

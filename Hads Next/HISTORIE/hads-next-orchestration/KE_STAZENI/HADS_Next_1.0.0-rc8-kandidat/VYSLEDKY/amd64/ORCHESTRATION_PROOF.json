@@ -1,0 +1,60 @@
+{
+  "source_commit": "476587fb9f7593ff951143b2f4c7c3bac011c51b",
+  "runner": "X64",
+  "tests_run": 323,
+  "offline_passed": true,
+  "core_hermes_proof_sha256": "f2f597a5341e3b21ee82c62784450564fdc84a46d14230a07605cdeae526812a",
+  "offline_proof_sha256": "d26525485b82bbbdfad8e396319da9a4dadc6d5c561891ebd936da6683d6f5a0",
+  "tool_orchestration": {
+    "passed": true,
+    "actual_Core": true,
+    "actual_pinned_Inspector_builder": true,
+    "Inspector_application_HTTP_listener": false,
+    "actual_original_Hermes": true,
+    "catalog_selected_broker_read": true,
+    "catalog_selected_Inspector_then_Core": true,
+    "model_kind": "local_scripted_not_reasoning",
+    "model_requests": 8,
+    "live_haos": false,
+    "paid_model_calls": 0,
+    "read_tools": [
+      "hads_list_tools",
+      "hads_diagnostic_tool",
+      "hads_diagnostic_tool",
+      "hads_get_automation_traces",
+      "hads_get_automation_trace",
+      "hads_get_entity_state",
+      "hads_select_investigator"
+    ],
+    "Inspector_version": "1.2.4",
+    "approved_wire_e2e": {
+      "passed": true,
+      "scope": "actual_original_Hermes_controller_and_anonymous_provider_wire_fixture",
+      "actual_original_Hermes": true,
+      "actual_owner_HTTP_and_CSRF_boundary": true,
+      "analyst_write_count": 0,
+      "approved_write_count": 1,
+      "repair_operation": "ha_mcp.ha_config_set_automation",
+      "independent_planner_used": true,
+      "functional_report_classification": "Vy\u0159e\u0161eno a ov\u011b\u0159eno",
+      "model_kind": "local_scripted_not_reasoning",
+      "model_requests": 6,
+      "paid_model_calls": 0,
+      "live_haos": false,
+      "actual_installed_provider_processes": false,
+      "physical_observations": "injected_anonymous_fixture",
+      "watch_clock": "controlled_offline_clock",
+      "production_backup_verifier": false,
+      "read_tools": [
+        "hads_list_tools",
+        "hads_get_tool_schema",
+        "hads_diagnostic_tool",
+        "hads_diagnostic_tool",
+        "hads_propose_tool_repair"
+      ]
+    }
+  },
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "paid_model_calls": 0
+}

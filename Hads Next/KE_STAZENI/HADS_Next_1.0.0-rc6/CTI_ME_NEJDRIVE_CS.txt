@@ -1,0 +1,12 @@
+﻿HADS Next 1.0.0-rc6 — oprava inventáře a podrobnosti Watchmanu
+
+Pro běžící RC5 stáhni aktuální instalátor do /config. Nespouští se ve Windows.
+  bash /config/HADS_Next_install_1.0.0-rc6.sh --verify
+  bash /config/HADS_Next_install_1.0.0-rc6.sh --upgrade-rc5
+
+RC5 předem nezastavuj ani neodinstalovávej. Data a stav aplikace se zachovají přes nativní update s částečnou zálohou.
+Nativní čtení nepotřebují AI klíč ani ruční diagnostické příkazy. Přečti HAMCP_HERMES_CS.md a posouzení Orchestratoru.
+Obecné MCP konektory a opravný katalog Spook/registr/statistiky nejsou dokončené. RC6 není plné splnění původního zadání.
+Původní Hermes je v obrazu; paměťová rezerva 576 MiB platí, placená AI zůstává vypnutá.
+Kontejnery nejsou živá HAOS přejímka. Při chybě zachovej hlášku/marker; nic nemaž a neodinstalovávej.
+Testovaný zdroj: 6a067f716b1e4870cbb21f08ed44e134800ecdff

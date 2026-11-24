@@ -1,0 +1,14 @@
+{
+  "organized_at": "2026-11-24",
+  "repository": "OndraMa/HADS",
+  "purpose": "Navigation and byte-identical preserved branch snapshots; not a production release or PR merge",
+  "snapshots": [
+    {
+      "branch": "hermes-2-rc2-cloud-verification",
+      "commit": "c491893bd433fa0e17dcd852a3eaa610eb3148ad",
+      "tree": "72c605c4cbfe63931dc1c01921975ee9b980ab81",
+      "path": "HISTORIE/hermes-2-rc2-cloud-verification",
+      "files": 55
+    }
+  ]
+}

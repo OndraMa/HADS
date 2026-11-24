@@ -1,0 +1,7 @@
+ad2c64db2c6b027e9898636c5c18a6ce5d5c2370d3a96977a07df7fa2d9469da  HADS_Hermes_install_2.0.0-rc3.sh
+fc57575471294dc968d78c4474db2ae1717b6c37b5aba1aab6246799febcf848  HADS_Hermes_2.0.0-rc3-source.zip
+ea5f360013155af770d7d65a506741ef26f5a026845316cba1f423fd1c0aa4dc  HADS_Hermes_2.0.0-rc3-manual-CS.md
+e284125dbc023407f38ec857a56b1f3da6e207521ac07d552db30464be33493b  HADS_Hermes_2.0.0-rc3-release.md
+57d448905579ca777d6240d8dacf3de380bc880c5b2c7a9f85d3bda42d5dea96  HADS_Hermes_2.0.0-rc3-HA-MCP-nastaveni-CS.md
+5a6dcb3202ec24eb261c31931fd85fc6f23c015a0e235e141f10b1dba9c1aa0d  HADS_Rescue_Readback_0.1.0.zip
+f325d73174a58d5ceaa1b3c9029ad5c7e38569a2054dadb912f82190bb75b9ca  HADS4_2.0.0-rc3-payload.tar.gz

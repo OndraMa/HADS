@@ -1,0 +1,34 @@
+{
+  "scope": "offline_installer_native_production_container",
+  "passed": true,
+  "source_commit": "885b288a295e8277ea6bca7751e50a5a62d87a67",
+  "build": {
+    "version": "1.0.0-rc9",
+    "source_commit": "885b288a295e8277ea6bca7751e50a5a62d87a67",
+    "build_id": "ed889e0911081ad6d7c7b2ae7eb076309d6c037a666a358e2bf1d36bb8961ff4",
+    "source_verified": true,
+    "channel": "acceptance_candidate"
+  },
+  "payload_sha256": "f2daa7e25991afeb8af7ea98a789d118ef4f655cdddbf70540b30aaef18fdbbd",
+  "installer_sha256": "6526370bb19bee4b7cc3529d2c24aea5b69c86b590ebe07d3659fd7c5338eb12",
+  "payload_files": 86,
+  "production_image_boot_passed": true,
+  "production_image_health": {
+    "service": "hads-next",
+    "version": "1.0.0-rc9",
+    "build": {
+      "version": "1.0.0-rc9",
+      "source_commit": "885b288a295e8277ea6bca7751e50a5a62d87a67",
+      "build_id": "ed889e0911081ad6d7c7b2ae7eb076309d6c037a666a358e2bf1d36bb8961ff4",
+      "source_verified": true,
+      "channel": "acceptance_candidate"
+    },
+    "mode": "read_only_development"
+  },
+  "SIGTERM_exit_code": 0,
+  "network": "none",
+  "paid_model_calls": 0,
+  "live_haos": false,
+  "actual_Supervisor_upgrade": false,
+  "source_upgrade_tests": "separate test_upgrade_candidate.py with actual published RC6\u2013RC8 source trees"
+}

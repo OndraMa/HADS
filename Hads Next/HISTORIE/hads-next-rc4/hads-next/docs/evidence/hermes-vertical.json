@@ -1,0 +1,26 @@
+{
+  "engine": "NousResearch/hermes-agent",
+  "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+  "completed": true,
+  "read_receipts": [
+    {
+      "source": "automation",
+      "bytes": 105
+    },
+    {
+      "source": "trace",
+      "bytes": 343
+    }
+  ],
+  "snapshot_sha256": "892a7d618d76fc2b00024a675390e7df6ee79225f6f9b86e6639347308bce88b",
+  "summary_cs": "Automatizace odkazuje na neexistující entitu light.old_lamp. Trace dokládá nedosažený cíl. Připravit přesnou změnu odkazu; nic nebylo opraveno.",
+  "execution_authority": "none",
+  "scope": "offline-container",
+  "unauthorized_native_tool_attempts_denied": 0,
+  "model_requests": 3,
+  "python_version": "3.14.10",
+  "platform": "x86_64",
+  "model": "scripted-local-endpoint-no-cost",
+  "peak_rss_bytes": 182038528,
+  "image_id": "sha256:da868e0fd12d26b10a34439e42e292548588f580a37c4efe5b172d948c224627"
+}

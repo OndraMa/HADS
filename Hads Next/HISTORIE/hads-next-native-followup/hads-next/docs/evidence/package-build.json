@@ -1,0 +1,11 @@
+{
+  "scope": "offline",
+  "python": "3.12.14",
+  "host_architecture": "x86_64",
+  "command": "python -m pip wheel --no-deps --no-build-isolation . --wheel-dir .test-tmp/dist",
+  "wheel": "hads_next-0.1.0.dev0-py3-none-any.whl",
+  "sha256": "1f9a4f63dddd31eb3c1cad0279501b892e0e7331727617e467d767f183073fb0",
+  "bytes": 32018,
+  "haos_installer": false,
+  "arm64_execution_tested": false
+}

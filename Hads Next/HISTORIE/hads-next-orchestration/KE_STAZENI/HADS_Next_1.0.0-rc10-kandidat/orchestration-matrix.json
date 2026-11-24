@@ -1,0 +1,481 @@
+{
+  "schema": 1,
+  "baseline": "c1372a392f213ab995c9848ae9721b3732967268",
+  "live_haos": false,
+  "real_model_reasoning_tested": false,
+  "new_RC_published": true,
+  "full_original_assignment_complete": false,
+  "requirements": [
+    {
+      "requirement": "1",
+      "description": "Audit revize, izolovaná větev a neměnné archivy",
+      "implementation": "git baseline + additive schema",
+      "tool": "Git/GitHub",
+      "operational_link": "source",
+      "test": "git diff and ref check",
+      "result": "verified_source"
+    },
+    {
+      "requirement": "2",
+      "description": "Upstream rešerše a kompatibilita",
+      "implementation": "ORCHESTRATION_ACCEPTANCE_CS + pinned source inspection",
+      "tool": "15 provider contracts",
+      "operational_link": "reviewed_source",
+      "test": "pin hashes + contract tests",
+      "result": "source_verified_live_pending"
+    },
+    {
+      "requirement": "3",
+      "description": "Pět oddělených vrstev",
+      "implementation": "Existing RC7 + ToolRegistry/Diagnostic broker/ApprovedRepairBroker",
+      "tool": "Application and IncidentStore",
+      "operational_link": "wired_controller",
+      "test": "wire scenarios + regressions",
+      "result": "implemented"
+    },
+    {
+      "requirement": "4",
+      "description": "Konkrétní observability zdroje",
+      "implementation": "Existing readers + reports + Recorder/log adapters",
+      "tool": "Core/Supervisor/HAOS/providers",
+      "operational_link": "check_sources -> registry -> cases",
+      "test": "provider wire contracts",
+      "result": "implemented_partial_live_pending"
+    },
+    {
+      "requirement": "5",
+      "description": "HA 2026.11 provenance",
+      "implementation": "Existing Action history/context/traces + versioned native contracts",
+      "tool": "Core",
+      "operational_link": "EvidenceBroker",
+      "test": "actual Core lab",
+      "result": "container_passed_scripted_model_live_pending"
+    },
+    {
+      "requirement": "6",
+      "description": "Originální Hermes a iterativní plánování",
+      "implementation": "Existing confined NousResearch runtime + dynamic catalog tools",
+      "tool": "Hermes + broker",
+      "operational_link": "RoleBroker/BrokerSession",
+      "test": "actual original runtime CI",
+      "result": "container_passed_scripted_model_live_pending"
+    },
+    {
+      "requirement": "7",
+      "description": "Specializace a úsporné plánování",
+      "implementation": "Existing logical roles, bounded sequential tasks",
+      "tool": "RoleBroker/OrchestrationCases",
+      "operational_link": "one worker",
+      "test": "role authority tests",
+      "result": "implemented"
+    },
+    {
+      "requirement": "8",
+      "description": "Trvalý incidentní spis a restart",
+      "implementation": "Existing DB + additive catalog/reads/identity tables; read-only uncertain-write reconciliation and owner adoption without replay",
+      "tool": "IncidentStore/InvestigationJobs",
+      "operational_link": "persistent",
+      "test": "restart and dedup tests",
+      "result": "implemented"
+    },
+    {
+      "requirement": "9",
+      "description": "Funkční poruchy místo log-only",
+      "implementation": "Existing detection + specific observations/verification",
+      "tool": "DetectionEngine",
+      "operational_link": "state and automation events",
+      "test": "false-repair negative test",
+      "result": "implemented_live_pending"
+    },
+    {
+      "requirement": "10",
+      "description": "Music Assistant rádio",
+      "implementation": "Existing fixed FastMCP reader added to common registry",
+      "tool": "Music Assistant/Core",
+      "operational_link": "target-scoped broker",
+      "test": "radio regressions + MCP fixture",
+      "result": "live_pending"
+    },
+    {
+      "requirement": "11",
+      "description": "ZHA ovladač a nedostupný senzor",
+      "implementation": "Existing journal/context + Toolkit attr read and provider results",
+      "tool": "Watchman/ZHA/Toolkit/Inspector",
+      "operational_link": "autonomous acquisition + Hermes",
+      "test": "A wire scenario + existing Zigbee suite",
+      "result": "live_pending"
+    },
+    {
+      "requirement": "12",
+      "description": "Výzkum a paměť",
+      "implementation": "Existing approved research reader + persistent investigation checkpoints",
+      "tool": "ResearchReader/IncidentStore",
+      "operational_link": "Hermes tools",
+      "test": "research and budget suite",
+      "result": "implemented_partial_live_pending"
+    },
+    {
+      "requirement": "13",
+      "description": "Skutečné opravy existujícími nástroji",
+      "implementation": "HA-MCP single literal lighting reference / Spook single enable flag",
+      "tool": "HA-MCP/Spook",
+      "operational_link": "ApprovedRepairBroker",
+      "test": "B/Spook wire scenarios",
+      "result": "implemented_narrow_catalog"
+    },
+    {
+      "requirement": "14",
+      "description": "Neměnný souhlas vlastníka",
+      "implementation": "Existing ApprovalAuthority + schema/version/origin/target binding",
+      "tool": "Ingress/ApprovedRepairBroker",
+      "operational_link": "independent writer",
+      "test": "forged/expired/drift/CSRF negatives; reused entity_id and uncertain write across providers",
+      "result": "implemented"
+    },
+    {
+      "requirement": "15",
+      "description": "Záloha a rollback",
+      "implementation": "Signature verification contract + exact snapshot/inverse + no replay",
+      "tool": "Independent verifier + provider",
+      "operational_link": "fail closed until real restore proof",
+      "test": "signed fixture and uncertainty tests",
+      "result": "independent_live_verifier_not_connected"
+    },
+    {
+      "requirement": "16",
+      "description": "Funkční ověření a český report",
+      "implementation": "Existing FunctionalVerifier + provider reports and physical confirmation; autonomous subscription startup/restart and functional recurrence reopen",
+      "tool": "trusted controller observations",
+      "operational_link": "persisted report validation",
+      "test": "trigger/context/coverage/false-repair",
+      "result": "implemented_live_pending"
+    },
+    {
+      "requirement": "17",
+      "description": "České Command Center",
+      "implementation": "Existing UI + actual tool setup and immutable plan review",
+      "tool": "Ingress",
+      "operational_link": "tools and repair cards",
+      "test": "browser and ingress tests",
+      "result": "offline_browser_passed_live_pending"
+    },
+    {
+      "requirement": "18",
+      "description": "RPi 4/2 GB, žádné skryté AI náklady",
+      "implementation": "Existing reserve and metering + bounded catalog, requests, cache",
+      "tool": "controller and isolated worker",
+      "operational_link": "same admission gates",
+      "test": "memory/restart/cost tests",
+      "result": "hardware_live_pending"
+    },
+    {
+      "requirement": "19",
+      "description": "Povinné scénáře A-J",
+      "implementation": "Existing suites + test_tool_orchestration + real Core/Inspector/Hermes",
+      "tool": "offline/wire/container/live",
+      "operational_link": "separate proof scopes",
+      "test": "Original A radio/B Zigbee: diagnostics+source contracts; C DNS: correlation; D/E exact plan/write; F denial; G restart; H no AI; I false repair; J live pending",
+      "result": "live_J_pending"
+    },
+    {
+      "requirement": "20",
+      "description": "Milestones a release gate",
+      "implementation": "Explicitly requested installable acceptance candidate, preserved earlier archives and independent repair gates",
+      "tool": "GitHub source PR + test workflow",
+      "operational_link": "no release job",
+      "test": "no new release/archive diff",
+      "result": "acceptance_candidate_not_full_M5"
+    },
+    {
+      "requirement": "21",
+      "description": "Předání zdrojů/testů/návodů",
+      "implementation": "One cumulative PR #19, installable candidate, complete current source/tests/docs, source-bound receipts",
+      "tool": "GitHub",
+      "operational_link": "reviewable branch",
+      "test": "exact source/run references",
+      "result": "source_PR_candidate_and_receipts_available_live_pending"
+    },
+    {
+      "requirement": "22",
+      "description": "Úplné uzavření incident→oprava→ověření",
+      "implementation": "Actual approved provider operation exercised offline; live chain unverified",
+      "tool": "registry + Hermes + writer + verifier",
+      "operational_link": "existing application",
+      "test": "Actual original Hermes + provider report/proposal + owner HTTP approval + one wire write + controlled functional verification; separate actual Core/Inspector lab; live acceptance pending",
+      "result": "not_full_original_assignment"
+    }
+  ],
+  "review_document": "ORCHESTRATION_REVIEW_CS.md",
+  "evidence_index": "evidence/orchestration/RESULTS.json",
+  "orchestration_correction": [
+    {
+      "requirement": "1",
+      "description": "Zachování RC7 a instalační identity",
+      "implementation": "Existing Application/DB + additive modules",
+      "tool": "HADS",
+      "operational_link": "check_sources and repair services",
+      "test": "baseline diff, regression suite",
+      "result": "same_installation_identity_preserved_acceptance_candidate"
+    },
+    {
+      "requirement": "2",
+      "description": "Orchestrace existujících nástrojů",
+      "implementation": "ToolOrchestration + OrchestrationCases",
+      "tool": "15 providers + original Hermes",
+      "operational_link": "catalog -> selected reads -> same case -> guarded plan",
+      "test": "provider wire and actual Core/Inspector/Hermes",
+      "result": "implemented_narrow_repairs_live_pending"
+    },
+    {
+      "requirement": "3",
+      "description": "Unified Tool Registry",
+      "implementation": "tool_registry.py, connector_policy.py",
+      "tool": "actual MCP catalog/native manifests/HA services",
+      "operational_link": "provider stages, schemas, safety policy, actual reads",
+      "test": "pagination/tool-search/schema drift/blocked hints; actual read timestamp survives only unchanged provenance/catalog",
+      "result": "implemented"
+    },
+    {
+      "requirement": "4",
+      "description": "Funkční konektory",
+      "implementation": "tool_connections.py, provider_reports.py, native_tool_reads.py + RC7 readers",
+      "tool": "15 provider contracts",
+      "operational_link": "controller refresh -> broker routes -> evidence",
+      "test": "wire reports, native/Hamster MCP, Toolkit, Recorder, existing source suites",
+      "result": "implemented_supported_subsets_live_pending"
+    },
+    {
+      "requirement": "5",
+      "description": "Oddělená diagnostika a zápisy",
+      "implementation": "Diagnostic Tool Broker + ApprovedRepairBroker",
+      "tool": "Hermes/owner/provider",
+      "operational_link": "analyst proposal is inert; exact owner decision starts independent writer",
+      "test": "forged/expired/other principal/CSRF/generic-write denials; actual approved-tool HTTP route checks fresh HA owner, CSRF, exclusive target and replay",
+      "result": "implemented"
+    },
+    {
+      "requirement": "6",
+      "description": "Konkrétní opravy nástroji",
+      "implementation": "Exact light reference + single entity enable/inverse",
+      "tool": "HA-MCP/Spook",
+      "operational_link": "real operation contracts in approved broker",
+      "test": "write/readback/functional result/rollback and target drift",
+      "result": "narrow_catalog_implemented_general_statistics_Zigbee_writes_blocked"
+    },
+    {
+      "requirement": "7",
+      "description": "Výběr podle dostupných schopností",
+      "implementation": "Current catalog/schema + iterative broker + dependency expansion",
+      "tool": "Hermes/Inspector/Core and available providers",
+      "operational_link": "case reads may add proven related automations",
+      "test": "actual original runtime chooses Inspector then Core",
+      "result": "protocol_passed_real_reasoning_pending"
+    },
+    {
+      "requirement": "8",
+      "description": "Logy a korelace",
+      "implementation": "Native log adapters + persistent normalization/dedup/time-window hypotheses",
+      "tool": "Core/Supervisor/system_log + existing app/Music readers",
+      "operational_link": "central_log_correlation evidence and linked manifestations",
+      "test": "shared DNS group; versioned source reads",
+      "result": "implemented_partial_not_all_log_formats"
+    },
+    {
+      "requirement": "9",
+      "description": "Iterativní vyšetřování a rozpočet",
+      "implementation": "Existing InvestigationJobs/RoleBroker + shared tool entries",
+      "tool": "Original Hermes",
+      "operational_link": "durable jobs, additional reads and role handoff",
+      "test": "original runtime, restart, trial and budget gates",
+      "result": "implemented_protocol_live_reasoning_pending"
+    },
+    {
+      "requirement": "10",
+      "description": "Konkrétní neměnný plán",
+      "implementation": "ApprovedRepairBroker bindings + existing ApprovalAuthority",
+      "tool": "HA-MCP/Spook",
+      "operational_link": "provider/schema/version/origin/target/params/original/backup/functional contract",
+      "test": "mutation/reuse/expiry/backup signature negatives; contradictory current Core state resets functional coverage",
+      "result": "implemented"
+    },
+    {
+      "requirement": "11",
+      "description": "Bez ručního vyšetřování uživatelem",
+      "implementation": "Autonomous case acquisition + RC7 automatic reads + repair recovery",
+      "tool": "available native and specialist providers",
+      "operational_link": "bounded collection without a model; owner only for setup/decisions/physical tests",
+      "test": "application wiring, no-AI, automatic event subscription/recovery",
+      "result": "implemented_supported_reads_live_pending"
+    },
+    {
+      "requirement": "12",
+      "description": "Praktické scénáře A-E",
+      "implementation": "See practical_scenarios below",
+      "tool": "existing tools",
+      "operational_link": "scoped shared cases, not process-only checks",
+      "test": "exact suite and proof scopes below",
+      "result": "partial_live_pending"
+    },
+    {
+      "requirement": "13",
+      "description": "Zákaz falešného dokončení",
+      "implementation": "Explicit evidence scopes and unsupported operation catalog",
+      "tool": "UI/docs/receipts",
+      "operational_link": "not_read != zero; process != diagnostics; HTTP200 != functional repair",
+      "test": "failed collection/false repair/generic write denials",
+      "result": "enforced_no_full_product_claim"
+    },
+    {
+      "requirement": "14",
+      "description": "Kontrolní matice a nezávislá kontrola",
+      "implementation": "Original 22 sections + these 15 sections + review findings",
+      "tool": "tests, actual Core, pinned Inspector, original Hermes",
+      "operational_link": "source-bound receipts; author second review is not another reviewer",
+      "test": "regressions, protocol CI, unchanged releases",
+      "result": "author_review_done_external_operational_acceptance_pending"
+    },
+    {
+      "requirement": "15",
+      "description": "Jeden ucelený výsledek bez předčasného RC",
+      "implementation": "One cumulative draft PR #19 and explicit November 19 request for an installable candidate",
+      "tool": "GitHub",
+      "operational_link": "same existing application, no parallel installation",
+      "test": "lab/approved_orchestration_probe.py + same provider wire suite + actual Core/Inspector/Hermes lab + live protocol",
+      "result": "draft_PR_and_installable_candidate_live_pending"
+    }
+  ],
+  "practical_scenarios": [
+    {
+      "scenario": "A",
+      "description": "Unavailable Zigbee sensor",
+      "implementation": "Watchman target -> entity/device context/history -> native ZHA and Toolkit cache/attribute broker; Inspector dependencies; Hermes catalog",
+      "tests": [
+        "test_entity_context.py",
+        "test_zha_observer.py",
+        "test_tool_orchestration.py::test_toolkit_reads_one_bound_standard_attribute_and_denies_write_parameters"
+      ],
+      "result": "offline_contracts_passed_physical_cause_and_combined_live_acceptance_pending"
+    },
+    {
+      "scenario": "B",
+      "description": "Faulty automation",
+      "implementation": "Inspector/HADocs report -> Core/config/traces -> exact HA-MCP light reference plan -> approval/write/readback -> functional observations/report/inverse",
+      "tests": [
+        "test_tool_orchestration.py::test_A_B_real_wire_reports_discovery_iteration_and_approved_config_change",
+        "test_tool_orchestration.py::test_actual_rollback_requires_new_approval_and_cannot_target_reused_identifier",
+        "lab/orchestrated_catalog_probe.py",
+        "lab/approved_orchestration_probe.py"
+      ],
+      "result": "actual_original_Hermes_to_approved_provider_wire_chain_and_separate_actual_Core_Inspector_test_live_pending"
+    },
+    {
+      "scenario": "C",
+      "description": "Faulty statistic",
+      "implementation": "Recorder metadata/hourly values/unit comparison -> explicit unproven cause and safe manual alternative; import/mutation denied",
+      "tests": [
+        "test_tool_orchestration.py::test_statistics_metadata_and_history_are_compared_without_import_or_causal_guess"
+      ],
+      "result": "read_contract_passed_automatic_statistic_repair_not_implemented"
+    },
+    {
+      "scenario": "D",
+      "description": "Unexpected radio stop",
+      "implementation": "Existing Music FastMCP fixed read plus Core state/history/action/context/trace and available application/network evidence",
+      "tests": [
+        "test_music_assistant.py",
+        "test_diagnostics.py",
+        "lab/source_contract_probe.py"
+      ],
+      "result": "offline_and_actual_Core_virtual_player_passed_installed_Music_runtime_and_physical_player_pending"
+    },
+    {
+      "scenario": "E",
+      "description": "HAOS system problem",
+      "implementation": "Existing autonomous Core/Supervisor/application stats plus actual log contracts/central correlations; shared DNS remains hypothesis",
+      "tests": [
+        "test_automatic_reads.py",
+        "test_tool_orchestration.py::test_C_E_shared_DNS_correlation_and_H_AI_unavailable_keep_evidence_without_cost"
+      ],
+      "result": "isolated_contracts_passed_live_HAOS_and_hardware_pressure_pending"
+    }
+  ],
+  "november_19_followup": [
+    {
+      "area": "installation",
+      "implementation": "build_identity.py + upgrade_next.py + candidate_smoke.py",
+      "tool": "native Supervisor same-identity update",
+      "test": "real published RC6/RC7 source trees; candidate native production image boot",
+      "result": "isolated_and_native_candidate_passed_live_pending",
+      "limit": "live HAOS update not performed; no pre-install backup per explicit request"
+    },
+    {
+      "area": "HA-MCP setup",
+      "implementation": "mask URL + per-status outcome + actual three-path read-only probe",
+      "tool": "MCPConnection",
+      "test": "initialize attempted against supplied cloud/LAN paths; HTTP 503 received",
+      "result": "live_access_blocked_before_authentication_catalog_or_incident_read"
+    },
+    {
+      "area": "OneDrive verifier integration",
+      "implementation": "RestoreConnection private HTTPS + pinned independent public key + bounded signed receipt cache",
+      "tool": "independent verifier exact resource, no invented HABS endpoint",
+      "test": "actual local trusted/untrusted TLS, wrong signature/target/scope/expiry",
+      "result": "consumer_implemented_real_independent_restoration_service_not_identified_or_connected"
+    },
+    {
+      "area": "RAM",
+      "implementation": "ResourceStudy minute batches, persistent gap-aware coverage and guarded worker admission",
+      "tool": "Linux proc/cgroup + Supervisor core/supervisor/application stats",
+      "test": "isolated clock-controlled 15-minute coverage and gaps",
+      "result": "implemented_actual_15_minute_RPi_measurement_blocked_by_live_access"
+    },
+    {
+      "area": "conversation and decisions",
+      "implementation": "CaseDialogue durable owner statements and history, local recheck/ignore without resolving",
+      "tool": "existing incident DB + owner/CSRF boundary",
+      "test": "real HTTP forged CSRF rejection; restart; no approval or paid calls",
+      "result": "isolated_and_native_candidate_passed_live_pending"
+    },
+    {
+      "area": "scripts and actions",
+      "implementation": "ha_config_get_script actual upstream schema + current scoped Core services catalog",
+      "tool": "HA-MCP read-only + Core get_services",
+      "test": "source contract and scope/unknown replacement checks",
+      "result": "diagnostic_reads_implemented_general_script_write_adapter_not_implemented"
+    },
+    {
+      "area": "AI contract",
+      "implementation": "exact official OpenAI max_completion_tokens, other compatible endpoints unchanged",
+      "tool": "official OpenAI SDK 0d50c9daece1a4a0f4920f64b5ff90846b4e2050",
+      "test": "isolated budget transport, no real model invocation",
+      "result": "source_contract_verified_real_model_reasoning_pending"
+    }
+  ],
+  "candidate_version": "1.0.0-rc8",
+  "production_verified_release": false,
+  "current_candidate_delivery": {
+    "version": "1.0.0-rc9",
+    "source_commit": "885b288a295e8277ea6bca7751e50a5a62d87a67",
+    "scope": "acceptance_candidate_not_complete_product",
+    "report": "CANDIDATE_20261120_CS.md",
+    "evidence": "evidence/candidate-20261120/RESULTS.json",
+    "native_tests_per_arch": 326,
+    "browser_views": 27,
+    "live_HAOS": false,
+    "verified_changes": [
+      "sidebar layout and scrolling",
+      "RC8 manifest upgrade in simulated Supervisor",
+      "HA-MCP state read",
+      "Hamster catalog with missing optional schema",
+      "ZHA Toolkit scoped evidence"
+    ],
+    "pending": [
+      "authenticated live RC9 run",
+      "actual Hamster registry read on the household",
+      "independent OneDrive restore",
+      "physical verification",
+      "real model",
+      "full repair catalog"
+    ]
+  }
+}

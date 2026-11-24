@@ -1,0 +1,26 @@
+{
+  "automation": {
+    "id": "radio_button",
+    "action": {
+      "service": "light.turn_on",
+      "target": {
+        "entity_id": "light.old_lamp"
+      }
+    }
+  },
+  "trace": {
+    "kind": "target_not_found",
+    "automation_id": "radio_button",
+    "entity_id": "light.old_lamp",
+    "context_id": "offline-button-1",
+    "observed_at": 1794151918.507012,
+    "fixture_registry": {
+      "light.living_room": {
+        "device_id": "fixture-lamp-1",
+        "state": "off"
+      }
+    },
+    "fixture_expected_target": "light.living_room",
+    "scope": "synthetic_isolated_not_live_HA"
+  }
+}

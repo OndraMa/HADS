@@ -1,0 +1,47 @@
+{
+  "scope": "live_connection_attempt_only_not_authenticated_HAOS",
+  "recorded_date": "2026-11-19",
+  "source_transport_sha256": "53b4f6cf86a99d6f3b7cfc1df62985f0d27131400571b9a66bf3fac32da9e6f6",
+  "endpoint_values_persisted": false,
+  "results": [
+    {
+      "endpoint_label": "cloud",
+      "initialize_completed": false,
+      "http_status": 503,
+      "identity_verified": false,
+      "catalog_loaded": false,
+      "diagnostic_tool_called": false
+    },
+    {
+      "endpoint_label": "lan_proxy",
+      "initialize_completed": false,
+      "http_status": 503,
+      "identity_verified": false,
+      "catalog_loaded": false,
+      "diagnostic_tool_called": false
+    },
+    {
+      "endpoint_label": "lan_direct",
+      "initialize_completed": false,
+      "http_status": 503,
+      "identity_verified": false,
+      "catalog_loaded": false,
+      "diagnostic_tool_called": false
+    }
+  ],
+  "interpretation": "HTTP 503 was received before MCP identity or catalog. The response may come from a proxy or access infrastructure; it does not establish an HA-MCP defect.",
+  "production_household_writes": 0,
+  "paid_model_calls": 0,
+  "fifteen_minute_target_hardware_measurement_performed": false,
+  "environment_network_policy": {
+    "mode": "unrestricted",
+    "state": "enforced",
+    "observations_current": true
+  },
+  "latest_cloud_probe": {
+    "http_status": 503,
+    "content_type": "text/plain",
+    "recognized_error_marker": "upstream connect error",
+    "response_body_saved": false
+  }
+}

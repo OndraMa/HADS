@@ -1,0 +1,119 @@
+{
+  "organized_at": "2026-11-24",
+  "repository": "OndraMa/HADS",
+  "purpose": "Navigation and byte-identical preserved branch snapshots; not a production release or PR merge",
+  "snapshots": [
+    {
+      "branch": "codex/hads-next",
+      "commit": "ae13af8f0dc1a7556a7fa807f00cfb50a8640420",
+      "tree": "acc0929ca21859da75f98c546ece356fd88badfd",
+      "path": "HISTORIE/hads-next",
+      "files": 133
+    },
+    {
+      "branch": "codex/hads-next-approved-registry",
+      "commit": "b2bb2af38cf0610a7a1bd3aad0ff2f1b2f45cd93",
+      "tree": "7accdd0d5ac94289f141fd823842fdeed7f92efe",
+      "path": "HISTORIE/hads-next-approved-registry",
+      "files": 382
+    },
+    {
+      "branch": "codex/hads-next-collector-audit",
+      "commit": "33ab9c5a75def9a6c5554517cffc32564e494117",
+      "tree": "6f99148a366f67dd72399712eef36b228d1add0e",
+      "path": "HISTORIE/hads-next-collector-audit",
+      "files": 449
+    },
+    {
+      "branch": "codex/hads-next-command-center",
+      "commit": "931add6fd8a472e1cb7de0864da8d51b1b4bed0c",
+      "tree": "90496f24a3a2f484438016530e1696324ff71644",
+      "path": "HISTORIE/hads-next-command-center",
+      "files": 286
+    },
+    {
+      "branch": "codex/hads-next-correction",
+      "commit": "5fb2ba17cf0b50d483128bc0ccb834cc126dee47",
+      "tree": "81f3be04a0baf94f8406d3232a7d8643c4ec15c0",
+      "path": "HISTORIE/hads-next-correction",
+      "files": 145
+    },
+    {
+      "branch": "codex/hads-next-final-delivery",
+      "commit": "d2c8ad5da09287d256c324d6e4434bf92499d018",
+      "tree": "551069d92af59cff2ea53f32713508004b12e430",
+      "path": "HISTORIE/hads-next-final-delivery",
+      "files": 246
+    },
+    {
+      "branch": "codex/hads-next-health-evidence",
+      "commit": "334b3fe1877b018e85b55db5f7c674374365bfe2",
+      "tree": "14ac135af7ce75b293f5b10ec8eadc48cb13630f",
+      "path": "HISTORIE/hads-next-health-evidence",
+      "files": 344
+    },
+    {
+      "branch": "codex/hads-next-install-recovery",
+      "commit": "c1e510c5b0cbf7e227f954bda1e87db4bc05be02",
+      "tree": "a5cff2f12c5a6c694218768243469f7d10c218a8",
+      "path": "HISTORIE/hads-next-install-recovery",
+      "files": 333
+    },
+    {
+      "branch": "codex/hads-next-investigation",
+      "commit": "5f06e67c20d5016e334d1b838fe2d188d860aee7",
+      "tree": "c18fe4db21c91b6e6d6c0970ffe36c9b8376e408",
+      "path": "HISTORIE/hads-next-investigation",
+      "files": 210
+    },
+    {
+      "branch": "codex/hads-next-native-followup",
+      "commit": "72262e048c9145d6730e6680569e6255c9140090",
+      "tree": "2c6a7cb2f91b2148e859c23f1e0c8234959d37f1",
+      "path": "HISTORIE/hads-next-native-followup",
+      "files": 381
+    },
+    {
+      "branch": "codex/hads-next-orchestration",
+      "commit": "0dc574e69785bdd49ffd4699e7e581cb3f100e0f",
+      "tree": "8eb96abc7d7f4823b2b38b2fefbcdb0198df7b2e",
+      "path": "HISTORIE/hads-next-orchestration",
+      "files": 631
+    },
+    {
+      "branch": "codex/hads-next-practical-acceptance",
+      "commit": "0097c74e6333c2b5c86e4dba098ee61e0f128d67",
+      "tree": "c822596907ac7936f0aca60ae3ab5a00ce45e075",
+      "path": "HISTORIE/hads-next-practical-acceptance",
+      "files": 279
+    },
+    {
+      "branch": "codex/hads-next-rc3",
+      "commit": "a1933b1e8ad07d9df2a13a1dc5cba1eafb491def",
+      "tree": "f20b066abe0688309454eeee65f8cb84b57cc7b8",
+      "path": "HISTORIE/hads-next-rc3",
+      "files": 311
+    },
+    {
+      "branch": "codex/hads-next-rc4",
+      "commit": "0d30b0de0f21a7f64f30ff3345286cdd753ea6ca",
+      "tree": "344cb0494835c95cf1023eee6a5d1e094efe4838",
+      "path": "HISTORIE/hads-next-rc4",
+      "files": 377
+    },
+    {
+      "branch": "codex/hads-next-rc5",
+      "commit": "cf7ca24acc0c76b883daf4b111f0133b30ecfa3f",
+      "tree": "68c061bddaa3fa8706771c75668ab6c4ca67f51c",
+      "path": "HISTORIE/hads-next-rc5",
+      "files": 414
+    },
+    {
+      "branch": "codex/hads-next-zha-followup",
+      "commit": "c1372a392f213ab995c9848ae9721b3732967268",
+      "tree": "e2306fd5d854c350621e103f9d35d793b25f28ce",
+      "path": "HISTORIE/hads-next-zha-followup",
+      "files": 484
+    }
+  ]
+}

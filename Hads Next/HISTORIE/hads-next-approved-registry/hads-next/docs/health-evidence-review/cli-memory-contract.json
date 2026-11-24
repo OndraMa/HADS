@@ -1,0 +1,24 @@
+{
+  "repository": "home-assistant/cli",
+  "revision": "a9bea5764909a7592500a1483efaf2f5a1cc7440",
+  "scope": "read_only_commands_verified_in_upstream_source_not_run_in_owner_HAOS",
+  "files": {
+    "apps_stats.go": {
+      "blob_sha": "7e943372394b1c6cbd5984fe596fe7b3d6f20709",
+      "url": "https://github.com/home-assistant/cli/blob/a9bea5764909a7592500a1483efaf2f5a1cc7440/cmd/apps_stats.go"
+    },
+    "core_stats.go": {
+      "blob_sha": "1de988707c897c00f993b5fb57e1f2021bff9c78",
+      "url": "https://github.com/home-assistant/cli/blob/a9bea5764909a7592500a1483efaf2f5a1cc7440/cmd/core_stats.go"
+    },
+    "apps.go": {
+      "blob_sha": "d3c8253eb44b6b96dbcd0cd1184b9c59a9687dcf",
+      "url": "https://github.com/home-assistant/cli/blob/a9bea5764909a7592500a1483efaf2f5a1cc7440/cmd/apps.go"
+    }
+  },
+  "commands": [
+    "ha core stats",
+    "ha apps stats local_hads_next_practical"
+  ],
+  "apps_legacy_alias": "addons"
+}

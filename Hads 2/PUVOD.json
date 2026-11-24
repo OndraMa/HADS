@@ -1,0 +1,38 @@
+{
+  "organized_at": "2026-11-24",
+  "repository": "OndraMa/HADS",
+  "purpose": "Navigation and byte-identical preserved branch snapshots; not a production release or PR merge",
+  "snapshots": [
+    {
+      "branch": "codex/hads-4.7.0-rc1",
+      "commit": "507f66399cb074bb42e70ae184b33ac2de110122",
+      "tree": "1e6efea079719dc96d31ba25bc558ecc9ec9251e",
+      "path": "HISTORIE/hads-4.7.0-rc1",
+      "files": 63
+    },
+    {
+      "branch": "codex/hads-4.7.0-rc2",
+      "commit": "174f9e128f2e5afc40ff800b20ba59909914469c",
+      "tree": "58f638926d83c631fc7ebe432dba4b398b888311",
+      "path": "HISTORIE/hads-4.7.0-rc2",
+      "files": 68
+    },
+    {
+      "branch": "codex/hads-4.7.0-rc3",
+      "commit": "9562366a795a8e8716c903f72c7534f5d8975a46",
+      "tree": "77f0d7c8ef8cd496ce0c93ae4c649a87f1cf3f34",
+      "path": "HISTORIE/hads-4.7.0-rc3",
+      "files": 82
+    },
+    {
+      "branch": "main",
+      "commit": "3d6f70a863cc3649ed2c69a19b759798700cf8e1",
+      "tree": "c090fa1621e0065f11e2bc3f33682b32374c5e4e",
+      "path": "HISTORIE/main-pred-usporadanim",
+      "files": 2
+    }
+  ],
+  "hads_2_latest_version": "2.1.1",
+  "version_source": "owner_statement",
+  "artifact_state": "not_found_in_available_repository_or_local_work_files"
+}

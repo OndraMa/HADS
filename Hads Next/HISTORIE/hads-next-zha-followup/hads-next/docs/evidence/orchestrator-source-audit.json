@@ -1,0 +1,18 @@
+{
+  "scope": "offline_source_extracted_unit_functions",
+  "live_haos": false,
+  "upstream_commit": "cebfdff5d5a950ea9ad2cd166f7768af997e4d3b",
+  "source_sha256": {
+    "main.py": "0aa28963bd8391133228aa2d443696c359d14737e2b424f31825668aa4315f43",
+    "plan_executor.py": "1804854f34b917407a3fafb8abb3a9e002217ec70aba53a8e4c11f743bd613dc"
+  },
+  "checks": {
+    "unknown_result_assumed_success": true,
+    "ingress_header_alone_bypasses_optional_bearer_gate_in_extracted_middleware": true
+  },
+  "limits": "Only extracted upstream functions, no deployment probe, no complete dependency suite or network access. Other deployment controls not assessed.",
+  "source_git_blob_verified": {
+    "main.py": "3f501c2ddbf967f2280e2457703a1a129fe4c298",
+    "plan_executor.py": "cd3fb4040130650b6cdd64fb06f634515ce39731"
+  }
+}

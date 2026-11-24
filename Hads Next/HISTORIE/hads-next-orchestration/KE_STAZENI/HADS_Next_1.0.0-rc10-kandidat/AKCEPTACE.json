@@ -1,0 +1,219 @@
+{
+  "version": "1.0.0-rc10",
+  "source_commit": "78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e",
+  "local_tests": 334,
+  "ci_scope": "Isolated containers and scripted model, AMD64 and ARM64",
+  "ci": {
+    "conclusion": "success",
+    "headSha": "78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e",
+    "jobs": [
+      {
+        "completedAt": "2026-11-21T19:34:05Z",
+        "conclusion": "success",
+        "databaseId": 136958130086,
+        "name": "native (ubuntu-24.04, amd64)",
+        "startedAt": "2026-11-21T19:27:50Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Isolated provider wire scenarios and all regressions",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Exact candidate payload and production image boot without household network",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Actual Core, pinned Inspector and confined original Hermes",
+            "number": 6,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Verify and print exact acceptance scope",
+            "number": 7,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 8,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 9,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Explicit scope",
+            "number": 10,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "number": 19,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+            "number": 20,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 21,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/OndraMa/HADS/actions/runs/44941057507/job/136958130086"
+      },
+      {
+        "completedAt": "2026-11-21T19:33:29Z",
+        "conclusion": "success",
+        "databaseId": 136958130292,
+        "name": "native (ubuntu-24.04-arm, arm64)",
+        "startedAt": "2026-11-21T19:27:53Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Isolated provider wire scenarios and all regressions",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Exact candidate payload and production image boot without household network",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Actual Core, pinned Inspector and confined original Hermes",
+            "number": 6,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Verify and print exact acceptance scope",
+            "number": 7,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 8,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "number": 9,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Explicit scope",
+            "number": 10,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "number": 19,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+            "number": 20,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 21,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/OndraMa/HADS/actions/runs/44941057507/job/136958130292"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/OndraMa/HADS/actions/runs/44941057507"
+  },
+  "local_installer": {
+    "scope": "offline_installer",
+    "passed": true,
+    "source_commit": "78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e",
+    "build": {
+      "version": "1.0.0-rc10",
+      "source_commit": "78041b3be39f1a749cca3ac3ed2b605b3e4e0f5e",
+      "build_id": "13624a787e71de577bf18345d229e57177ca384df1b9913763aa2722d1d5aff8",
+      "source_verified": true,
+      "channel": "acceptance_candidate"
+    },
+    "payload_sha256": "602c4affea481391cdad0eaf2abbd129436314365fa677158407fc7889ba07dc",
+    "installer_sha256": "929109d726bac48720b7795bd537422f9dda9fcd3938662e7194a2280f035caf",
+    "payload_files": 87,
+    "production_image_boot_passed": false,
+    "production_image_health": null,
+    "SIGTERM_exit_code": null,
+    "network": "no_container",
+    "paid_model_calls": 0,
+    "live_haos": false,
+    "actual_Supervisor_upgrade": false,
+    "source_upgrade_tests": "separate test_upgrade_candidate.py with actual published RC6–RC9 source trees"
+  },
+  "live_haos": false,
+  "live_supervisor_upgrade": false,
+  "raspberry_pi_2gb_measured": false,
+  "authorized_model_tested": false
+}

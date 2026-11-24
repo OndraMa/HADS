@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "incident": {
+    "id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+    "kind": "automation_target_failure",
+    "symptom": "Tlačítko nezapnulo světlo.",
+    "components": [
+      "light.old_lamp",
+      "radio_button"
+    ],
+    "correlation_key": "fixture:radio_button",
+    "first_seen": 1794151919.507012,
+    "last_seen": 1794151919.507012,
+    "status": "resolved",
+    "archived_at": null
+  },
+  "evidence": [
+    {
+      "event_id": "fixture-automation",
+      "kind": "automation",
+      "observed_at": 1794151918.507012,
+      "payload": {
+        "action": {
+          "service": "light.turn_on",
+          "target": {
+            "entity_id": "light.old_lamp"
+          }
+        },
+        "id": "radio_button"
+      },
+      "source": "automation",
+      "evidence_id": "2abacb3f2a73a3607bd1cbd729adc20e7d4023eb8d4207f05193b965fee754ff"
+    },
+    {
+      "event_id": "fixture-trace",
+      "kind": "trace",
+      "observed_at": 1794151918.507012,
+      "payload": {
+        "automation_id": "radio_button",
+        "context_id": "offline-button-1",
+        "entity_id": "light.old_lamp",
+        "fixture_expected_target": "light.living_room",
+        "fixture_registry": {
+          "light.living_room": {
+            "device_id": "fixture-lamp-1",
+            "state": "off"
+          }
+        },
+        "kind": "target_not_found",
+        "observed_at": 1794151918.507012,
+        "scope": "synthetic_isolated_not_live_HA"
+      },
+      "source": "trace",
+      "evidence_id": "6779e385aeee87773323aaafd49d6b9c048348b9142b9b4c38b5d4c80173b45e"
+    }
+  ],
+  "occurrences": [
+    {
+      "event_id": "a8e6bb24bc4c8b94b6a79da81ce3822badb21764b690a54b4086f47ab38f79ae",
+      "observed_at": 1794151919.507012
+    }
+  ],
+  "analyses": [
+    {
+      "fingerprint": "619bec82bbfd74caf21a9cdb611a2c637416f58898df9f2169a150e207f69b54",
+      "status": "done",
+      "result": {
+        "completed": true,
+        "engine": "NousResearch/hermes-agent",
+        "execution_authority": "none",
+        "image_id": "sha256:5b3abd7e05c9a055f9fef2b202db41e7d07e73bfa91b5d932652237e693e608a",
+        "model": "scripted-local-endpoint-no-cost",
+        "model_requests": 3,
+        "peak_rss_bytes": 182460416,
+        "platform": "x86_64",
+        "python_version": "3.14.10",
+        "read_receipts": [
+          {
+            "bytes": 105,
+            "source": "automation"
+          },
+          {
+            "bytes": 343,
+            "source": "trace"
+          }
+        ],
+        "revision": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+        "scope": "offline-container",
+        "snapshot_sha256": "892a7d618d76fc2b00024a675390e7df6ee79225f6f9b86e6639347308bce88b",
+        "summary_cs": "Automatizace odkazuje na neexistující entitu light.old_lamp. Trace dokládá nedosažený cíl. Připravit přesnou změnu odkazu; nic nebylo opraveno."
+      }
+    }
+  ],
+  "records": [
+    {
+      "kind": "repair_plan",
+      "recorded_at": 1794152086.488777,
+      "content": {
+        "backup": {
+          "onedrive_required": false,
+          "required": "verified_local_snapshot",
+          "scope": "single_fixture_not_HAOS"
+        },
+        "evidence_ids": [
+          "2abacb3f2a73a3607bd1cbd729adc20e7d4023eb8d4207f05193b965fee754ff",
+          "6779e385aeee87773323aaafd49d6b9c048348b9142b9b4c38b5d4c80173b45e"
+        ],
+        "expected_result": "Automatizace radio_button po spuštění nastaví light.living_room na on.",
+        "incident_id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+        "manual_alternative": "V izolovaném souboru automation.json změň pouze action.target.entity_id z light.old_lamp na light.living_room; potom proveď funkční test.",
+        "operation": "fixture.replace_entity_reference",
+        "original": {
+          "action": {
+            "service": "light.turn_on",
+            "target": {
+              "entity_id": "light.old_lamp"
+            }
+          },
+          "id": "radio_button"
+        },
+        "original_sha256": "aa6d239cef0b4b203cd4a75b863fc1add6f2b20d4d3769fa16861865fff16ab7",
+        "preconditions": [
+          "exact_original_sha256",
+          "private_fixture_directory",
+          "unexpired_owner_approval"
+        ],
+        "proposed": {
+          "action": {
+            "service": "light.turn_on",
+            "target": {
+              "entity_id": "light.living_room"
+            }
+          },
+          "id": "radio_button"
+        },
+        "reason": "Izolovaný trace dokládá chybějící odkaz; testovací registry určuje konkrétní náhradu.",
+        "risk": "low_isolated_fixture_only",
+        "rollback": {
+          "rollback_of": null,
+          "scope": "single_fixture_not_HAOS",
+          "separate_approval_required": true,
+          "supported": true
+        },
+        "schema": 1,
+        "target": {
+          "automation_id": "radio_button",
+          "filename": "automation.json",
+          "root": "/workspace/HADS/hads-next/.test-tmp/vertical/fixtures"
+        },
+        "verification": {
+          "automation_id": "radio_button",
+          "entity_id": "light.living_room",
+          "state": "on",
+          "watch_seconds": 30
+        }
+      }
+    },
+    {
+      "kind": "user_decision",
+      "recorded_at": 1794152091.9152737,
+      "content": {
+        "decision": "approve",
+        "plan_id": "b52a4e1d2202afed7ad4892c3e49487a9f30cc76eefeaaaf70b45932578c0ae9"
+      }
+    },
+    {
+      "kind": "verification",
+      "recorded_at": 1794152092.5642471,
+      "content": {
+        "classification": "Vyřešeno a ověřeno",
+        "coverage_checkpoints": 1,
+        "created_at": 1794152126.23927,
+        "evidence": [
+          {
+            "kind": "monitoring_checkpoint",
+            "observed_at": 1794152125.23927,
+            "payload": {
+              "continuous_since": 1794152092.23927,
+              "entity_id": "light.living_room",
+              "healthy": true
+            }
+          },
+          {
+            "kind": "automation_triggered",
+            "observed_at": 1794152093.23927,
+            "payload": {
+              "automation_id": "radio_button",
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0"
+            }
+          },
+          {
+            "kind": "target_state",
+            "observed_at": 1794152094.23927,
+            "payload": {
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0",
+              "entity_id": "light.living_room",
+              "state": "on"
+            }
+          }
+        ],
+        "execution_id": "6a4b44b436f46e6bb7f7150513a6e7f0",
+        "functional_successes": 1,
+        "incident_id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+        "language": "cs",
+        "limitation": "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován.",
+        "plan_id": "b52a4e1d2202afed7ad4892c3e49487a9f30cc76eefeaaaf70b45932578c0ae9",
+        "recurrences": 0,
+        "scope": "offline_isolated_fixture",
+        "summary": "Po opravě se automatizace spustila, správné zařízení změnilo stav a během sledování se závada neopakovala."
+      }
+    },
+    {
+      "kind": "verified_resolution",
+      "recorded_at": 1794152092.5665007,
+      "content": {
+        "classification": "Vyřešeno a ověřeno",
+        "coverage_checkpoints": 1,
+        "created_at": 1794152126.23927,
+        "evidence": [
+          {
+            "kind": "monitoring_checkpoint",
+            "observed_at": 1794152125.23927,
+            "payload": {
+              "continuous_since": 1794152092.23927,
+              "entity_id": "light.living_room",
+              "healthy": true
+            }
+          },
+          {
+            "kind": "automation_triggered",
+            "observed_at": 1794152093.23927,
+            "payload": {
+              "automation_id": "radio_button",
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0"
+            }
+          },
+          {
+            "kind": "target_state",
+            "observed_at": 1794152094.23927,
+            "payload": {
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0",
+              "entity_id": "light.living_room",
+              "state": "on"
+            }
+          }
+        ],
+        "execution_id": "6a4b44b436f46e6bb7f7150513a6e7f0",
+        "functional_successes": 1,
+        "incident_id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+        "language": "cs",
+        "limitation": "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován.",
+        "plan_id": "b52a4e1d2202afed7ad4892c3e49487a9f30cc76eefeaaaf70b45932578c0ae9",
+        "recurrences": 0,
+        "scope": "offline_isolated_fixture",
+        "summary": "Po opravě se automatizace spustila, správné zařízení změnilo stav a během sledování se závada neopakovala."
+      }
+    },
+    {
+      "kind": "verification",
+      "recorded_at": 1794152144.422979,
+      "content": {
+        "classification": "Vyřešeno a ověřeno",
+        "clock_mode": "caller_supplied_offline_clock",
+        "coverage_checkpoints": 1,
+        "created_at": 1794152126.23927,
+        "evidence": [
+          {
+            "kind": "monitoring_checkpoint",
+            "observed_at": 1794152125.23927,
+            "payload": {
+              "continuous_since": 1794152092.23927,
+              "entity_id": "light.living_room",
+              "healthy": true
+            }
+          },
+          {
+            "kind": "automation_triggered",
+            "observed_at": 1794152093.23927,
+            "payload": {
+              "automation_id": "radio_button",
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0"
+            }
+          },
+          {
+            "kind": "target_state",
+            "observed_at": 1794152094.23927,
+            "payload": {
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0",
+              "entity_id": "light.living_room",
+              "state": "on"
+            }
+          }
+        ],
+        "execution_id": "6a4b44b436f46e6bb7f7150513a6e7f0",
+        "functional_successes": 1,
+        "incident_id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+        "language": "cs",
+        "limitation": "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován. Sledovací interval používá testovací hodiny; nedokládá skutečnou dobu sledování domácnosti.",
+        "plan_id": "b52a4e1d2202afed7ad4892c3e49487a9f30cc76eefeaaaf70b45932578c0ae9",
+        "recurrences": 0,
+        "scope": "offline_isolated_fixture",
+        "summary": "Po opravě se automatizace spustila, správné zařízení změnilo stav a během sledování se závada neopakovala."
+      }
+    },
+    {
+      "kind": "verified_resolution",
+      "recorded_at": 1794152144.424437,
+      "content": {
+        "classification": "Vyřešeno a ověřeno",
+        "clock_mode": "caller_supplied_offline_clock",
+        "coverage_checkpoints": 1,
+        "created_at": 1794152126.23927,
+        "evidence": [
+          {
+            "kind": "monitoring_checkpoint",
+            "observed_at": 1794152125.23927,
+            "payload": {
+              "continuous_since": 1794152092.23927,
+              "entity_id": "light.living_room",
+              "healthy": true
+            }
+          },
+          {
+            "kind": "automation_triggered",
+            "observed_at": 1794152093.23927,
+            "payload": {
+              "automation_id": "radio_button",
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0"
+            }
+          },
+          {
+            "kind": "target_state",
+            "observed_at": 1794152094.23927,
+            "payload": {
+              "context_id": "offline-after-repair-6a4b44b436f46e6bb7f7150513a6e7f0",
+              "entity_id": "light.living_room",
+              "state": "on"
+            }
+          }
+        ],
+        "execution_id": "6a4b44b436f46e6bb7f7150513a6e7f0",
+        "functional_successes": 1,
+        "incident_id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+        "language": "cs",
+        "limitation": "Ověřena je pouze izolovaná testovací automatizace. Živý HAOS nebyl testován. Sledovací interval používá testovací hodiny; nedokládá skutečnou dobu sledování domácnosti.",
+        "plan_id": "b52a4e1d2202afed7ad4892c3e49487a9f30cc76eefeaaaf70b45932578c0ae9",
+        "recurrences": 0,
+        "scope": "offline_isolated_fixture",
+        "summary": "Po opravě se automatizace spustila, správné zařízení změnilo stav a během sledování se závada neopakovala."
+      }
+    }
+  ]
+}

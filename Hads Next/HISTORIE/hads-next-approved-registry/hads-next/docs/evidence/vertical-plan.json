@@ -1,0 +1,59 @@
+{
+  "backup": {
+    "onedrive_required": false,
+    "required": "verified_local_snapshot",
+    "scope": "single_fixture_not_HAOS"
+  },
+  "evidence_ids": [
+    "2abacb3f2a73a3607bd1cbd729adc20e7d4023eb8d4207f05193b965fee754ff",
+    "6779e385aeee87773323aaafd49d6b9c048348b9142b9b4c38b5d4c80173b45e"
+  ],
+  "expected_result": "Automatizace radio_button po spuštění nastaví light.living_room na on.",
+  "incident_id": "0b97a3eb-9221-42f2-b16b-31ba7553ac92",
+  "manual_alternative": "V izolovaném souboru automation.json změň pouze action.target.entity_id z light.old_lamp na light.living_room; potom proveď funkční test.",
+  "operation": "fixture.replace_entity_reference",
+  "original": {
+    "action": {
+      "service": "light.turn_on",
+      "target": {
+        "entity_id": "light.old_lamp"
+      }
+    },
+    "id": "radio_button"
+  },
+  "original_sha256": "aa6d239cef0b4b203cd4a75b863fc1add6f2b20d4d3769fa16861865fff16ab7",
+  "preconditions": [
+    "exact_original_sha256",
+    "private_fixture_directory",
+    "unexpired_owner_approval"
+  ],
+  "proposed": {
+    "action": {
+      "service": "light.turn_on",
+      "target": {
+        "entity_id": "light.living_room"
+      }
+    },
+    "id": "radio_button"
+  },
+  "reason": "Izolovaný trace dokládá chybějící odkaz; testovací registry určuje konkrétní náhradu.",
+  "risk": "low_isolated_fixture_only",
+  "rollback": {
+    "rollback_of": null,
+    "scope": "single_fixture_not_HAOS",
+    "separate_approval_required": true,
+    "supported": true
+  },
+  "schema": 1,
+  "target": {
+    "automation_id": "radio_button",
+    "filename": "automation.json",
+    "root": "/workspace/HADS/hads-next/.test-tmp/vertical/fixtures"
+  },
+  "verification": {
+    "automation_id": "radio_button",
+    "entity_id": "light.living_room",
+    "state": "on",
+    "watch_seconds": 30
+  }
+}

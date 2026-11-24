@@ -1,0 +1,112 @@
+{
+  "scope": "real_public_GitHub_and_Discourse_API_with_fixture_version",
+  "recorded_at": "2026-11-09T17:29:18.687982+00:00",
+  "core_version_source": "fixture_not_actual_Core_in_this_probe",
+  "model_used": false,
+  "live_haos": false,
+  "paid_search_used": false,
+  "reads": [
+    {
+      "tool": "hads_get_known_issues",
+      "source": "public_research",
+      "status": "available",
+      "data": {
+        "items": [
+          {
+            "url": "https://github.com/home-assistant/core/issues/191217",
+            "title": "Kodi Integration cannot be reloaded if Kodi instance is currently playing something",
+            "excerpt": "### The problem\n\nKodi Integration cannot be reloaded (produces error below) if Kodi instance is currently playing something (or paused). If Kodi is not playing (e.g. Idle) then integration reloading works fine and there is no error. Using latest Kodi version for windows.\n\nThe log shows the error:\n\nLogger: homeassistant.components.media_player\nSource: helpers/entity_platform.py:733\nIntegration: Media player ([documentation](https://www.home-assistant.io/integrations/media_player), [issues](https://github.com/home-assistant/core/issues?q=is%3Aissue+is%3Aopen+label%3A%22integration%3A+media_player%22))\nFirst occurred: November 7, 2026 at 8:33:39 AM (9 occurrences)\nLast logged: 9:52:23 AM\n\nError adding entity media_player.readingroom for domain media_player with platform kodi\nError adding entity media_player.theatre for domain media_player with platform kodi\nError adding entity media_player.tablet for domain media_player with platform kodi\nTraceback (most recent call last):\n  File \"/usr/src/homeassistant/homeassistant/helpers/entity_platform.py\", line 733, in _async_add_entities\n    await self._async_add_entity(\n        entity, False, entity_registry, config_subentry_id\n    )\n  File \"/",
+            "created_at": "2026-11-08T10:53:17Z",
+            "updated_at": "2026-11-08T12:27:50Z",
+            "state": "open",
+            "match_basis": "GitHub search terms and observed version; not independent proof of cause."
+          },
+          {
+            "url": "https://github.com/home-assistant/core/issues/190637",
+            "title": "Sleep timer missing",
+            "excerpt": "### The problem\n\nI was forced to upgrade from the HACS Yoto integration to the core one, but this version is not 100% feature parity of the old integration. The sleep timer is missing to set.\n\n### What version of Home Assistant Core has the issue?\n\ncore-2026.11.0\n\n### What was the last working version of Home Assistant Core?\n\ncore-2026.10.0\n\n### What type of installation are you running?\n\nHome Assistant OS\n\n### Integration causing the issue\n\nYoto\n\n### Link to integration documentation on our website\n\nhttps://www.home-assistant.io/integrations/yoto/\n\n### Diagnostics information\n\n_No response_\n\n### Example YAML snippet\n\n```yaml\nalias: Yoto set sleep timer\ndescription: ''\ntriggers:\n  - device_id: 206a88ba17ef328a404c12388ec304d1\n    domain: media_player\n    entity_id: e7a1c188e567d4a4abcca766555b2d0d\n    type: playing\n    trigger: device\nconditions:\n  - condition: time\n    after: '19:00:00'\nactions:\n  - device_id: 206a88ba17ef328a404c12388ec304d1\n    domain: number\n    entity_id: 9c4c5c44a4e352a927046172250ea4a7\n    type: set_value\n    value: 1800\nmode: single\n```\n\n### Anything in the logs that might be useful for us?\n\n```txt\n\n```\n\n### Additional information\n\n_No response_",
+            "created_at": "2026-11-05T14:07:23Z",
+            "updated_at": "2026-11-05T14:07:30Z",
+            "state": "open",
+            "match_basis": "GitHub search terms and observed version; not independent proof of cause."
+          },
+          {
+            "url": "https://github.com/home-assistant/core/issues/191584",
+            "title": "Cast: playback on Nest Hubs stops when HA disconnects (temporary groups, HA restart) since 2026.11",
+            "excerpt": "### The problem\n\nSince updating to 2026.11 (PyChromecast 14.0.10 → 14.1.1), Home Assistant's Cast integration stops playback on Google Nest devices that it is only observing (no automation or service call involved):\n\n1. **Temporary speaker groups.** Start TuneIn radio on a Nest Hub by voice, then add a second Nest Hub from the first hub's screen (\"Kitchen display + 1\"). Both stop 35–80 s later: 4 out of 4 tries. HA connects to the temporary group as soon as it is announced (`DynamicCastGroup`). When the group's mDNS record blinks (removed and re-added within ~0.1 s), HA cleans up the group and sends `CLOSE` to the receiver and to the media session's transport. About 95 ms later both devices drop TuneIn for the idle Backdrop app.\n2. **HA restarts.** A single, ungrouped Nest Hub playing radio stops whenever Home Assistant restarts (twice in a row on the same day): playing → idle as HA shuts down, off when HA comes back.\n\n**Workaround:** setting the integration's *Allowed UUIDs* to the real devices and saved groups (so HA never connects to temporary groups) stopped case 1. After a restart to apply it, the group played for 5+ minutes; the debug log shows the group discovered and ignore",
+            "created_at": "2026-11-09T12:07:57Z",
+            "updated_at": "2026-11-09T12:08:04Z",
+            "state": "open",
+            "match_basis": "GitHub search terms and observed version; not independent proof of cause."
+          },
+          {
+            "url": "https://github.com/home-assistant/core/issues/191328",
+            "title": "HEOS: removing a player in the group dialog fails with 'Command not executed (7)'",
+            "excerpt": "### The problem\n\nOpening the group dialog on a HEOS media player and applying with no changes or after removing one or more device from the group leads to the error message \"Unable to join players: Command not executed (7)\". \n\n<details><summary>HEOS set_group experiment script</summary>\n<br>\n\n**The experiment script was written with the help of an AI assistant; I reviewed it and ran it**\n\n```\n#!/usr/bin/env python3\n\"\"\"Show how a HEOS system answers `group/set_group` for changed and unchanged groups.\n\nBackground: Home Assistant's HEOS `media_player.join` always sends the complete member list. When the\nrequested group is identical to the existing one, HEOS answers with `eid=7 Command not executed`. This\nscript sends a fixed sequence of `set_group` commands directly to a HEOS device (TCP port 1255, no Home\nAssistant involved) and prints the result of each step as a Markdown table.\n\nIt changes group membership of three players for a few seconds (music may briefly start/stop in them)\nand ungroups them again at the end. It refuses to run if one of the players is already in a group.\nPython 3.8+, standard library only.\n\n    python heos_set_group_issue.py HOST                    # first thr",
+            "created_at": "2026-11-08T20:07:36Z",
+            "updated_at": "2026-11-08T20:07:42Z",
+            "state": "open",
+            "match_basis": "GitHub search terms and observed version; not independent proof of cause."
+          },
+          {
+            "url": "https://github.com/home-assistant/core/issues/190774",
+            "title": "Samsung TV volume gone",
+            "excerpt": "### The problem\n\nSamsung TVs working through this integration now lack volume_level. All tiles using volume now report empty or \"on\" as the state. HA's own UI has a volume slider but it's pinned at 0 and inspect elements reveals it is %NaN.\n\nIt's gone. No Samsung TV has any volume. I am about 98% sure it worked in the previous HA. 2026.10.4? \n\n### What version of Home Assistant Core has the issue?\n\ncore-2026.11.0\n\n### What was the last working version of Home Assistant Core?\n\ncore-2026.10.4\n\n### What type of installation are you running?\n\nHome Assistant OS\n\n### Integration causing the issue\n\n samsungtv\n\n### Link to integration documentation on our website\n\nhttps://www.home-assistant.io/integrations/samsungtv/\n\n### Diagnostics information\n\n[home-assistant_samsungtv_2026-11-05T22-36-56.242Z.log](https://github.com/user-attachments/files/34451598/home-assistant_samsungtv_2026-11-05T22-36-56.242Z.log)\n[home-assistant_samsungtv_2026-11-05T22-36-48.689Z.log](https://github.com/user-attachments/files/34451597/home-assistant_samsungtv_2026-11-05T22-36-48.689Z.log)\n\n### Example YAML snippet\n\n```yaml\n\n```\n\n### Anything in the logs that might be useful for us?\n\n```txt\n\n```\n\n### Additional inf",
+            "created_at": "2026-11-05T22:41:14Z",
+            "updated_at": "2026-11-06T14:53:20Z",
+            "state": "open",
+            "match_basis": "GitHub search terms and observed version; not independent proof of cause."
+          }
+        ],
+        "query_terms": "media player",
+        "observed_version": "2026.11.0",
+        "search_incomplete": false,
+        "source_url": "https://api.github.com/search/issues?q=repo%3Ahome-assistant%2Fcore+is%3Aissue+%222026.11.0%22+%22media%22+%22player%22&per_page=5&page=1",
+        "retrieved_at": "2026-11-09T17:29:16.183545+00:00",
+        "authority": "untrusted_reference_not_causal_evidence",
+        "verified_solution": false
+      },
+      "evidence_ids": [
+        "4ec1d7ab2b3002de0364c6b1dae9e07c55fbb64e5d3998c34e8e8f309064502d"
+      ],
+      "read_at": 1794245356.183545,
+      "source_event_at": null,
+      "detail_cs": "Shoda verze nebo textu sama nedokazuje příčinu. Internetový text se nikdy nevykonává."
+    },
+    {
+      "tool": "hads_get_known_issues",
+      "source": "public_research",
+      "status": "available",
+      "data": {
+        "items": [
+          {
+            "url": "https://community.home-assistant.io/t/fridays-party-creating-a-private-agentic-ai-using-voice-assistant-tools/855862/826",
+            "title": "Friday's Party: Creating a Private, Agentic AI using Voice Assistant tools",
+            "excerpt": "OK team TWO betas are up, last week was a - fun time. :slight_smile: First, a patch on Tron ZenOS-AI 2026.10.2 'Tron' patch, Release Candidate 2 Zach found a bunch of stuff - thanks Zach. I put the fixes in 11 and backported what I could to 10.2 but it reset the clock a few more days. Prob move i...",
+            "created_at": "2026-10-27T18:46:53.482Z",
+            "match_basis": "Forum search terms and observed version; not independent proof of cause."
+          }
+        ],
+        "query_terms": "music assistant",
+        "observed_version": "2026.11.0",
+        "search_incomplete": false,
+        "source_url": "https://community.home-assistant.io/search.json?q=2026.11.0+music+assistant&page=1",
+        "retrieved_at": "2026-11-09T17:29:17.047976+00:00",
+        "authority": "untrusted_reference_not_causal_evidence",
+        "verified_solution": false
+      },
+      "evidence_ids": [
+        "be03e483b074430c71e27dcd92563b10b394aa882d3390596c81755fb33a1cd7"
+      ],
+      "read_at": 1794245357.0479765,
+      "source_event_at": null,
+      "detail_cs": "Shoda verze nebo textu sama nedokazuje příčinu. Internetový text se nikdy nevykonává."
+    }
+  ],
+  "passed": true,
+  "source_sha256": {
+    "src/hads_next/research.py": "a9abf2d889af700d53a283ea50d7dece66b51fa6acf675f161e47c6efe9ed8ae",
+    "src/hads_next/evidence_broker.py": "6c6e26c51d8bf65110733b4471646c2c4a8915af5c62239bc1e7cf6079c806e4",
+    "lab/research_probe.py": "9255f295046f95c7e38870a8811277d910944b85a0399cfae1202e5a250f211e"
+  }
+}

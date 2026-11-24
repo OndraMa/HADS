@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>HADS Hermes 2.0.0-rc2 · Diagnostika a opravy</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+  <script src="webmcp.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><div><span class="eyebrow">HOME ASSISTANT · DIAGNOSTICKÉ CENTRUM</span><h1>HADS Hermes <span>2.0.0-rc2</span></h1></div><div><details><summary>Technické rozhraní</summary><span id="siteTools" role="status">WebMCP: zjišťuji podporu…</span></details><span id="connection" role="status">Připojuji…</span><button id="refresh" data-action="reload">Obnovit</button></div></header>
+  <div class="notice" id="notice" role="status" hidden></div>
+  <nav class="mainnav" aria-label="Hlavní navigace">
+    <button data-page="overview" class="selected">Přehled</button>
+    <button data-page="incidents">Incidenty</button>
+    <button data-page="repairs">Opravy a zálohy</button>
+    <button data-page="sources">Diagnostické zdroje</button>
+    <button data-page="history">Historie</button>
+  </nav>
+  <p id="plannerStatus" class="muted" role="status">Stav průběžného vyšetřování zatím není načten.</p>
+  <main id="main"><div class="empty">Načítání palubní desky…</div></main>
+  <footer class="batchbar"><div><strong id="batchTitle">Ověřuji stav oprav</strong><p id="batchNote">Žádný zápis se neprovede bez schválení a ověřené zálohy.</p><div id="checklist" class="meta"></div></div><button id="launch" class="primary" data-action="launch" disabled>Spustit schválené opravy</button></footer>
+  <dialog id="incidentDialog" aria-labelledby="incidentTitle"><div class="dialog-head"><div><span id="incidentId" class="eyebrow"></span><h2 id="incidentTitle"></h2></div><button data-action="close" aria-label="Zavřít detail">×</button></div>
+    <nav id="detailTabs" class="tabs" aria-label="Detail incidentu">
+      <button data-tab="summary" class="selected">Souhrn</button><button data-tab="evidence">Důkazy</button><button data-tab="chat">Konverzace</button><button data-tab="repair">Oprava</button><button data-tab="history">Historie rozhodnutí</button>
+    </nav><section id="detailContent"></section>
+  </dialog>
+  <dialog id="decisionDialog" aria-labelledby="decisionTitle">
+    <form id="decisionForm" method="dialog">
+      <h2 id="decisionTitle">Potvrzení úkonu</h2>
+      <p id="decisionText"></p>
+      <label id="reasonLabel" hidden>Důvod rozhodnutí<textarea id="decisionReason" maxlength="2000"></textarea></label>
+      <div class="actions"><button type="submit" value="cancel" formnovalidate>Zpět bez změny</button><button type="submit" value="continue" class="primary">Potvrdit úkon</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

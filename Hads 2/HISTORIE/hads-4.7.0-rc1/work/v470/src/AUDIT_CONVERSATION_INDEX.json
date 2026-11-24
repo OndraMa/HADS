@@ -1,0 +1,105 @@
+{
+  "project": "HA",
+  "date": "2026-09-07",
+  "scope": "Identified accessible relevant conversations; bounded read_thread exports, not a guarantee of inaccessible or archived chats. Attachments were not all re-read.",
+  "conversations": [
+    {
+      "id": "6a76cd27-064c-83eb-ab9d-17d5b50d4ff4",
+      "title": "HADS denní report",
+      "pages": 1,
+      "turns": 9,
+      "has_more": false
+    },
+    {
+      "id": "6a2eef77-ea08-83eb-9dbd-63ac3688b9ab",
+      "title": "RPI 4 a Home Assistant",
+      "pages": 4,
+      "turns": 37,
+      "has_more": false
+    },
+    {
+      "id": "6a96a51c-8b10-83eb-9a6b-432f9c207b6b",
+      "title": "Hads webmcp",
+      "pages": 1,
+      "turns": 5,
+      "has_more": false
+    },
+    {
+      "id": "6a86d172-2a80-83ed-af7b-7c222ed0d64b",
+      "title": "HEDS - Elektroměr",
+      "pages": 2,
+      "turns": 19,
+      "has_more": false
+    },
+    {
+      "id": "6a97bd6c-fac8-83eb-9c17-eee0b851ecfd",
+      "title": "Projekty Francka Nijhofa",
+      "pages": 1,
+      "turns": 4,
+      "has_more": false
+    },
+    {
+      "id": "01a041f3-2fae-7a30-b14e-667c08d43b1d",
+      "title": "Nastavte doplňky Home Assistant",
+      "pages": 1,
+      "turns": 6,
+      "has_more": false
+    },
+    {
+      "id": "6a8f3211-1e00-83eb-b6fd-1324d9e445d7",
+      "title": "Oprava Home Assistant YAML",
+      "pages": 1,
+      "turns": 10,
+      "has_more": false
+    },
+    {
+      "id": "6a65ca2e-e014-83eb-ac81-47516f606785",
+      "title": "Zlepšení HA automatizace",
+      "pages": 2,
+      "turns": 15,
+      "has_more": false
+    },
+    {
+      "id": "6a897252-6384-83ed-b303-32b9ebf51e14",
+      "title": "Zjednodušení HADS HABS HEDS",
+      "pages": 2,
+      "turns": 11,
+      "has_more": false
+    },
+    {
+      "id": "6a8f33e5-2504-83ed-85e9-03577ccd156a",
+      "title": "Oprava automatizace TS0043",
+      "pages": 1,
+      "turns": 4,
+      "has_more": false
+    },
+    {
+      "id": "6a760b21-d93c-83eb-8f5d-55c3a68dc36b",
+      "title": "HABS HA",
+      "pages": 7,
+      "turns": 67,
+      "has_more": false
+    },
+    {
+      "id": "6a8c3d86-a3b4-83eb-9e65-9d6c867ed654",
+      "title": "W. HADS 4.1.0 rc5",
+      "pages": 1,
+      "turns": 7,
+      "has_more": false
+    },
+    {
+      "id": "6a81fe92-0808-83eb-9344-ef991128365b",
+      "title": "W. HADS 3.0.0 - 3.1. rc3",
+      "pages": 1,
+      "turns": 7,
+      "has_more": false
+    },
+    {
+      "id": "6a8bc6a3-0ce8-83ed-bb1e-3294cc99124c",
+      "title": "Komplexní diagnostika HADS chat",
+      "pages": 2,
+      "turns": 12,
+      "has_more": false
+    }
+  ]
+}

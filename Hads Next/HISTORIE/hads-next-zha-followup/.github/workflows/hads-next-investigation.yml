@@ -1,0 +1,72 @@
+name: HADS Next final delivery acceptance
+on:
+  push:
+    branches: [codex/hads-next-zha-followup]
+    paths:
+      - .github/workflows/hads-next-investigation.yml
+      - hads-next/src/**
+      - hads-next/haos/**
+      - hads-next/scripts/**
+      - hads-next/lab/**
+      - hads-next/tests/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hads-next-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: amd64
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - name: Offline source and negative security contracts
+        working-directory: hads-next
+        run: |
+          python -m pip install websockets==16.0
+          python scripts/check.py
+      - name: Actual Core and confined original Hermes (scripted model)
+        working-directory: hads-next
+        run: |
+          python scripts/investigation_context.py --receipt .test-tmp/native-context
+          docker build --build-arg CORE_LAB=1 --target receipt --output type=local,dest=.test-tmp/native-result .test-tmp/native-context
+      - name: Exact installable source and production image (no Core fixture)
+        working-directory: hads-next
+        run: |
+          python scripts/build_haos_installer.py --output-dir .test-tmp/package
+          bash .test-tmp/package/HADS_Next_install_1.0.0-rc7.sh --verify
+          bash .test-tmp/package/HADS_Next_install_1.0.0-rc7.sh --extract-only "$PWD/.test-tmp/installed-source"
+          docker build --tag hads-next-haos:1.0.0-rc7 .test-tmp/installed-source
+      - name: Real native readiness, resource admission and container restart
+        working-directory: hads-next
+        run: python scripts/haos_smoke.py --installer .test-tmp/package/HADS_Next_install_1.0.0-rc7.sh
+      - name: Preserve exact scope and input hashes (never deploy or release)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hads-next-${{ matrix.architecture }}-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            hads-next/docs/evidence/offline-tests.json
+            hads-next/docs/evidence/haos-final-package.json
+            hads-next/.test-tmp/native-result/
+            hads-next/.test-tmp/package/
+      - name: Report acceptance boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Native runner: ${{ matrix.architecture }}. Actual Core and original Hermes, scripted HTTPS model. Package runtime uses no model. No HAOS, physical Zigbee/radio, real LLM, deployment or production repair is claimed.' >> "$GITHUB_STEP_SUMMARY"

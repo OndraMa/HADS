@@ -1,0 +1,73 @@
+{
+  "recorded_at": "2026-11-10",
+  "scope": "upstream_source_inspection_not_live_HAOS",
+  "core_version": "2026.11.0",
+  "supervisor_version": "2026.11.0",
+  "native_operation": {
+    "api": "POST /api/services/automation/turn_on",
+    "rollback_api": "POST /api/services/automation/turn_off",
+    "rollback_parameters": {
+      "entity_id": "one selected automation",
+      "stop_actions": false
+    },
+    "configuration_write": false,
+    "atomic_CAS": false,
+    "limitations": [
+      "Owner confirms exclusive editing; there is a read-to-service race window.",
+      "Positive policy allows one state trigger and one explicit light.turn_on only.",
+      "Rollback prevents future triggers and does not undo physical effects."
+    ]
+  },
+  "sources": [
+    {
+      "repository": "home-assistant/core",
+      "path": "homeassistant/components/automation/services.yaml",
+      "blob_sha": "6b3afdca33508f48030a1916ddba7e0d3feacedd"
+    },
+    {
+      "repository": "home-assistant/core",
+      "path": "homeassistant/components/automation/services.py",
+      "blob_sha": "83b8d5c81f445d4e4f066a01f1955527b356e3fa"
+    },
+    {
+      "repository": "home-assistant/core",
+      "path": "homeassistant/components/automation/entity.py",
+      "blob_sha": "90d503f65b86dd01157c461e99e444417d2ba7c9"
+    },
+    {
+      "repository": "home-assistant/core",
+      "path": "homeassistant/components/api/__init__.py",
+      "blob_sha": "a66f75403c21c1dd64771713d60704502de0ee81"
+    },
+    {
+      "repository": "home-assistant/supervisor",
+      "path": "supervisor/api/host.py",
+      "blob_sha": "e578377430f361a5e894f8ea20c8d14f9c821012"
+    },
+    {
+      "repository": "home-assistant/supervisor",
+      "path": "supervisor/api/__init__.py",
+      "blob_sha": "a9de70ae25e383b3d6ba22e0d5936dcf0b47eab2"
+    },
+    {
+      "repository": "home-assistant/supervisor",
+      "path": "supervisor/host/info.py",
+      "blob_sha": "ef2960a1d7ef813e1ab27fd5ed76de83836321d9"
+    }
+  ],
+  "supervisor_host_info": {
+    "path": "GET /host/info",
+    "fields": [
+      "disk_free",
+      "disk_total",
+      "disk_used"
+    ],
+    "unit": "GiB",
+    "privacy": "Only numeric metrics; no hostname, serial, mount or network configuration."
+  },
+  "unsupported_claims": [
+    "Core and Supervisor info do not prove repeated restarts.",
+    "Stopped application is not automatically a failure.",
+    "Source inspection does not establish live authentication or physical device success."
+  ]
+}

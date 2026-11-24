@@ -1,0 +1,48 @@
+name: HADS Next Command Center review
+on:
+  push:
+    branches: [codex/hads-next-command-center, codex/hads-next-rc3, codex/hads-next-health-evidence, codex/hads-next-rc4, codex/hads-next-rc5]
+    paths:
+      - hads-next/src/**
+      - hads-next/tests/**
+      - hads-next/scripts/**
+      - .github/workflows/hads-next-command-center.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hads-ui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - name: Install isolated review dependencies
+        run: |
+          python -m pip install websockets==16.0 playwright==1.62.0
+          python -m playwright install --with-deps chromium
+      - name: Offline source and negative security regressions
+        working-directory: hads-next
+        run: python scripts/check.py
+      - name: Browser desktop and mobile, anonymous fixture only
+        working-directory: hads-next
+        run: python scripts/practical_browser.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: command-center-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            hads-next/docs/evidence/offline-tests.json
+            hads-next/docs/evidence/practical-browser.json
+            hads-next/.test-tmp/dashboard-desktop.png
+            hads-next/.test-tmp/dashboard-mobile.png
+            hads-next/.test-tmp/providers-*.png
+          retention-days: 7
